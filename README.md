@@ -1,6 +1,15 @@
 # MBSB-HGDL
 Wow, what a messy title. I promise it's way simpler than that.
 
+## To Do List:
+    * unit tests
+    * change tol in HXDY to not care about dimension
+    * example of using HXDY with a custom function
+    * example of using HXYDY with args
+    * clean up code! 
+    * make wrapper functions actually wrapper functions
+    
+    
 ## What is this?
 This is a minimization procedure written in python that uses a 
 * Hybrid - both global and local minimizers
