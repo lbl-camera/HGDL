@@ -2,13 +2,9 @@
 Wow, what a messy title. I promise it's way simpler than that.
 
 ## To Do List:
-    * unit tests
-    * change tol in HXDY to not care about dimension
+    * unit tests - how to do them?
     * example of using HXDY with a custom function
-    * example of using HXYDY with args
-    * clean up code! 
-    * make wrapper functions actually wrapper functions
-    
+    * example of using HXYDY with args    
     
 ## What is this?
 This is a minimization procedure written in python that uses a 
