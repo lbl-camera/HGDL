@@ -9,6 +9,8 @@
 # The goal of this is to be modular and robust to a variety of functions
 # ## Imports
 
+# Yes, these are all necessary
+
 # In[1]:
 
 
@@ -22,10 +24,61 @@ from multiprocessing import cpu_count
 from scipy.optimize import minimize
 
 
+# In[3]:
+
+
+DEBUG = False
+
+
 # ## Minimization
+# ### Parameters - passing a bunch of params is unseemly
+
+# In[4]:
+
+
+def defaultParams():
+    parameters = np.dtype([('numWorkers','i2'),
+                            ('epsilon','f8'),
+                            ('radius_squared','f8'),
+                            ('maxCount','i4'),
+                            ('alpha','f8'),
+                            ('unfairness','f8'),
+                            ('wildness','f8'),
+                            ('minImprovement','f8'),
+                            ('N','i4'),
+                            ('keepLastX','i2'),
+                            ('maxRuns','i4'),
+                            ('returnedThreshold','f8'),
+                            ('verbose','b'),
+                            ('k','i4'),
+                            ('numGenerations','i4'),
+                          ])
+
+    parameters = np.recarray(1, parameters)
+    
+    parameters.numWorkers = -1
+    parameters.epsilon = 1e-3
+    parameters.maxCount = 100
+    parameters.alpha = .1
+    parameters.unfairness = 2.5
+    parameters.wildness = 1
+    parameters.minImprovement = 1.1 # I don't think I am using this right now
+    parameters.N = 100
+    parameters.keepLastX = 10
+    parameters.maxRuns = 10
+    parameters.returnedThreshold=0.7
+    parameters.verbose = True
+    parameters.numGenerations = 0
+    
+    parameters.k = -2
+    parameters.radius_squared = -2.
+    
+    return parameters[0]
+
+
 # ### Define deflation operator and derivatives
 
-# In[2]:
+# In[5]:
 
 
 @nb.vectorize(nopython=True, cache=True)
@@ -37,11 +90,20 @@ def bump_function(dist2center, radius_squared, alpha):
         - find it at https://www.sciencedirect.com/science/article/pii/S037704271730225X
     """
     if dist2center==radius_squared: return 0
+    #if dist2center<1e-7: return 10000
     bump_term = np.exp( (-alpha)/(radius_squared - dist2center) + (alpha/radius_squared) )
     return 1./(1.-bump_term)
 
 
-# In[3]:
+# In[6]:
+
+
+if DEBUG:
+    x = np.arange(0, 2.5, 1e-2)
+    plt.plot(x, bump_function(x, 2.5, .1))
+
+
+# In[7]:
 
 
 @nb.vectorize(nopython=True, cache=True)
@@ -54,11 +116,19 @@ def bump_derivative(dist2center, radius_squared, alpha):
     """
     if dist2center==radius_squared: return 0
     bump_der = np.exp( (-alpha)/(radius_squared - dist2center) + (alpha/radius_squared) )
-    bump_der *= -2*alpha*np.power(dist2center,.5)/np.power(radius_squared-dist2center,2)
-    return -1.*np.power(bump_function(dist2center,radius_squared,alpha),2)*bump_der
+    bump_der *= -2*alpha*np.sqrt(dist2center)/np.power(radius_squared-dist2center,2)
+    return np.power(bump_function(dist2center,radius_squared,alpha),2)*bump_der
 
 
-# In[4]:
+# In[8]:
+
+
+if DEBUG:
+    x = np.arange(0, 2.4, 1e-2)
+    plt.plot(x, bump_derivative(x, 2.5, .1))
+
+
+# In[9]:
 
 
 @nb.jit(nopython=True, cache=True)
@@ -81,7 +151,28 @@ def deflation_factor(x, minima, radius_squared, alpha):
     return np.prod(bump_function(dists2center[withinRange], radius_squared, alpha)) 
 
 
-# In[5]:
+# In[10]:
+
+
+if DEBUG:
+    assert np.isinf(deflation_factor(np.ones(3), np.ones((1,3)), 1., 1.,)), "deflation factor is not blowing up"
+
+
+# In[11]:
+
+
+if DEBUG:
+    for i in range(100):
+        stop = np.random.random()*100
+        alpha = np.random.random()*3 + .1
+        x = np.arange(0, stop, 1e-3)
+        y = bump_function(x, stop, alpha)
+        assert np.array([y[i]<=y[i-1] for i in range(1,len(y))]).all(), "bump function is not monotonically decreasing for alpha "+str(alpha)+' and stop: '+str(stop)
+        y = bump_derivative(x, stop, alpha)
+        assert np.array([y[i]>=y[i-1] for i in range(2,len(y))]).all(), "bump derivative is not monotonically increasing for alpha "+str(alpha)+' and stop: '+str(stop)
+
+
+# In[12]:
 
 
 @nb.jit(nopython=True, cache=True)
@@ -101,109 +192,165 @@ def deflation_derivative(x, minima, radius_squared, alpha):
     c = x-minima[:,:xLen]
     dists2center = np.sum(c*c,axis=1)
     withinRange = dists2center < radius_squared
-    return np.prod(bump_derivative(dists2center[withinRange], radius_squared, alpha)) 
+    return np.prod(bump_derivative(dists2center[withinRange], radius_squared, alpha))
 
 
-# ### Define wrappers to make interface generic
-
-# In[6]:
+# In[13]:
 
 
-def deflated_gradient(x, gradient, minima, radius_squared, alpha):
-    return gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
+if DEBUG:
+    assert np.isinf(deflation_derivative(np.ones(3), np.ones((1,3))+1e-10, 1., 1.,)), "deflation derivative is not blowing up"
 
 
-# In[7]:
+# ### Define checks (necessary bc of parallelism)
+
+# In[14]:
 
 
-def deflated_hessian(x, gradient, hessian, minima, radius_squared, alpha):
-    term1 = hessian(x)*deflation_derivative(x, minima, radius_squared, alpha)
-    term2 = gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
-    return term1 + term2
+@nb.jit(nopython=True, cache=True)
+def alreadyFound(newMinima, oldMinima, radius_squared, k):
+    """
+    check if the new minimum is within range of the old ones
+    """
+    c = oldMinima[:,:k] - newMinima[0,:k]
+    return (np.sum(c*c,1)<radius_squared).any()
 
 
 # In[15]:
 
 
-def minimize_wrapper(x0, fun, *args, **kwargs):
-    return minimize(fun, x0, *args, **kwargs)
+if DEBUG:
+    assert alreadyFound(10*np.ones((1, 4)), 10*np.ones((1,4)), 10, 3), "not noticing already found minima"
 
 
-# ### Define checks (necessary bc of parallelism)
+# ### Define wrappers to make interface generic
 
-# In[9]:
-
-
-@nb.jit(nopython=True, cache=True)
-def alreadyFound(newMinima, oldMinima, xLen, squared_radius):
-    c = oldMinima[:,:xLen] - newMinima[0,:xLen]
-    return (np.sum(c*c,1)<squared_radius).any()
+# In[18]:
 
 
-# ### Define parallelized deflated local step
+def deflated_gradient(x, gradient, minima, radius_squared, alpha):
+    """
+    This just combines these two functions together
+    """
+    return gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
+
+
+# In[19]:
+
+
+def deflated_hessian(x, gradient, hessian, minima, radius_squared, alpha):
+    """
+    This just combines these two functions together
+    """
+    term1 = hessian(x)*deflation_derivative(x, minima, radius_squared, alpha)
+    term2 = gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
+    return term1 + term2
+
+
+# In[ ]:
+
+
+def minimize_wrapper(x0, objective):
+    """
+    The partial function requires x to be in front, so this just does
+    a switcheroo with w(x,f,..) <=> w(f,x)
+    """
+    return minimize(fun=objective, x0=x0)
+
+
+# In[21]:
+
+
+if DEBUG:
+    A = 10
+    d = 2
+    def Rastringin(x):
+        if args is not (): print(*args)
+        return (A*d + np.dot(x,x) - A*np.sum(np.cos(2.*np.pi*x)))
+
+    def Rastringin_gradient(x):
+        if args is not (): print(*args)
+        grad = np.empty(len(x))
+        for i in range(len(grad)):
+            grad[i] = (2.*x[i] + A*np.sin(2.*np.pi*x[i])*2.*np.pi)
+        return grad
+
+    def Rastringin_hessian(x):
+        if args is not (): print(*args)
+        hess = np.zeros((len(x),len(x)))
+        for i in range(len(hess)):
+            hess[i,i] = (2 + A*np.cos(2.*np.pi*x[i])*(4.*np.pi*np.pi))
+        return hess
+
+
+# ### Define parallelized deflated local stepdefaultParams
+
+# In[ ]:
+
+
+def minimizer(x, objective, method, jac, hess, tol, options):
+    return minimize(objective, x, method=method, jac=jac, hess=hess, tol=tol, options=options)
+
 
 # In[10]:
 
 
-def walk_individuals(individuals, bounds, objective, gradient, Hessian, radius_squared, 
-                     workers, epsilon, maxCount, alpha, maxRuns, returnedThreshold, minima=None,
-                     args=(), method='L-BFGS-B'):
-    
+def wrapper(x, objective, **kwargs):
+    return minimize(objective, x, **kwargs)
 
-    xLen = len(individuals[0])
-    N = len(individuals)
-    if minima is None: minima = np.empty((0, xLen+1))
+
+# In[9]:
+
+
+def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers, parameters, method, minima=None):
+    """
+    Do the actual iteration through the deflated local optimizer
+    """
     
-    newMinima = np.empty((0, xLen+1))
+    if minima is None: minima = np.empty((0, parameters.k+1))
     
-    for i in range(maxRuns):
+    newMinima = np.empty((0, parameters.k+1))
+        
+    for i in range(parameters.maxRuns):
         numNone = 0
+        
+        # construct the jacobian, hessian, and objective. This is inside the loop because of the minima
+        jac = partial(deflated_gradient, gradient=gradient, minima=minima, radius_squared=parameters.radius_squared, 
+                      alpha=parameters.alpha)
+        
+        if Hessian is not None: Hessian = partial(deflated_hessian, gradient=gradient, hessian=Hessian, minima=minima,
+                                                  radius_squared=parameters.radius_squared, alpha=parameters.alpha)
+        
+        minimizer = partial(wrapper, objective=objective, method=method, jac=jac, hess=Hessian, 
+                    tol=parameters.radius_squared, options={'maxiter':parameters.maxCount})
 
-        jac = partial(deflated_gradient, gradient=gradient, minima=minima, radius_squared=radius_squared, alpha=alpha)
-        hess = Hessian
-        if hess is not None: hess = partial(deflated_hessian, gradient=gradient, hessian=Hessian, minima=minima, radius_squared=radius_squared, alpha=alpha)
-            
-        walkerOutput = workers.imap_unordered(partial(minimize_wrapper, fun=objective, args=args, method=method, 
-                                                      jac=jac, 
-                                                      hess=hess, 
-                                                      bounds=bounds, tol=radius_squared, options={'maxiter':maxCount}),
-                                              individuals, chunksize=ceil(0.3*len(individuals)/cpu_count()))
-                                                      
-        # redo this where it can stop before everything returns
+        # chunk up and iterate through
+        walkerOutput = workers.imap_unordered(minimizer, individuals, chunksize=ceil(0.3*len(individuals)/cpu_count()))
+
+        # process results
         for i,x_found in enumerate(walkerOutput):
             if x_found.success==False: 
                 numNone += 1
-                if numNone/N > returnedThreshold:
-                    # check for redundant optima
-                    #newMinima = reduceOutput(newMinima, xLen, radius_squared)
-                    #redundant = alreadyFound(newMinima, minima, xLen, radius_squared)
-                    #minima = np.concatenate((newMinima[np.logical_not(redundant)], minima), axis=0)
+                if numNone/parameters.N > parameters.returnedThreshold:
                     return minima
             else:
                 if not in_bounds(x_found.x, bounds): 
                     numNone += 1
-                    if numNone/N > returnedThreshold:
-                        # check for redundant optima
-                        #newMinima = reduceOutput(newMinima, xLen, radius_squared)
-                        #redundant = alreadyFound(newMinima, minima, xLen, radius_squared)
-                        #minima = np.concatenate((newMinima[np.logical_not(redundant)], minima), axis=0)
+                    if numNone/parameters.N > parameters.returnedThreshold:
                         return minima                        
                 else:
                     newMinima = np.array([*x_found.x, x_found.fun]).reshape(1,-1)
-                    if not alreadyFound(newMinima, minima, xLen, radius_squared): 
+                    if not alreadyFound(newMinima, minima, radius_squared=parameters.radius_squared, k=k): 
                         minima = np.concatenate((newMinima, minima), axis=0)
-        # check for redundant optima
-        #redundant = alreadyFound(newMinima, minima, xLen, radius_squared)
-        
     return minima
 
 
 # ### Define a global optimizer
 
-# In[11]:
+# In[24]:
 
 
-def Procreate(X, y, unfairness, cauchy_wildness):
+def Procreate(X, y, parameters):
     """
     Input:
     X is the individuals - points on a surface
@@ -217,8 +364,6 @@ def Procreate(X, y, unfairness, cauchy_wildness):
     Notes:
     some of the children can (and will) be outside of the bounds!
     """
-    N = len(X)
-    k = len(X[0])
     
     # normalize the performances to (0,1)
     p = y - np.amin(y)
@@ -227,16 +372,16 @@ def Procreate(X, y, unfairness, cauchy_wildness):
     else: p /= maxVal
 
     #This chooses from the sample based on the power law, allowing replacement means that the the individuals can have multiple kids
-    p = unfairness*np.power(p,unfairness-1)
+    p = parameters.unfairness*np.power(p,parameters.unfairness-1)
     p /= np.sum(p)
     if np.isnan(p).any():
         return p, X, y
-    moms = np.random.choice(np.arange(len(p)), N, replace=True, p = p)
-    dads = np.random.choice(np.arange(len(p)), N, replace=True, p = p)
+    moms = np.random.choice(np.arange(len(p)), parameters.N, replace=True, p = p)
+    dads = np.random.choice(np.arange(len(p)), parameters.N, replace=True, p = p)
     
     # calculate a perturbation to the median of each individuals parents
-    perturbation = np.random.standard_normal(size=(N,k))
-    perturbation *= cauchy_wildness
+    perturbation = np.random.standard_normal(size=(parameters.N,parameters.k))
+    perturbation *= parameters.wildness
     
     # the children are the median of their parents plus a perturbation (with a chance to deviate wildly)
     children = (X[moms]+X[dads])/2. + perturbation*(X[moms]-X[dads])
@@ -246,7 +391,7 @@ def Procreate(X, y, unfairness, cauchy_wildness):
 
 # ### Check boundary conditions
 
-# In[12]:
+# In[25]:
 
 
 def in_bounds(x, bounds):
@@ -256,11 +401,11 @@ def in_bounds(x, bounds):
 
 # ### Sample within bounds
 
-# In[13]:
+# In[26]:
 
 
-def random_sample(N,k,bounds):
-    sample = np.random.random((N,k))
+def random_sample(N,bounds,parameters):
+    sample = np.random.random((N,parameters.k))
     sample *= bounds[:,1]-bounds[:,0]
     sample += bounds[:,0]
     return sample
@@ -268,68 +413,61 @@ def random_sample(N,k,bounds):
 
 # ### Wrap everything together
 
-# In[14]:
+# In[27]:
 
 
-def HXDY(fun, bounds, jac, args=(), method='L-BFGS-B', hess=None, x0=None,
-    numWorkers = -1,
-    epsilon = 1e-5,
-    tol = .01,
-    maxCount = 50,
-    alpha = .1,
-    unfairness = 1,
-    cauchy_wildness = 1,
-    minImprovement = 1.1,
-    N = 100,
-    keepLastX = 10, maxRuns=30, returnedThreshold=0.7,
-    extraStoppingCriterion=None,
-    verbose = True
-        ):
-
+def HXDY(fun, bounds, jac, method=None, hess=None, x0=None, 
+         parameters=None, rms = .01, extraStoppingCriterion=None ):
     
-    k = len(bounds)
-    if numWorkers == -1: numWorkers = cpu_count()
-    N = int(N)
-    if x0 is None: starts = random_sample(N,k,bounds)
+    # Initialization
+    if parameters == None:
+        parameters = defaultParams()
+
+    parameters.k = len(bounds)
+ 
+    if parameters.numWorkers == -1: parameters.numWorkers = cpu_count()
+
+    if x0 is None: starts = random_sample(parameters.N,bounds,parameters)
     else: starts = x0
+        
     objective = fun
     hessian = hess
     gradient = jac
-    radius_squared = tol
+    parameters.radius_squared = parameters.k*(rms**2)
+    
     if extraStoppingCriterion is None: extraStoppingCriterion = lambda x: True
         
-    workers = Pool(numWorkers)
-      
-    res = walk_individuals(starts, bounds, objective, gradient, hessian, radius_squared, workers, epsilon, maxCount, alpha, maxRuns, returnedThreshold, args=args, method=method)
-
-    numGenerations = 0
-
+    workers = Pool(parameters.numWorkers)
+     
+    res = walk_individuals(starts, bounds, objective, gradient, hessian, workers, parameters, method=method)
+    
+    parameters.numGenerations = 0
+    
+    # processing
     res = res[res[:,-1].argsort()]
-    best = np.inf*np.ones(keepLastX); 
+    best = np.inf*np.ones(parameters.keepLastX); 
     if len(res)==0: best[0] = np.nan_to_num(np.inf)-1
     else: best[0] = res[0,-1]
         
     while not np.allclose(best[0],best) and extraStoppingCriterion(res):
-        numGenerations += 1
+
+        parameters.numGenerations += 1
 
         if res.shape[0]!=0: 
-            new_starts = Procreate(res[:,:k], res[:,-1], unfairness=unfairness, cauchy_wildness=cauchy_wildness)
+            new_starts = Procreate(res[:,:parameters.k], res[:,-1], parameters)
             for i in range(len(new_starts)): 
-                if not in_bounds(new_starts[i], bounds): new_starts[i] = random_sample(1,k,bounds)
+                if not in_bounds(new_starts[i], bounds): new_starts[i] = random_sample(1,bounds,parameters)
         else:
-            new_starts = random_sample(N,k,bounds)
-        res = walk_individuals(new_starts, bounds, objective, gradient, hessian, radius_squared, workers, epsilon, maxCount, alpha, maxRuns, returnedThreshold, minima=res, args=args, method=method)
+            new_starts = random_sample(parameters.N,bounds,parameters)
+
+        res = walk_individuals(new_starts, bounds, objective, gradient, hessian, workers, parameters, minima=res, method=method)
+        
         res = res[res[:,-1].argsort()]
-        best[numGenerations%keepLastX] = res[0,-1]
-        if verbose: print(best.round())
+        if res.shape[0]!=0: best[parameters.numGenerations%parameters.keepLastX] = res[0,-1]
+        if parameters.verbose: print(best.round())
+        
     workers.close()
     return res
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:
