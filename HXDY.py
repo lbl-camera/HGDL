@@ -67,7 +67,7 @@ def defaultParams():
     parameters.keepLastX = 10
     parameters.maxRuns = 10
     parameters.returnedThreshold=0.7
-    parameters.verbose = True
+    parameters.verbose = False
     parameters.numGenerations = 0
     
     parameters.k = -2
@@ -340,7 +340,7 @@ def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers,
                         return minima                        
                 else:
                     newMinima = np.array([*x_found.x, x_found.fun]).reshape(1,-1)
-                    if not alreadyFound(newMinima, minima, radius_squared=parameters.radius_squared, k=k): 
+                    if not alreadyFound(newMinima, minima, radius_squared=parameters.radius_squared, k=parameters.k): 
                         minima = np.concatenate((newMinima, minima), axis=0)
     return minima
 
