@@ -57,7 +57,7 @@ def defaultParams():
     parameters = np.recarray(1, parameters)
     
     parameters.numWorkers = -1
-    parameters.epsilon = 1e-3
+    parameters.epsilon = 1e-2
     parameters.maxCount = 100
     parameters.alpha = .1
     parameters.unfairness = 2.5
@@ -340,7 +340,9 @@ def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers,
                         return minima                        
                 else:
                     newMinima = np.array([*x_found.x, x_found.fun]).reshape(1,-1)
-                    if not alreadyFound(newMinima, minima, radius_squared=parameters.radius_squared, k=parameters.k): 
+                    if minima is []:
+                        minima = np.concatenate((newMinima, minima), axis=0)
+                    elif not alreadyFound(newMinima, minima, radius_squared=parameters.radius_squared, k=parameters.k): 
                         minima = np.concatenate((newMinima, minima), axis=0)
     return minima
 
