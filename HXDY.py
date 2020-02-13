@@ -340,7 +340,7 @@ def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers,
                         return minima                        
                 else:
                     newMinima = np.array([*x_found.x, x_found.fun]).reshape(1,-1)
-                    if minima is []:
+                    if len(minima)==0:
                         minima = np.concatenate((newMinima, minima), axis=0)
                     elif not alreadyFound(newMinima, minima, radius_squared=parameters.radius_squared, k=parameters.k): 
                         minima = np.concatenate((newMinima, minima), axis=0)
