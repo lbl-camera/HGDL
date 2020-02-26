@@ -339,6 +339,7 @@ def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers,
                     if numNone/parameters.N > parameters.returnedThreshold:
                         return minima                        
                 else:
+                    score = x_found.fun; if not np.isscalar(score): score = score[0]
                     newMinima = np.array([*x_found.x, x_found.fun]).reshape(1,-1)
                     if len(minima)==0:
                         minima = np.concatenate((newMinima, minima), axis=0)
