@@ -44,7 +44,6 @@ def defaultParams():
                             ('alpha','f8'),
                             ('unfairness','f8'),
                             ('wildness','f8'),
-                            ('minImprovement','f8'),
                             ('N','i4'),
                             ('keepLastX','i2'),
                             ('maxRuns','i4'),
@@ -62,7 +61,6 @@ def defaultParams():
     parameters.alpha = .1
     parameters.unfairness = 2.5
     parameters.wildness = 1
-    parameters.minImprovement = 1.1 # I don't think I am using this right now
     parameters.N = 100
     parameters.keepLastX = 10
     parameters.maxRuns = 10
@@ -339,7 +337,8 @@ def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers,
                     if numNone/parameters.N > parameters.returnedThreshold:
                         return minima                        
                 else:
-                    score = x_found.fun; if not np.isscalar(score): score = score[0]
+                    score = x_found.fun; 
+                    if not np.isscalar(score): score = score[0]
                     newMinima = np.array([*x_found.x, x_found.fun]).reshape(1,-1)
                     if len(minima)==0:
                         minima = np.concatenate((newMinima, minima), axis=0)
@@ -470,7 +469,19 @@ def HXDY(fun, bounds, jac, method=None, hess=None, x0=None,
         if parameters.verbose: print(best.round())
         
     workers.close()
-    return res
+    
+    # keep only if eigenvalues all > -epsilon
+    H = np.array([hess(x) for x in res[:,:-1]])
+    L, V = np.linalg.eigh(H)
+    mask = np.array([(l>-1e-3).all() for l in L])
+    res = res[mask]
+    
+    result = {}
+    result['x'] = res[:,:-1]
+    result['f'] = res[:,-1]
+    result['success'] = res.shape[0]>0
+    
+    return result
 
 
 # In[ ]:

@@ -92,6 +92,12 @@ res = HXDY(fun=Rastringin, bounds=bounds, hess=Rastringin_hessian, jac=Rastringi
 # In[ ]:
 
 
+res = res['x']
+
+
+# In[ ]:
+
+
 plt.scatter(res[:,0], res[:,1], color='black');
 plt.contour(X,Y,Z); plt.colorbar();
 
