@@ -199,6 +199,18 @@ res = HXDY(fun=NewRastringin, bounds=bounds, hess=NewRastringin_hessian, jac=New
 # In[ ]:
 
 
+res['success']
+
+
+# In[ ]:
+
+
+res = res['x']
+
+
+# In[ ]:
+
+
 plt.scatter(res[:,0], res[:,1], color='black');
 plt.contour(X,Y,Z); plt.colorbar();
 
@@ -219,28 +231,21 @@ p = defaultParams()
 
 
 #p is of this type:
-np.dtype([('numWorkers','i2'),
-                            ('epsilon','f8'),
-                            ('radius_squared','f8'),
-                            ('maxCount','i4'),
-                            ('alpha','f8'),
-                            ('unfairness','f8'),
-                            ('wildness','f8'),
-                            ('minImprovement','f8'),
-                            ('N','i4'),
-                            ('keepLastX','i2'),
-                            ('maxRuns','i4'),
-                            ('returnedThreshold','f8'),
-                            ('verbose','b'),
-                            ('k','i4'),
-                            ('numGenerations','i4'),
+np.dtype([('numWorkers','i2'), # how many processes to run
+                            ('radius_squared','f8'), # how close is close enough for bump function
+                            ('maxCount','i4'), # how many iterations of local method
+                            ('alpha','f8'), # alpha parameter of bump function
+                            ('unfairness','f8'), # how unfair is the global method
+                            ('wildness','f8'), # how much randomness is in the global method
+                           # Note - set wildness high to be high randomness
+                            ('N','i4'), # how many individuals to have
+                            ('keepLastX','i2'), # converge when best of last x runs is the same
+                            ('maxRuns','i4'), # maximum number of iterations of local method
+                            ('returnedThreshold','f8'), # what threshold of % local failed is enough
+                            ('verbose','b'), # print out best at each step
+                            ('k','i4'), # reserved by algorithm 
+                            ('numGenerations','i4'), # reserved by algorithm
                           ]);
-
-
-# In[ ]:
-
-
-p.epsilon
 
 
 # In[ ]:
@@ -252,13 +257,19 @@ p.N
 # In[ ]:
 
 
-p.N = 3
+res = HXDY(fun=NewRastringin, bounds=bounds, hess=NewRastringin_hessian, jac=NewRastringin_gradient, parameters=p)
 
 
 # In[ ]:
 
 
-res = HXDY(fun=NewRastringin, bounds=bounds, hess=NewRastringin_hessian, jac=NewRastringin_gradient, parameters=p)
+res['success']
+
+
+# In[ ]:
+
+
+res = res['x']
 
 
 # In[ ]:
@@ -371,10 +382,19 @@ bounds;
 # In[ ]:
 
 
-res = HXDY(fun=Schwefel, bounds=bounds, args=(), jac=Schwefel_gradient, tol=1e-4, 
-                                  hess=Schwefel_hessian, epsilon=1e-8, maxCount=20, alpha=1., 
-                                  unfairness=5, N=100, keepLastX = 3, numWorkers=-1, method='L-BFGS-B',
-          extraStoppingCriterion=lambda res: True if len(res)>30 else False); 
+res = HXDY(fun=Schwefel, bounds=bounds, jac=Schwefel_gradient); 
+
+
+# In[ ]:
+
+
+res['success']
+
+
+# In[ ]:
+
+
+res['x']
 
 
 # In[ ]:

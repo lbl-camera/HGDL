@@ -9,8 +9,6 @@
 # The goal of this is to be modular and robust to a variety of functions
 # ## Imports
 
-# Yes, these are all necessary
-
 # In[ ]:
 
 
@@ -27,6 +25,7 @@ from scipy.optimize import minimize
 # In[ ]:
 
 
+# Set this to true to test functions
 DEBUG = False
 
 
@@ -37,26 +36,25 @@ DEBUG = False
 
 
 def defaultParams():
-    parameters = np.dtype([('numWorkers','i2'),
-                            ('epsilon','f8'),
-                            ('radius_squared','f8'),
-                            ('maxCount','i4'),
-                            ('alpha','f8'),
-                            ('unfairness','f8'),
-                            ('wildness','f8'),
-                            ('N','i4'),
-                            ('keepLastX','i2'),
-                            ('maxRuns','i4'),
-                            ('returnedThreshold','f8'),
-                            ('verbose','b'),
-                            ('k','i4'),
-                            ('numGenerations','i4'),
+    parameters = np.dtype([('numWorkers','i2'), # how many processes to run
+                            ('radius_squared','f8'), # how close is close enough for bump function
+                            ('maxCount','i4'), # how many iterations of local method
+                            ('alpha','f8'), # alpha parameter of bump function
+                            ('unfairness','f8'), # how unfair is the global method
+                            ('wildness','f8'), # how much randomness is in the global method
+                           # Note - set wildness high to be high randomness
+                            ('N','i4'), # how many individuals to have
+                            ('keepLastX','i2'), # converge when best of last x runs is the same
+                            ('maxRuns','i4'), # maximum number of iterations of local method
+                            ('returnedThreshold','f8'), # what threshold of % local failed is enough
+                            ('verbose','b'), # print out best at each step
+                            ('k','i4'), # reserved by algorithm 
+                            ('numGenerations','i4'), # reserved by algorithm
                           ])
 
     parameters = np.recarray(1, parameters)
     
     parameters.numWorkers = -1
-    parameters.epsilon = 1e-2
     parameters.maxCount = 100
     parameters.alpha = .1
     parameters.unfairness = 2.5
@@ -256,31 +254,6 @@ def minimize_wrapper(x0, objective):
     return minimize(fun=objective, x0=x0)
 
 
-# In[ ]:
-
-
-if DEBUG:
-    A = 10
-    d = 2
-    def Rastringin(x):
-        if args is not (): print(*args)
-        return (A*d + np.dot(x,x) - A*np.sum(np.cos(2.*np.pi*x)))
-
-    def Rastringin_gradient(x):
-        if args is not (): print(*args)
-        grad = np.empty(len(x))
-        for i in range(len(grad)):
-            grad[i] = (2.*x[i] + A*np.sin(2.*np.pi*x[i])*2.*np.pi)
-        return grad
-
-    def Rastringin_hessian(x):
-        if args is not (): print(*args)
-        hess = np.zeros((len(x),len(x)))
-        for i in range(len(hess)):
-            hess[i,i] = (2 + A*np.cos(2.*np.pi*x[i])*(4.*np.pi*np.pi))
-        return hess
-
-
 # ### Define parallelized deflated local stepdefaultParams
 
 # In[ ]:
@@ -337,7 +310,7 @@ def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers,
                     if numNone/parameters.N > parameters.returnedThreshold:
                         return minima                        
                 else:
-                    score = x_found.fun; 
+                    score = x_found.fun;
                     if not np.isscalar(score): score = score[0]
                     newMinima = np.array([*x_found.x, x_found.fun]).reshape(1,-1)
                     if len(minima)==0:
@@ -420,7 +393,25 @@ def random_sample(N,bounds,parameters):
 
 def HXDY(fun, bounds, jac, method=None, hess=None, x0=None, 
          parameters=None, rms = .01, extraStoppingCriterion=None ):
+    """
+    This is a bounded hybrid local optimizer that uses scipy's minimize,
+      deflation, and a genetic optimizer.
+      
+    This function does the following:
     
+    while global condition is not met:
+        while local condition is not met:
+            run deflated local optimization
+            gather up found optima to use in deflation
+    
+    parameters:
+        takes a parameters object that is fairly transparent if you look at HXDY.ipynb
+        
+    returns:
+        result - a dict with 'x', 'f', and 'success' which give found x values
+          their corresponding function ('f') values, and whether or not the method failed
+    
+    """
     # Initialization
     if parameters == None:
         parameters = defaultParams()
@@ -470,11 +461,12 @@ def HXDY(fun, bounds, jac, method=None, hess=None, x0=None,
         
     workers.close()
     
-    # keep only if eigenvalues all > -epsilon
-    H = np.array([hess(x) for x in res[:,:-1]])
-    L, V = np.linalg.eigh(H)
-    mask = np.array([(l>-1e-3).all() for l in L])
-    res = res[mask]
+    if hess is not None:
+        # keep only if eigenvalues all > -epsilon
+        H = np.array([hess(x) for x in res[:,:-1]])
+        L, V = np.linalg.eigh(H)
+        mask = np.array([(l>-1e-3).all() for l in L])
+        res = res[mask]
     
     result = {}
     result['x'] = res[:,:-1]
