@@ -11,7 +11,7 @@
 
 # Yes, these are all necessary
 
-# In[1]:
+# In[ ]:
 
 
 import numpy as np
@@ -24,7 +24,7 @@ from multiprocessing import cpu_count
 from scipy.optimize import minimize
 
 
-# In[3]:
+# In[ ]:
 
 
 DEBUG = False
@@ -33,7 +33,7 @@ DEBUG = False
 # ## Minimization
 # ### Parameters - passing a bunch of params is unseemly
 
-# In[4]:
+# In[ ]:
 
 
 def defaultParams():
@@ -78,7 +78,7 @@ def defaultParams():
 
 # ### Define deflation operator and derivatives
 
-# In[5]:
+# In[ ]:
 
 
 @nb.vectorize(nopython=True, cache=True)
@@ -95,7 +95,7 @@ def bump_function(dist2center, radius_squared, alpha):
     return 1./(1.-bump_term)
 
 
-# In[6]:
+# In[ ]:
 
 
 if DEBUG:
@@ -103,7 +103,7 @@ if DEBUG:
     plt.plot(x, bump_function(x, 2.5, .1))
 
 
-# In[7]:
+# In[ ]:
 
 
 @nb.vectorize(nopython=True, cache=True)
@@ -120,7 +120,7 @@ def bump_derivative(dist2center, radius_squared, alpha):
     return np.power(bump_function(dist2center,radius_squared,alpha),2)*bump_der
 
 
-# In[8]:
+# In[ ]:
 
 
 if DEBUG:
@@ -128,7 +128,7 @@ if DEBUG:
     plt.plot(x, bump_derivative(x, 2.5, .1))
 
 
-# In[9]:
+# In[ ]:
 
 
 @nb.jit(nopython=True, cache=True)
@@ -151,14 +151,14 @@ def deflation_factor(x, minima, radius_squared, alpha):
     return np.prod(bump_function(dists2center[withinRange], radius_squared, alpha)) 
 
 
-# In[10]:
+# In[ ]:
 
 
 if DEBUG:
     assert np.isinf(deflation_factor(np.ones(3), np.ones((1,3)), 1., 1.,)), "deflation factor is not blowing up"
 
 
-# In[11]:
+# In[ ]:
 
 
 if DEBUG:
@@ -172,7 +172,7 @@ if DEBUG:
         assert np.array([y[i]>=y[i-1] for i in range(2,len(y))]).all(), "bump derivative is not monotonically increasing for alpha "+str(alpha)+' and stop: '+str(stop)
 
 
-# In[12]:
+# In[ ]:
 
 
 @nb.jit(nopython=True, cache=True)
@@ -195,7 +195,7 @@ def deflation_derivative(x, minima, radius_squared, alpha):
     return np.prod(bump_derivative(dists2center[withinRange], radius_squared, alpha))
 
 
-# In[13]:
+# In[ ]:
 
 
 if DEBUG:
@@ -204,7 +204,7 @@ if DEBUG:
 
 # ### Define checks (necessary bc of parallelism)
 
-# In[14]:
+# In[ ]:
 
 
 @nb.jit(nopython=True, cache=True)
@@ -216,7 +216,7 @@ def alreadyFound(newMinima, oldMinima, radius_squared, k):
     return (np.sum(c*c,1)<radius_squared).any()
 
 
-# In[15]:
+# In[ ]:
 
 
 if DEBUG:
@@ -225,7 +225,7 @@ if DEBUG:
 
 # ### Define wrappers to make interface generic
 
-# In[18]:
+# In[ ]:
 
 
 def deflated_gradient(x, gradient, minima, radius_squared, alpha):
@@ -235,7 +235,7 @@ def deflated_gradient(x, gradient, minima, radius_squared, alpha):
     return gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
 
 
-# In[19]:
+# In[ ]:
 
 
 def deflated_hessian(x, gradient, hessian, minima, radius_squared, alpha):
@@ -258,7 +258,7 @@ def minimize_wrapper(x0, objective):
     return minimize(fun=objective, x0=x0)
 
 
-# In[21]:
+# In[ ]:
 
 
 if DEBUG:
@@ -292,14 +292,14 @@ def minimizer(x, objective, method, jac, hess, tol, options):
     return minimize(objective, x, method=method, jac=jac, hess=hess, tol=tol, options=options)
 
 
-# In[10]:
+# In[ ]:
 
 
 def wrapper(x, objective, **kwargs):
     return minimize(objective, x, **kwargs)
 
 
-# In[9]:
+# In[ ]:
 
 
 def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers, parameters, method, minima=None):
@@ -350,7 +350,7 @@ def walk_individuals(individuals, bounds, objective, gradient, Hessian, workers,
 
 # ### Define a global optimizer
 
-# In[24]:
+# In[ ]:
 
 
 def Procreate(X, y, parameters):
@@ -394,7 +394,7 @@ def Procreate(X, y, parameters):
 
 # ### Check boundary conditions
 
-# In[25]:
+# In[ ]:
 
 
 def in_bounds(x, bounds):
@@ -404,7 +404,7 @@ def in_bounds(x, bounds):
 
 # ### Sample within bounds
 
-# In[26]:
+# In[ ]:
 
 
 def random_sample(N,bounds,parameters):
@@ -416,7 +416,7 @@ def random_sample(N,bounds,parameters):
 
 # ### Wrap everything together
 
-# In[27]:
+# In[ ]:
 
 
 def HXDY(fun, bounds, jac, method=None, hess=None, x0=None, 
