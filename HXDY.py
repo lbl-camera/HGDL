@@ -64,7 +64,7 @@ def defaultParams():
     parameters.maxRuns = 10
     parameters.returnedThreshold=0.7
     parameters.verbose = False
-    parameters.numGenerations = 0
+    parameters.numGenerations = 20
     
     parameters.k = -2
     parameters.radius_squared = -2.
@@ -439,10 +439,10 @@ def HXDY(fun, bounds, jac, method=None, hess=None, x0=None,
     # processing
     res = res[res[:,-1].argsort()]
     best = np.inf*np.ones(parameters.keepLastX); 
-    if len(res)==0: best[0] = np.nan_to_num(np.inf)-1
+    if len(res)==0: best[0] = np.inf
     else: best[0] = res[0,-1]
         
-    while not np.allclose(best[0],best) and extraStoppingCriterion(res):
+    while (not np.allclose(best[0],best) or parameters.numGenerations==0) and extraStoppingCriterion(res):
 
         parameters.numGenerations += 1
 

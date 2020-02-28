@@ -215,6 +215,124 @@ plt.scatter(res[:,0], res[:,1], color='black');
 plt.contour(X,Y,Z); plt.colorbar();
 
 
+# In[ ]:
+
+
+parameters = np.dtype([('numWorkers','i2'), # how many processes to run
+                        ('radius_squared','f8'), # how close is close enough for bump function
+                        ('maxCount','i4'), # how many iterations of local method
+                        ('alpha','f8'), # alpha parameter of bump function
+                        ('unfairness','f8'), # how unfair is the global method
+                        ('wildness','f8'), # how much randomness is in the global method
+                       # Note - set wildness high to be high randomness
+                        ('N','i4'), # how many individuals to have
+                        ('keepLastX','i2'), # converge when best of last x runs is the same
+                        ('maxRuns','i4'), # maximum number of iterations of local method
+                        ('returnedThreshold','f8'), # what threshold of % local failed is enough
+                        ('verbose',bool), # print out best at each step
+                        ('k','i4'), # reserved by algorithm 
+                        ('numGenerations','i4'), # reserved by algorithm
+                      ])
+
+parameters = np.recarray(1, parameters)
+
+parameters.numWorkers = -1
+parameters.maxCount = 3
+parameters.alpha = .1
+parameters.unfairness = 2.5
+parameters.wildness = 1
+parameters.N = 3
+parameters.keepLastX = 3
+parameters.maxRuns = 2
+parameters.returnedThreshold=0.7
+parameters.verbose = False
+parameters = parameters[0]
+
+
+# In[ ]:
+
+
+def f(x):
+    return 0
+def grad(x):
+    return np.ones(x.shape[0])
+def hess(x):
+    return np.zeros((x.shape[0],x.shape[0]))
+
+
+# In[ ]:
+
+
+bounds = np.ones((3, 2))
+
+
+# In[ ]:
+
+
+bounds[:,0] *= -10.
+bounds[:,1] *= 10
+
+
+# In[ ]:
+
+
+bounds
+
+
+# In[ ]:
+
+
+get_ipython().run_line_magic('run', 'HXDY.ipynb')
+
+
+# In[ ]:
+
+
+get_ipython().run_line_magic('load_ext', 'line_profiler')
+
+
+# In[ ]:
+
+
+get_ipython().run_line_magic('lprun', '-f HXDY HXDY(fun=f, bounds=bounds, jac=grad, parameters=parameters)')
+
+
+# In[ ]:
+
+
+res = HXDY(fun=f, bounds=bounds, jac=grad, parameters=parameters)
+
+
+# In[ ]:
+
+
+res['x'].shape
+
+
+# In[ ]:
+
+
+res['x'].round(3)
+
+
+# In[ ]:
+
+
+res['success']
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
 # ### And you can see that the modified function works too!
 
 # ### Rastringin function - With args and custom params
