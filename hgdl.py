@@ -77,10 +77,10 @@ class HGDL(object):
         self.bounds = bounds
         # process kwargs/use defaults
         self.hessian = kwargs.get('hess', None)
-        self.N = kwargs.get('N', 3)
+        self.N = kwargs.get('N', 50)
         self.x0 = kwargs.get('x0', self.random_sample(self.N))
         self.localMethod = kwargs.get('localMethod', 'L-BFGS-B')
-        self.maxLocalSteps = kwargs.get('maxLocalSteps', 100)
+        self.maxLocalSteps = kwargs.get('maxLocalSteps', 70)
         self.maxLocalNonePerc = kwargs.get('maxLocalNonePerc', 0.5)
         self.maxEpochs = kwargs.get('maxEpochs', 10)
         self.unfairness = kwargs.get('unfairness', 1.)
