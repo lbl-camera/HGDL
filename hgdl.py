@@ -77,19 +77,19 @@ class HGDL(object):
         self.bounds = bounds
         # process kwargs/use defaults
         self.hessian = kwargs.get('hess', None)
-        self.N = kwargs.get('N', 10)
+        self.N = kwargs.get('N', 3)
         self.x0 = kwargs.get('x0', self.random_sample(self.N))
         self.localMethod = kwargs.get('localMethod', 'L-BFGS-B')
-        self.maxLocalSteps = kwargs.get('maxLocalSteps', 30)
-        self.maxLocalNonePerc = kwargs.get('maxLocalNonePerc', 0.7)
-        self.maxEpochs = kwargs.get('maxEpochs', 20)
+        self.maxLocalSteps = kwargs.get('maxLocalSteps', 100)
+        self.maxLocalNonePerc = kwargs.get('maxLocalNonePerc', 0.5)
+        self.maxEpochs = kwargs.get('maxEpochs', 10)
         self.unfairness = kwargs.get('unfairness', 1.)
         self.wildness = kwargs.get('wildness', .6)
         self.alpha = kwargs.get('alpha', 0.1)
-        self.keepLastX = kwargs.get('keepLastX', 5)
+        self.keepLastX = kwargs.get('keepLastX', 3)
         self.numWorkers = kwargs.get('numWorkers', cpu_count())
         self.radius_squared = self.k*(kwargs.get('rms', 0.5)**2)
-        self.tol = kwargs.get('tol', 0.001)
+        self.tol = kwargs.get('tol', 0.1)
         self.earlyStop = kwargs.get('earlyStop', lambda x: False)
         self.verbose = kwargs.get('verbose', True)
         # initialize worker pool
@@ -101,20 +101,28 @@ class HGDL(object):
     def run(self):
         # check for a.) convergence (ignoring when it doesn't find
         #  anything. b) early stopping. c) max epochs
-        while (
-                not (np.allclose(self.best[0],self.best)
-                    and not np.isinf(self.best).all())
-                and not self.earlyStop(self.res)
-                and self.epoch<self.maxEpochs):
-            self.epoch_step()
+        while True:
+            maxGlobalSteps = self.epoch == self.maxEpochs
+            userStop = self.earlyStop(self.res)
+            noImprove = (np.allclose(self.best[0],self.best)
+                and not np.isinf(self.best).all())
+            if maxGlobalSteps or userStop or noImprove:
+                break
+            else:
+                self.epoch_step()
         self.workers.close()
         result = {'x':self.res[:,:-1], 'f':self.res[:,-1]}
         result['success'] = len(self.res)>0
+        if self.verbose:
+            if maxGlobalSteps:
+                print ('hit maximum number of global steps')
+            elif userStop:
+                print('stopped by user criterion (earlyStop)')
+            elif noImprove:
+                print('no improvement in lastX global steps')
         return result
 
     def epoch_step(self):
-        if self.verbose: print('epoch:',self.epoch,
-                '\nres:\n',self.res,'\nbest:\n',self.best.round())
         self.epoch += 1
         # take a single genetic step or random sample if no info
         if len(self.res) != 0:
@@ -130,6 +138,8 @@ class HGDL(object):
         self.res = self.res[self.res[:,-1].argsort()]
         if len(self.res) != 0:
             self.best[(self.epoch-1)%self.keepLastX] = self.res[0,-1]
+        if self.verbose: print('epoch:',self.epoch,
+                '\n\tres:\n\t',self.res.round(2),'\n\tbest:\n\t',self.best.round())
 
     # This is my implementation of a genetic algorithm
     def GeneticStep(self, X, y):
@@ -166,6 +176,7 @@ class HGDL(object):
         # the children are the median of their parents plus a perturbation
         children = (X[moms]+X[dads])/2. + perturbation*(X[moms]-X[dads])
         return children
+
     def walk_individuals(self, individuals):
         """
         Do the actual iteration through the deflated local optimizer
@@ -185,11 +196,15 @@ class HGDL(object):
                 if x_found.success == False:
                     numNone += 1
                     if numNone/self.N > self.maxLocalNonePerc:
+                        if self.verbose:
+                            print('\t hit maximum % Nones')
                         return
                 else:
                     if not self.in_bounds(x_found.x, self.bounds):
                         numNone += 1
                         if numNone/self.N > self.maxLocalNonePerc:
+                            if self.verbose:
+                                print('\t hit maximum % Nones')
                             return
                     else:
                         if not np.isscalar(x_found.fun): x_found.fun = x_found.fun[0]
@@ -200,6 +215,7 @@ class HGDL(object):
                         elif not self.alreadyFound(newMinima, self.res,
                                 radius_squared=self.radius_squared, k=self.k):
                             self.res = np.concatenate((newMinima, self.res), axis=0)
+        if self.verbose: print('\t hit max local steps')
 
     ## Utility Functions
     @staticmethod
@@ -302,7 +318,6 @@ def deflated_hessian(x, gradient, hessian, minima,
     term2 = gradient(x) * deflation_factor(x, minima, radius_squared, alpha)
     return term1 + term2
 # ---------------------------------------------------------------------
-'''
 ## test
 f = np.sin
 f_p = np.cos
@@ -310,9 +325,8 @@ b = np.array([[-10,10]])
 opt = HGDL(f, f_p, b)
 print(opt.run())
 
-print('new run\n\n\n')
+print('new run\n')
 def hess(x):
     return -1.*np.sin(x)
 opt = HGDL(f, f_p, b, hess=hess)
 opt.run()
-'''
