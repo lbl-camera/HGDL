@@ -33,8 +33,10 @@ Z = np.empty((len(X),len(Y)))
 for i in range(len(X)):
     for j in range((len(Y))):
         Z[i,j] = Rastringin(np.array([X[i],Y[j]]))
+print('before the plot')
 plt.contourf(X,Y,Z); plt.colorbar();
 plt.show()
+print('after the plot')
 
 k = 2
 bounds = np.ones((k,2))*5; bounds[:,0] = bounds[:,1]*(-1);
