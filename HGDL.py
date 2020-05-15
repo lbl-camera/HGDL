@@ -14,69 +14,39 @@ from multiprocessing import cpu_count
 from scipy.optimize import minimize
 
 ## Math functions
-# I have thought about how to make these wrapped up and nice looking,
-#  for a while, but this is the least unelegant solution. If I make 
-#  them into a class I lose the numba speed or have to use a numba
-#  experimental feature, which is risky. If I put them in the class,
-#  then I have to make the class an abomination to God for the scoping
-#  to make sense and for them to be compiled only once
-@nb.vectorize(nopython=True, cache=True)
+@nb.vectorize([nb.float64(nb.float64,nb.float64,nb.float64)],
+        nopython=True, cache=True)
 def bump_function(dist2center, radius_squared, alpha):
-    """
-    This actually takes the squared distances to the center, |x-x0|^2
-    """
-    if dist2center==radius_squared: return 0
+    """ vectorized, eager. 1./1-b(x-x0) """
     bump_term = np.exp( (-alpha)/(radius_squared - dist2center)
             + (alpha/radius_squared) )
     return 1./(1.-bump_term)
 
-@nb.vectorize(nopython=True, cache=True)
+@nb.vectorize([nb.float64(nb.float64,nb.float64,nb.float64)],
+        nopython=True, cache=True)
 def bump_derivative(dist2center, radius_squared, alpha):
-    """
-    This actually takes the squared distances to the center, |x-x0|^2
-    """
-    if dist2center==radius_squared: return 0
-    bump_der = np.exp((-alpha)/(radius_squared - dist2center) + (alpha/radius_squared))
-    bump_der *= -2*alpha*np.sqrt(dist2center)/np.power(radius_squared-dist2center,2)
-    return  np.power(bump_function(dist2center,radius_squared,alpha),2)*bump_der
+    """ vectorized, eager. (1./1-b(x-x0))' """
+    bump_der = np.exp((-alpha)/(radius_squared - dist2center)
+                            + (alpha/radius_squared))
+    bump_der *= -2*alpha*np.sqrt(dist2center) \
+            /np.power(radius_squared-dist2center,2)
+    return  np.power(bump_function(dist2center,radius_squared,alpha),
+                2)*bump_der
 
-@nb.jit(nopython=True, cache=True)
-def deflation_factor(x, minima, radius_squared, alpha):
-    """
-    This calculates:
-        * what minima is this x in range of
-        * for the minima in range, what is their deflation factor
-        * combined defaltion factor
-    """
-    # initialize scaling factor
-    factor = 1.
-    xLen = len(x)
-    zLen = len(minima)
-    # doing all the math in matrix form is much faster
-    c = x-minima[:,:xLen]
-    dists2center = np.sum(c*c,axis=1)
-    withinRange = dists2center < radius_squared
-    return np.prod(bump_function(dists2center[withinRange], radius_squared, alpha))
+@nb.njit(nb.float64(nb.float64[:], nb.float64[:,:],
+        nb.float64, nb.float64), cache=True)
+def deflation_factor(x, x0s, radius_squared, alpha):
+    r = np.sum(np.power(x0s-x,2),1)
+    return np.prod(bump_function(r[r<radius_squared],
+        radius_squared, alpha))
 
-@nb.jit(nopython=True, cache=True)
-def deflation_derivative(x, minima, radius_squared, alpha):
-    """
-    This calculates:
-        * what minima is this x in range of
-        * for the minima in range, what is their deflation factor
-        * combined defaltion factor
-    """
-    # initialize scaling factor
-    factor = 1.
-    xLen = len(x)
-    zLen = len(minima)
-    # doing all the math in matrix form is much faster
-    c = x-minima[:,:xLen]
-    dists2center = np.sum(c*c,axis=1)
-    withinRange = dists2center < radius_squared
-    return np.prod(bump_derivative(dists2center[withinRange], radius_squared, alpha))
+def deflation_derivative(x, x0s, radius_squared, alpha):
+    r = np.sum(np.power(x0s-x,2),1)
+    return np.prod(bump_derivative(r[r<radius_squared],
+        radius_squared, alpha))
 
 
+'''
 # main class
 class HGDL(object):
     """
@@ -124,7 +94,7 @@ class HGDL(object):
                     minima to be considered the same - set this to the
                     largest rms difference points that makes them
                     experimentally equivalent (0.05)
-                tol: tol parameter passed to scipy (0.01) 
+                tol: tol parameter passed to scipy (0.01)
                 earlyStop: a lambda function that takes a result['x']
                     array and return True if criterion is met (none)
                 verbose: print out as much as possible (False)
@@ -158,12 +128,12 @@ class HGDL(object):
         self.verbose = kwargs.get('verbose', True)
         # initialize worker pool
         self.workers = Pool(self.numWorkers)
-        # initialize record of best results 
+        # initialize record of best results
         self.best = np.inf*np.ones(self.keepLastX)
         self.res = np.empty((0, self.k+1))
 
     def run(self):
-        # check for a.) convergence (ignoring when it doesn't find 
+        # check for a.) convergence (ignoring when it doesn't find
         #  anything. b) early stopping. c) max epochs
         while (
             not (np.allclose(self.best[0],self.best)
@@ -180,7 +150,7 @@ class HGDL(object):
         if self.verbose: print('epoch:',self.epoch,
                 '\nres:\n',self.res,'\nbest:\n',self.best.round())
         self.epoch += 1
-        # take a single genetic step or random sample if no info 
+        # take a single genetic step or random sample if no info
         if len(self.res) != 0:
             new_starts = self.GeneticStep(self.res[:,:-1], self.res[:,-1])
             for i in range(len(new_starts)):
@@ -353,3 +323,4 @@ def hess(x):
     return -1.*np.sin(x)
 opt = HGDL(f, f_p, b, hess=hess)
 opt.run()
+'''
