@@ -1,12 +1,10 @@
 # coding: utf-8
-
 # # HGDL
 #     * Hybrid - uses both local and global optimization
 #     * G - uses global optimizer
 #     * D - uses deflation
 #     * L - uses local extremum localMethod
-
-# imports
+#  imports
 import numpy as np
 import numba as nb
 from multiprocessing import Pool
@@ -15,6 +13,70 @@ from math import ceil
 from multiprocessing import cpu_count
 from scipy.optimize import minimize
 
+## Math functions
+# I have thought about how to make these wrapped up and nice looking,
+#  for a while, but this is the least unelegant solution. If I make 
+#  them into a class I lose the numba speed or have to use a numba
+#  experimental feature, which is risky. If I put them in the class,
+#  then I have to make the class an abomination to God for the scoping
+#  to make sense and for them to be compiled only once
+@nb.vectorize(nopython=True, cache=True)
+def bump_function(dist2center, radius_squared, alpha):
+    """
+    This actually takes the squared distances to the center, |x-x0|^2
+    """
+    if dist2center==radius_squared: return 0
+    bump_term = np.exp( (-alpha)/(radius_squared - dist2center)
+            + (alpha/radius_squared) )
+    return 1./(1.-bump_term)
+
+@nb.vectorize(nopython=True, cache=True)
+def bump_derivative(dist2center, radius_squared, alpha):
+    """
+    This actually takes the squared distances to the center, |x-x0|^2
+    """
+    if dist2center==radius_squared: return 0
+    bump_der = np.exp((-alpha)/(radius_squared - dist2center) + (alpha/radius_squared))
+    bump_der *= -2*alpha*np.sqrt(dist2center)/np.power(radius_squared-dist2center,2)
+    return  np.power(bump_function(dist2center,radius_squared,alpha),2)*bump_der
+
+@nb.jit(nopython=True, cache=True)
+def deflation_factor(x, minima, radius_squared, alpha):
+    """
+    This calculates:
+        * what minima is this x in range of
+        * for the minima in range, what is their deflation factor
+        * combined defaltion factor
+    """
+    # initialize scaling factor
+    factor = 1.
+    xLen = len(x)
+    zLen = len(minima)
+    # doing all the math in matrix form is much faster
+    c = x-minima[:,:xLen]
+    dists2center = np.sum(c*c,axis=1)
+    withinRange = dists2center < radius_squared
+    return np.prod(bump_function(dists2center[withinRange], radius_squared, alpha))
+
+@nb.jit(nopython=True, cache=True)
+def deflation_derivative(x, minima, radius_squared, alpha):
+    """
+    This calculates:
+        * what minima is this x in range of
+        * for the minima in range, what is their deflation factor
+        * combined defaltion factor
+    """
+    # initialize scaling factor
+    factor = 1.
+    xLen = len(x)
+    zLen = len(minima)
+    # doing all the math in matrix form is much faster
+    c = x-minima[:,:xLen]
+    dists2center = np.sum(c*c,axis=1)
+    withinRange = dists2center < radius_squared
+    return np.prod(bump_derivative(dists2center[withinRange], radius_squared, alpha))
+
+
 # main class
 class HGDL(object):
     """
@@ -22,102 +84,8 @@ class HGDL(object):
         scipy's minimize, deflation, and a global optimizer.
     This is the class that wraps up all the functions
     """
-    ## Math Functions
-    @staticmethod
-    @nb.vectorize(nopython=True, cache=True)
-    def bump_function(dist2center, radius_squared, alpha):
-        """
-        This actually takes the squared distances to the center, |x-x0|^2
-        This is vectorized over distances
-        Marcus's bump function
-            - find it at https://www.sciencedirect.com/science/article/pii/S037704271730225X
-        """
-        if dist2center==radius_squared: return 0
-        bump_term = np.exp( (-alpha)/(radius_squared - dist2center)
-                + (alpha/radius_squared) )
-        return 1./(1.-bump_term)
-    @staticmethod
-    @nb.vectorize(nopython=True, cache=True)
-    def bump_derivative(dist2center, radius_squared, alpha):
-        """
-        This actually takes the squared distances to the center, |x-x0|^2
-        This is vectorized over distances
-        Marcus's bump function
-            - find it at https://www.sciencedirect.com/science/article/pii/S037704271730225X
-        """
-        if dist2center==radius_squared: return 0
-        bump_der = np.exp( (-alpha)/(radius_squared - dist2center)
-                + (alpha/radius_squared) )
-        bump_der *= -2*alpha*np.sqrt(dist2center)/np.power(radius_squared-dist2center,2)
-        return np.power(bump_function(dist2center,radius_squared,alpha),2)*bump_der
-    @staticmethod
-    @nb.jit(nopython=True, cache=True)
-    def deflation_factor(x, minima, radius_squared, alpha):
-        """
-        This calculates:
-            * what minima is this x in range of
-            * for the minima in range, what is their deflation factor
-            * combined defaltion factor
-        """
-        # initialize scaling factor
-        factor = 1.
-        xLen = len(x)
-        zLen = len(minima)
-        # doing all the math in matrix form is much faster 
-        c = x-minima[:,:xLen]
-        dists2center = np.sum(c*c,axis=1)
-        withinRange = dists2center < radius_squared
-        return np.prod(bump_function(dists2center[withinRange], radius_squared, alpha))
-    @staticmethod
-    @nb.jit(nopython=True, cache=True)
-    def alreadyFound(newMinima, oldMinima, radius_squared, k):
-        """
-        check if the new minimum is within range of the old ones
-        """
-        c = oldMinima[:,:k] - newMinima[0,:k]
-        return (np.sum(c*c,1)<radius_squared).any()
-
-    ## Wrappers for deflation
-    @staticmethod
-    def deflated_gradient(x, gradient, minima, radius_squared, alpha):
-        """ This just combines these two functions together """
-        return gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
-    def deflated_hessian(x, gradient, hessian, minima, radius_squared, alpha):
-        """ This just combines these two functions together """
-        term1 = hessian(x)*deflation_derivative(x, minima, radius_squared, alpha)
-        term2 = gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
-        return term1 + term2
-
-    ## Wrapper for scipy's minimimze 
-    @staticmethod
-    def scipy_minimize(x, objective, localMethod, jac, hess,
-            tol, bounds, options):
-        def minimize_select_bounded(method, bounds):
-            if method in ['L-BFGS-B', 'TNC', 'SLSQP', 'trust-constr']:
-                return partial(minimize, bounds=bounds)
-            else:
-                return minimize
-
-        return minimize_select_bounded(localMethod, bounds)\
-                (objective, x, method=localMethod,jac=jac,hess=hess,
-                        tol=tol, options=options)
-
-    ## Utility Functions
-    @staticmethod
-    def in_bounds(x, bounds):
-        if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
-            return True
-        return False
-    def random_sample(self, N):
-        sample = np.random.random((N, self.k))
-        sample *= self.bounds[:,1] - self.bounds[:,0]
-        sample += self.bounds[:,0]
-        return sample
-
     def __init__(self, function, gradient, bounds, **kwargs):
         """
-        This is a bounded hybrid local optimizer that uses
-            scipy's minimize, deflation, and a global optimizer.
         This function does the following:
         + while global condition is not met:
             - while local condition is not met:
@@ -137,15 +105,17 @@ class HGDL(object):
                 x0: ndarray of starting guesses (random)
                 N: the number of local minimizer processes (100)
                 localMethod: localMethod arg to scipy.minimize ('LBFGS')
+                    this can be bounded or not - the out of bounds
+                    results will get killed either way
                 maxLocalSteps: the max number of
-                    local minimizer steps (100)
+                    local minimizer steps (30)
                 maxLocalNonePerc: the maximum number of local mimizers
                     that return None before ending an epoch (0.7)
                 maxEpochs: the max number of epochs (20)
                 unfairness: how unfair the global method is, where
-                    higher values are more unfair (2.5)
+                    higher values are more unfair (1.)
                 wildness: likelihood of wild mutations in the global
-                    method - high wildness is more mutations (1.)
+                    method - high wildness is more mutations (0.6)
                 alpha: alpha in the bump function (.1)
                 keepLastX: number of epochs where the best result
                     doesn't change before quitting (5)
@@ -153,14 +123,14 @@ class HGDL(object):
                 rms: the root mean square across dimensions for two
                     minima to be considered the same - set this to the
                     largest rms difference points that makes them
-                    experimentally equivalent
+                    experimentally equivalent (0.05)
+                tol: tol parameter passed to scipy (0.01) 
                 earlyStop: a lambda function that takes a result['x']
                     array and return True if criterion is met (none)
                 verbose: print out as much as possible (False)
         returns:
             result - a dict with 'x', 'f', and 'success'
         """
-        # TODO update these to be more exhaustive
         # initialize constants
         self.rng = np.random.default_rng()
         self.epoch = 0
@@ -174,15 +144,16 @@ class HGDL(object):
         self.N = kwargs.get('N', 10)
         self.x0 = kwargs.get('x0', self.random_sample(self.N))
         self.localMethod = kwargs.get('localMethod', 'L-BFGS-B')
-        self.maxLocalSteps = kwargs.get('maxLocalSteps', 10)
-        self.maxLocalNonePerc = kwargs.get('maxLocalNonePerc', 0.9)
-        self.maxEpochs = kwargs.get('maxEpochs', 10)
-        self.unfairness = kwargs.get('unfairness', 2.5)
-        self.wildness = kwargs.get('wildness', 100)
+        self.maxLocalSteps = kwargs.get('maxLocalSteps', 30)
+        self.maxLocalNonePerc = kwargs.get('maxLocalNonePerc', 0.7)
+        self.maxEpochs = kwargs.get('maxEpochs', 20)
+        self.unfairness = kwargs.get('unfairness', 1.)
+        self.wildness = kwargs.get('wildness', .6)
         self.alpha = kwargs.get('alpha', 0.1)
         self.keepLastX = kwargs.get('keepLastX', 5)
         self.numWorkers = kwargs.get('numWorkers', cpu_count())
-        self.radius_squared = self.k*(kwargs.get('rms', 0.01)**2)
+        self.radius_squared = self.k*(kwargs.get('rms', 0.5)**2)
+        self.tol = kwargs.get('tol', 0.001)
         self.earlyStop = kwargs.get('earlyStop', lambda x: False)
         self.verbose = kwargs.get('verbose', True)
         # initialize worker pool
@@ -247,14 +218,15 @@ class HGDL(object):
         p /= np.sum(p)
         if np.isnan(p).any():
             return p, X, y
-        moms = np.random.choice(
+        moms = self.rng.choice(
                 np.arange(len(p)), self.N, replace=True, p=p)
-        dads = np.random.choice(
+        dads = self.rng.choice(
                 np.arange(len(p)), self.N, replace=True, p=p)
         # calculate a perturbation to the median 
         #   of each individual's parents
-        perturbation = np.random.normal(
-                scale=self.wildness, size=(self.N,self.k))
+        perturbation = self.rng.normal(
+                scale=self.wildness*(self.bounds[:,1]-self.bounds[:,0]),
+                size=(self.N,self.k))
         # the children are the median of their parents plus a perturbation
         children = (X[moms]+X[dads])/2. + perturbation*(X[moms]-X[dads])
         return children
@@ -268,31 +240,41 @@ class HGDL(object):
             numNone = 0
             # construct the jacobian, hessian, and objective. 
             #   This is inside the loop because of the minima
-            jac = partial(self.deflated_gradient,
+            jac = partial(deflated_gradient,
                     gradient = self.gradient,
                     minima=self.res,
                     radius_squared = self.radius_squared,
                     alpha=self.alpha)
             if self.hessian is not None:
                 Hessian = partial(deflated_hessian,
-                            gradient=self.gradient,
+                            gradient=jac,
                             hessian=self.hessian, minima=self.res,
                             radius_squared=self.radius_squared,
                             alpha=self.alpha)
             else: Hessian = None
-            minimizer = partial(self.scipy_minimize,
+            minimizer = partial(scipy_minimize,
                             objective=self.objective,
                             localMethod=self.localMethod,
-                            jac=self.gradient, hess=Hessian,
-                            tol=self.radius_squared,
+                            jac=jac, hess=Hessian,
+                            tol=self.tol,
                             bounds=self.bounds,
                             options={'maxiter':self.maxLocalSteps})
+            if len(self.res)==0:
+                jac, Hessian = self.gradient, self.hessian
             # chunk up and iterate through
-            chunksize = ceil(0.3*len(individuals)/cpu_count())
+            chunksize = ceil(self.N/self.numWorkers)
             walkerOutput = self.workers.imap_unordered(
                     minimizer, individuals, chunksize=chunksize)
+            print('hi')
             # check for stopping criterion 
-            for i, x_found in enumerate(walkerOutput):
+#            for i in range(len(individuals)):
+#                print(individuals[i]) 
+#                x_found = minimizer(individuals[i])
+
+#            for i, x_found in enumerate(walkerOutput):
+            if True:
+                x_found = next(walkerOutput)
+                print(x_found)
                 if x_found.success == False:
                     numNone += 1
                     if numNone/self.N > self.maxLocalNonePerc:
@@ -308,17 +290,66 @@ class HGDL(object):
                         if len(self.res)==0:
                             self.res = np.concatenate(
                                     (newMinima, self.res), axis=0)
-                        elif not self.alreadyFound(newMinima, self.res,
+                        elif not alreadyFound(newMinima, self.res,
                                 radius_squared=self.radius_squared, k=self.k):
                             self.res = np.concatenate((newMinima, self.res), axis=0)
+    ## Utility Functions
+    @staticmethod
+    def in_bounds(x, bounds):
+        if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
+            return True
+        return False
+    def random_sample(self, N):
+        sample = self.rng.random((N, self.k))
+        sample *= self.bounds[:,1] - self.bounds[:,0]
+        sample += self.bounds[:,0]
+        return sample
+@nb.jit(nopython=True, cache=True)
+def alreadyFound(newMinima, oldMinima, radius_squared, k):
+    """
+    check if the new minimum is within range of the old ones
+    """
+    c = oldMinima[:,:k] - newMinima[0,:k]
+    return (np.sum(c*c,1)<radius_squared).any()
+
+## Wrappers for deflation
+def deflated_gradient(x, gradient, minima, radius_squared, alpha):
+    """ This just combines these two functions together """
+    return gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
+
+def deflated_hessian(x, gradient, hessian, minima, radius_squared,
+        alpha):
+    """ This just combines these two functions together """
+    term1 = hessian(x)*deflation_derivative(x, minima, radius_squared, alpha)
+    term2 = gradient(x)*deflation_factor(x, minima, radius_squared, alpha)
+    return term1 + term2
+
+## Wrapper for scipy's minimimze 
+def scipy_minimize(x, objective, localMethod, jac, hess,
+        tol, bounds, options):
+    print('hello there') 
+    def minimize_select_bounded(method, bounds):
+        if method in ['L-BFGS-B', 'TNC', 'SLSQP', 'trust-constr']:
+            return partial(minimize, bounds=bounds)
+        else:
+            return minimize
+    return minimize_select_bounded(localMethod, bounds)\
+            (objective, x, method=localMethod,jac=jac,hess=hess,
+                    tol=tol, options=options)
+
+
+
 # ---------------------------------------------------------------------
 
-# testing
+## test
 f = np.sin
 f_p = np.cos
-b = np.ones((1,2))
-b[:,0] *= -10
-b[:,1] *= 10
+b = np.array([[-10,10]])
 opt = HGDL(f, f_p, b)
-print(b)
 print(opt.run())
+
+print('new run\n\n\n')
+def hess(x):
+    return -1.*np.sin(x)
+opt = HGDL(f, f_p, b, hess=hess)
+opt.run()

@@ -1,29 +1,18 @@
-#!/usr/bin/env python
 # coding: utf-8
-
-# In[ ]:
-
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+from HGDL import HGDL
 
 # ## Testing
 # ### Rastringin function
 
 # ### Rastringin function - Simple (no args, no params)
 
-# In[ ]:
-
-
 A = 10
 d = 2
 def Rastringin(x):
     return (A*d + np.dot(x,x) - A*np.sum(np.cos(2.*np.pi*x)))
-
-
-# In[ ]:
-
 
 def Rastringin_gradient(x):
     grad = np.empty(len(x))
@@ -31,91 +20,47 @@ def Rastringin_gradient(x):
         grad[i] = (2.*x[i] + A*np.sin(2.*np.pi*x[i])*2.*np.pi)
     return grad
 
-
-# In[ ]:
-
-
 def Rastringin_hessian(x):
     hess = np.zeros((len(x),len(x)))
     for i in range(len(hess)):
         hess[i,i] = (2 + A*np.cos(2.*np.pi*x[i])*(4.*np.pi*np.pi))
     return hess
 
-
-# In[ ]:
-
-
 X = np.arange(-5,5,1e-1)
 Y = np.arange(-5,5,1e-1)
-
-
-# In[ ]:
-
-
 Z = np.empty((len(X),len(Y)))
-
-
-# In[ ]:
-
 
 for i in range(len(X)):
     for j in range((len(Y))):
         Z[i,j] = Rastringin(np.array([X[i],Y[j]]))
-
-
-# In[ ]:
-
-
 plt.contourf(X,Y,Z); plt.colorbar();
-
-
-# In[ ]:
-
+plt.show()
 
 k = 2
 bounds = np.ones((k,2))*5; bounds[:,0] = bounds[:,1]*(-1);
 bounds;
 
-
-# In[ ]:
-
-
-get_ipython().run_line_magic('run', 'HXDY.ipynb')
-
-
-# In[ ]:
-
-
-res = HXDY(fun=Rastringin, bounds=bounds, hess=Rastringin_hessian, jac=Rastringin_gradient, method='Newton-CG')
-
-
-# In[ ]:
-
-
+res = HGDL(Rastringin, Rastringin_gradient, bounds).run()
 res = res['x']
-
-
-# In[ ]:
-
 
 plt.scatter(res[:,0], res[:,1], color='black');
 plt.contour(X,Y,Z); plt.colorbar();
+plt.show()
+
+res = HGDL(function=Rastringin, bounds=bounds, hess=Rastringin_hessian, gradient=Rastringin_gradient, method='Newton-CG').run()
+res = res['x']
+
+plt.scatter(res[:,0], res[:,1], color='black');
+plt.contour(X,Y,Z); plt.colorbar();
+plt.show()
 
 
 # ### Rastringin function - With args (no params)
-
-# In[ ]:
-
-
 A = 10
 d = 2
 def Rastringin(x, origin):
     x = x - origin
     return (A*d + np.dot(x,x) - A*np.sum(np.cos(2.*np.pi*x)))
-
-
-# In[ ]:
-
 
 def Rastringin_gradient(x, origin):
     x = x - origin
@@ -193,7 +138,7 @@ NewRastringin_hessian = partial(Rastringin_hessian, origin = o)
 # In[ ]:
 
 
-res = HXDY(fun=NewRastringin, bounds=bounds, hess=NewRastringin_hessian, jac=NewRastringin_gradient)
+res = HGDL(fun=NewRastringin, bounds=bounds, hess=NewRastringin_hessian, jac=NewRastringin_gradient)
 
 
 # In[ ]:
@@ -282,7 +227,7 @@ bounds
 # In[ ]:
 
 
-get_ipython().run_line_magic('run', 'HXDY.ipynb')
+get_ipython().run_line_magic('run', 'HGDL.ipynb')
 
 
 # In[ ]:
@@ -294,13 +239,13 @@ get_ipython().run_line_magic('load_ext', 'line_profiler')
 # In[ ]:
 
 
-get_ipython().run_line_magic('lprun', '-f HXDY HXDY(fun=f, bounds=bounds, jac=grad, parameters=parameters)')
+get_ipython().run_line_magic('lprun', '-f HGDL HGDL(fun=f, bounds=bounds, jac=grad, parameters=parameters)')
 
 
 # In[ ]:
 
 
-res = HXDY(fun=f, bounds=bounds, jac=grad, parameters=parameters)
+res = HGDL(fun=f, bounds=bounds, jac=grad, parameters=parameters)
 
 
 # In[ ]:
@@ -375,7 +320,7 @@ p.N
 # In[ ]:
 
 
-res = HXDY(fun=NewRastringin, bounds=bounds, hess=NewRastringin_hessian, jac=NewRastringin_gradient, parameters=p)
+res = HGDL(fun=NewRastringin, bounds=bounds, hess=NewRastringin_hessian, jac=NewRastringin_gradient, parameters=p)
 
 
 # In[ ]:
@@ -500,7 +445,7 @@ bounds;
 # In[ ]:
 
 
-res = HXDY(fun=Schwefel, bounds=bounds, jac=Schwefel_gradient); 
+res = HGDL(fun=Schwefel, bounds=bounds, jac=Schwefel_gradient); 
 
 
 # In[ ]:
@@ -533,7 +478,7 @@ bounds;
 # In[ ]:
 
 
-get_ipython().run_line_magic('run', 'HXDY.ipynb')
+get_ipython().run_line_magic('run', 'HGDL.ipynb')
 
 
 # This call is taking a long time
@@ -541,7 +486,7 @@ get_ipython().run_line_magic('run', 'HXDY.ipynb')
 # In[ ]:
 
 
-res = HXDY(fun=Schwefel, bounds=bounds, jac=Schwefel_gradient, hess=Schwefel_hessian); 
+res = HGDL(fun=Schwefel, bounds=bounds, jac=Schwefel_gradient, hess=Schwefel_hessian); 
 
 
 # In[ ]:
@@ -609,7 +554,7 @@ bounds;
 # In[ ]:
 
 
-res = HXDY(fun=rosen, bounds=bounds, args=(), jac=rosen_der, tol=1e-8, 
+res = HGDL(fun=rosen, bounds=bounds, args=(), jac=rosen_der, tol=1e-8, 
                                   hess=rosen_hess, epsilon=1e-8, maxCount=50, alpha=.1, cauchy_wildness=50,
                                   unfairness=2, N=100, keepLastX = 10, numWorkers=-1, method='Newton-CG'); 
 
