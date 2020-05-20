@@ -318,6 +318,7 @@ def deflated_hessian(x, gradient, hessian, minima,
     term2 = gradient(x) * deflation_factor(x, minima, radius_squared, alpha)
     return term1 + term2
 # ---------------------------------------------------------------------
+'''
 ## test
 f = np.sin
 f_p = np.cos
@@ -330,3 +331,4 @@ def hess(x):
     return -1.*np.sin(x)
 opt = HGDL(f, f_p, b, hess=hess)
 opt.run()
+'''
