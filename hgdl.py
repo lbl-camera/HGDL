@@ -50,8 +50,33 @@ class HGDL(object):
         # save user input
         self.func = localMethod(func, bounds, localArgs)
         self.bounds = bounds
+<<<<<<< HEAD
         self.globalArgs = globalArgs
         self.localArgs = localArgs
+=======
+        # process kwargs/use defaults
+        self.hessian = kwargs.get('hess', None)
+        self.N = kwargs.get('N', 3)
+        self.x0 = kwargs.get('x0', self.random_sample(self.N))
+        self.localMethod = kwargs.get('localMethod', 'L-BFGS-B')
+        self.maxLocalSteps = kwargs.get('maxLocalSteps', 100)
+        self.maxLocalNonePerc = kwargs.get('maxLocalNonePerc', 0.5)
+        self.maxEpochs = kwargs.get('maxEpochs', 10)
+        self.unfairness = kwargs.get('unfairness', 1.)
+        self.wildness = kwargs.get('wildness', .6)
+        self.alpha = kwargs.get('alpha', 0.1)
+        self.keepLastX = kwargs.get('keepLastX', 3)
+        self.numWorkers = kwargs.get('numWorkers', cpu_count())
+        self.radius_squared = self.k*(kwargs.get('rms', 0.5)**2)
+        self.tol = kwargs.get('tol', 0.1)
+        self.earlyStop = kwargs.get('earlyStop', lambda x: False)
+        self.verbose = kwargs.get('verbose', True)
+        # initialize worker pool
+        self.workers = Pool(self.numWorkers)
+        # initialize record of best results
+        self.best = np.inf*np.ones(self.keepLastX)
+        self.res = np.empty((0, self.k+1))
+>>>>>>> parent of 1a9a7df... changing defaults
 
     def run(self):
         results = np.empty((0, self.k))
