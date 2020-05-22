@@ -39,16 +39,14 @@ class HGDL(object):
                 localArgs:
                 globalArgs:
         returns:
-            OptimizationResult
+            res - {'x','success','fun'}
         """
-        # initialize constants
-        self.rng = np.random.default_rng()
         self.k = len(bounds)
         self.N = 5
+        # initialize constants
+        self.rng = np.random.default_rng()
         self.unfairness = 2.5
         self.wildness = .01
-        self.obj = func
-        self.fArgs = localArgs.get('args',{})
         # save user input
         self.func = localMethod(func, bounds, localArgs)
         self.bounds = bounds
@@ -56,9 +54,39 @@ class HGDL(object):
         self.localArgs = localArgs
 
     def run(self):
-        x0 = self.random_sample(self.N)
-        res, err  = self.func.compute(x0)
-        print(res, err)
+        results = np.empty((0, self.k))
+        workers = Pool(cpu_count(logical=False)-1)
+
+        while not (stopping_criteria(results)):
+            self.update_results(results, workers)
+        res = {
+                'x':results[:,:-1],
+                'fun':results[:,-1],
+                'success',len(results)>0}
+    def stopping_criteria(self, results):
+        if self.user_stopping_criteria(results):
+            return True
+        elif self.epoch > self.max_epochs:
+            return True
+
+    def update_results(results, workers):
+        genetic_step_guesses = self.GeneticStep(results[:,:-1],results[:,-1])
+        if len(genetic_step_guesses)<self.N:
+            startingGuesses = self.random_sample(self.N-len(genetic_step_guesses))
+            guesses = np.concatenate((genetic_step_guesses,startingGuesses),axis=0)
+        else:
+            guesses = genetic_step_guesses
+        for i in range(3):
+            pass
+
+
+
+    def random_sample(self, N):
+        sample = self.rng.random((N, self.k))
+        sample *= self.bounds[:,1] - self.bounds[:,0]
+        sample += self.bounds[:,0]
+        return sample
+
 
     # This is my implementation of a genetic algorithm
     def GeneticStep(self, X, y):
@@ -98,11 +126,6 @@ class HGDL(object):
         return children + perturbation
 
     ## Utility Functions
-    def random_sample(self, N):
-        sample = self.rng.random((N, self.k))
-        sample *= self.bounds[:,1] - self.bounds[:,0]
-        sample += self.bounds[:,0]
-        return sample
 
 class  localMethod(object):
     def __init__(self, func, bounds, localArgs):
@@ -175,7 +198,6 @@ class  localMethod(object):
         if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
             return True
         return False
-
 
 
 
@@ -320,10 +342,7 @@ def deflated_hessian(x, gradient, hessian, minima,
     term1 = hessian(x) * deflation_derivative(x, minima, radius_squared, alpha)
     term2 = gradient(x) * deflation_factor(x, minima, radius_squared, alpha)
     return term1 + term2
-<<<<<<< HEAD
-'''
-=======
->>>>>>> parent of 37433d0... pre-rewrite
+
 # ---------------------------------------------------------------------
 ## test
 import scipy.optimize as sOpt
@@ -353,7 +372,6 @@ b = np.array([[-2,2],[-2,2],[-2,2]])
 opt = HGDL(rosen, b, localArgs={'jac':rosen_der,'args':(None, 1)})
 print(opt.run())
 
-'''
 print('new run\n')
 <<<<<<< HEAD
 opt = HGDL(rosen, b, globalArgs={'popsize':100}, localArgs={'args':(None, 1)} )
@@ -371,10 +389,8 @@ opt = HGDL(rosen, b,
     localArgs={'jac':rosen_der, 'hess':rosen_hess,'args':(None,1)},
     globalArgs={'popsize':200})
 print(opt.run())
-'''
-=======
 def hess(x):
     return -1.*np.sin(x)
 opt = HGDL(f, f_p, b, hess=hess)
 opt.run()
->>>>>>> parent of 37433d0... pre-rewrite
+'''
