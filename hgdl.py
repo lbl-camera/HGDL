@@ -320,7 +320,10 @@ def deflated_hessian(x, gradient, hessian, minima,
     term1 = hessian(x) * deflation_derivative(x, minima, radius_squared, alpha)
     term2 = gradient(x) * deflation_factor(x, minima, radius_squared, alpha)
     return term1 + term2
+<<<<<<< HEAD
 '''
+=======
+>>>>>>> parent of 37433d0... pre-rewrite
 # ---------------------------------------------------------------------
 ## test
 import scipy.optimize as sOpt
@@ -352,6 +355,7 @@ print(opt.run())
 
 '''
 print('new run\n')
+<<<<<<< HEAD
 opt = HGDL(rosen, b, globalArgs={'popsize':100}, localArgs={'args':(None, 1)} )
 print(opt.run())
 print('new run\n')
@@ -368,3 +372,9 @@ opt = HGDL(rosen, b,
     globalArgs={'popsize':200})
 print(opt.run())
 '''
+=======
+def hess(x):
+    return -1.*np.sin(x)
+opt = HGDL(f, f_p, b, hess=hess)
+opt.run()
+>>>>>>> parent of 37433d0... pre-rewrite
