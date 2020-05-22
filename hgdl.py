@@ -10,8 +10,8 @@ import numba as nb
 from multiprocessing import Pool
 from functools import partial
 from math import ceil
-from multiprocessing import cpu_count
-from scipy.optimize import minimize
+from psutil import cpu_count
+import scipy.optimize
 
 # main class
 class HGDL(object):
@@ -20,7 +20,7 @@ class HGDL(object):
         scipy's minimize, deflation, and a global optimizer.
     This is the class that wraps up all the functions
     """
-    def __init__(self, function, gradient, bounds, **kwargs):
+    def __init__(self, func, bounds, localArgs={}, globalArgs={}):
         """
         This function does the following:
         + while global condition is not met:
@@ -36,92 +36,150 @@ class HGDL(object):
                 bounds: a numpy arrary of shape (dim, 2)
                     of the lower and upper bounds for each dimension
             kwargs (and the defaults):
-                hess: hessian matrix function, same format as function
-                    and gradient. passed to scipy. (none)
-                x0: ndarray of starting guesses (random)
-                N: the number of local minimizer processes (100)
-                localMethod: localMethod arg to scipy.minimize ('LBFGS')
-                    this can be bounded or not - the out of bounds
-                    results will get killed either way
-                maxLocalSteps: the max number of
-                    local minimizer steps (30)
-                maxLocalNonePerc: the maximum number of local mimizers
-                    that return None before ending an epoch (0.7)
-                maxEpochs: the max number of epochs (20)
-                unfairness: how unfair the global method is, where
-                    higher values are more unfair (1.)
-                wildness: likelihood of wild mutations in the global
-                    method - high wildness is more mutations (0.6)
-                alpha: alpha in the bump function (.1)
-                keepLastX: number of epochs where the best result
-                    doesn't change before quitting (5)
-                numWorkers: number of subprocesses (number of cores)
-                rms: the root mean square across dimensions for two
-                    minima to be considered the same - set this to the
-                    largest rms difference points that makes them
-                    experimentally equivalent (0.05)
-                tol: tol parameter passed to scipy (0.01)
-                earlyStop: a lambda function that takes a result['x']
-                    array and return True if criterion is met (none)
-                verbose: print out as much as possible (False)
+                localArgs:
+                globalArgs:
         returns:
-            result - a dict with 'x', 'f', and 'success'
+            OptimizationResult
         """
         # initialize constants
         self.rng = np.random.default_rng()
-        self.epoch = 0
         self.k = len(bounds)
-        # initialize mandatory options
-        self.objective = function
-        self.gradient = gradient
+        self.N = 5
+        self.unfairness = 2.5
+        self.wildness = .01
+        self.obj = func
+        self.fArgs = localArgs.get('args',{})
+        # save user input
+        self.func = localMethod(func, bounds, localArgs)
         self.bounds = bounds
-        # process kwargs/use defaults
-        self.hessian = kwargs.get('hess', None)
-        self.N = kwargs.get('N', 50)
-        self.x0 = kwargs.get('x0', self.random_sample(self.N))
-        self.localMethod = kwargs.get('localMethod', 'L-BFGS-B')
-        self.maxLocalSteps = kwargs.get('maxLocalSteps', 70)
-        self.maxLocalNonePerc = kwargs.get('maxLocalNonePerc', 0.5)
-        self.maxEpochs = kwargs.get('maxEpochs', 10)
-        self.unfairness = kwargs.get('unfairness', 1.)
-        self.wildness = kwargs.get('wildness', .6)
-        self.alpha = kwargs.get('alpha', 0.1)
-        self.keepLastX = kwargs.get('keepLastX', 3)
-        self.numWorkers = kwargs.get('numWorkers', cpu_count())
-        self.radius_squared = self.k*(kwargs.get('rms', 0.5)**2)
-        self.tol = kwargs.get('tol', 0.1)
-        self.earlyStop = kwargs.get('earlyStop', lambda x: False)
-        self.verbose = kwargs.get('verbose', True)
-        # initialize worker pool
-        self.workers = Pool(self.numWorkers)
-        # initialize record of best results
-        self.best = np.inf*np.ones(self.keepLastX)
-        self.res = np.empty((0, self.k+1))
+        self.globalArgs = globalArgs
+        self.localArgs = localArgs
 
     def run(self):
-        # check for a.) convergence (ignoring when it doesn't find
-        #  anything. b) early stopping. c) max epochs
-        while True:
-            maxGlobalSteps = self.epoch == self.maxEpochs
-            userStop = self.earlyStop(self.res)
-            noImprove = (np.allclose(self.best[0],self.best)
-                and not np.isinf(self.best).all())
-            if maxGlobalSteps or userStop or noImprove:
-                break
-            else:
-                self.epoch_step()
-        self.workers.close()
-        result = {'x':self.res[:,:-1], 'f':self.res[:,-1]}
-        result['success'] = len(self.res)>0
-        if self.verbose:
-            if maxGlobalSteps:
-                print ('hit maximum number of global steps')
-            elif userStop:
-                print('stopped by user criterion (earlyStop)')
-            elif noImprove:
-                print('no improvement in lastX global steps')
-        return result
+        x0 = self.random_sample(self.N)
+        res, err  = self.func.compute(x0)
+        print(res, err)
 
+    # This is my implementation of a genetic algorithm
+    def GeneticStep(self, X, y):
+        """
+        Input:
+        X is the individuals - points on a surface
+        y is the performance - f(X)
+        Notes:
+        the children can be outside of the bounds!
+        """
+        numChoose = min(len(y), self.N)
+        # normalize the performances to (0,1)
+        y = -y
+        y = y - np.amin(y)
+        y = y + 1
+        p = y/np.sum(y)
+        # This chooses from the sample based on the power law,
+        #  allowing replacement means that the the individuals
+        #  can have multiple kids
+        p = self.unfairness*np.power(p,self.unfairness-1)
+        p /= np.sum(p)
+        if np.isnan(p).any():
+            raise ValueError("isnan in performances")
+        parents = self.rng.choice(
+                np.arange(len(p)), size=(2,numChoose), p=p)
+        # calculate a perturbation to the weighted median
+        #   of each individual's parents 
+        scaling = (p[parents[0]]+p[parents[1]])
+        mom = X[parents[0]].T * (p[parents[0]]/scaling)
+        dad = X[parents[1]].T * (p[parents[1]]/scaling)
+        children = (mom+dad).T
+
+        perturbation = self.rng.normal(
+                scale=self.wildness*(self.bounds[:,1]-self.bounds[:,0]),
+                size=(numChoose,self.k))
+        # the children are the median of their parents plus a perturbation
+        return children + perturbation
+
+    ## Utility Functions
+    def random_sample(self, N):
+        sample = self.rng.random((N, self.k))
+        sample *= self.bounds[:,1] - self.bounds[:,0]
+        sample += self.bounds[:,0]
+        return sample
+
+class  localMethod(object):
+    def __init__(self, func, bounds, localArgs):
+        self.func = func
+        self.bounds = bounds
+        self.localArgs = localArgs
+        self.alpha = .1
+        self.radius_squared = .01
+        self.maxLocalSteps = 2
+
+    def base_function(self, x):
+        return scipy.optimize.minimize(
+                    fun = self.func,
+                    x0 = x,
+                    **self.localArgs)
+
+    def compute(self, x0):
+        numCpu = cpu_count(logical=False)
+        workers = Pool(numCpu-1)
+        newMinima = []
+        for i in range(self.maxLocalSteps):
+            numNone = 0
+            numAlreadyFound = 0
+            numOob = 0
+            singleStepResults = []
+            # chunk up and iterate through
+            chunksize = ceil(len(x0)/(numCpu-1))
+            walkerOutput = workers.imap_unordered(
+                    self.base_function,
+                    x0,
+                    chunksize=chunksize)
+            # check for stopping criterion
+            for i, x_found in enumerate(walkerOutput):
+                if x_found.success == False:
+                    numNone += 1
+                    if (numNone+numAlreadyFound+numOob)/len(x0) > 0.7:
+                        newMinima += singleStepResults
+                        return newMinima, (numNone, numAlreadyFound, numOob)
+                elif self.alreadyFound(
+                        x_found.x,
+                        [x.x for x in singleStepResults],
+                        self.radius_squared):
+                    numAlreadyFound += 1
+                    if (numNone+numAlreadyFound)/len(x0) > 0.7:
+                        newMinima += singleStepResults
+                        return newMinima, (numNone, numAlreadyFound, numOob)
+                elif not self.in_bounds(x_found.x, self.bounds):
+                    numOob += 1
+                    if (numNone+numAlreadyFound+numOob)/len(x0) > 0.7:
+                        newMinima += singleStepResults
+                        return newMinima, (numNone, numAlreadyFound, numOob)
+                else:
+                    singleStepResults.append(x_found)
+            newMinima += singleStepResults
+        return newMinima, (numNone, numAlreadyFound, numOob)
+
+    @staticmethod
+    def alreadyFound(newPt, oldPts, radius_squared):
+        """
+        check if the new minimum is within range of the old ones
+        """
+        print(newPt,oldPts)
+        for i in range(len(oldPts)):
+            r = newPt - oldPts[i]
+            if np.dot(r,r)<radius_squared:
+                return True
+        return False
+    @staticmethod
+    def in_bounds(x, bounds):
+        if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
+            return True
+        return False
+
+
+
+
+'''
     def epoch_step(self):
         self.epoch += 1
         # take a single genetic step or random sample if no info
@@ -141,42 +199,6 @@ class HGDL(object):
         if self.verbose: print('epoch:',self.epoch,
                 '\n\tres:\n\t',self.res.round(2),'\n\tbest:\n\t',self.best.round())
 
-    # This is my implementation of a genetic algorithm
-    def GeneticStep(self, X, y):
-        """
-        Input:
-        X is the individuals - points on a surface
-        y is the performance - f(X)
-        Notes:
-        the children can be outside of the bounds!
-        """
-        # normalize the performances to (0,1)
-        p = y - np.amin(y)
-        maxVal = np.amax(p)
-        # if the distribution of performance has no width,
-        #   give everyone an equal shot
-        if maxVal == 0: p = np.ones(len(p))/len(p)
-        else: p /= maxVal
-        #This chooses from the sample based on the power law,
-        #  allowing replacement means that the the individuals
-        #  can have multiple kids
-        p = self.unfairness*np.power(p,self.unfairness-1)
-        p /= np.sum(p)
-        if np.isnan(p).any():
-            return p, X, y
-        moms = self.rng.choice(
-                np.arange(len(p)), self.N, replace=True, p=p)
-        dads = self.rng.choice(
-                np.arange(len(p)), self.N, replace=True, p=p)
-        # calculate a perturbation to the median
-        #   of each individual's parents
-        perturbation = self.rng.normal(
-                scale=self.wildness*(self.bounds[:,1]-self.bounds[:,0]),
-                size=(self.N,self.k))
-        # the children are the median of their parents plus a perturbation
-        children = (X[moms]+X[dads])/2. + perturbation*(X[moms]-X[dads])
-        return children
-
     def walk_individuals(self, individuals):
         """
         Do the actual iteration through the deflated local optimizer
@@ -184,14 +206,14 @@ class HGDL(object):
         newMinima = np.empty((0, self.k+1))
         for i in range(self.maxLocalSteps):
             numNone = 0
-            # construct the jacobian, hessian, and objective. 
+            # construct the jacobian, hessian, and objective.
             #   This is inside the loop because of the minima
             minimizer = self.deflate()
             # chunk up and iterate through
             chunksize = ceil(self.N/self.numWorkers)
             walkerOutput = self.workers.imap_unordered(
                     minimizer, individuals, chunksize=chunksize)
-            # check for stopping criterion 
+            # check for stopping criterion
             for i, x_found in enumerate(walkerOutput):
                 if x_found.success == False:
                     numNone += 1
@@ -217,25 +239,6 @@ class HGDL(object):
                             self.res = np.concatenate((newMinima, self.res), axis=0)
         if self.verbose: print('\t hit max local steps')
 
-    ## Utility Functions
-    @staticmethod
-    def in_bounds(x, bounds):
-        if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
-            return True
-        return False
-    def random_sample(self, N):
-        sample = self.rng.random((N, self.k))
-        sample *= self.bounds[:,1] - self.bounds[:,0]
-        sample += self.bounds[:,0]
-        return sample
-    @staticmethod
-    @nb.jit(nopython=True, cache=True)
-    def alreadyFound(newMinima, oldMinima, radius_squared, k):
-        """
-        check if the new minimum is within range of the old ones
-        """
-        c = oldMinima[:,:k] - newMinima[0,:k]
-        return (np.sum(c*c,1)<radius_squared).any()
     ## Deflation Process
     def deflate(self):
         if self.hessian is not None:
@@ -303,12 +306,12 @@ def deflation_factor(x, x0s, radius_squared, alpha):
     r = np.sum(np.power(x0s-x,2),1)
     return np.prod(bump_function(r[r<radius_squared],
         radius_squared, alpha))
-    # the bump function's derivative for a bunch of minima 
+    # the bump function's derivative for a bunch of minima
 def deflation_derivative(x, x0s, radius_squared, alpha):
     r = np.sum(np.power(x0s-x,2),1)
     return np.prod(bump_derivative(r[r<radius_squared],
         radius_squared, alpha))
-    ## Wrappers 
+    ## Wrappers
 def deflated_gradient(x, gradient, minima,
         radius_squared, alpha):
     return gradient(x) * deflation_factor(x, minima, radius_squared, alpha)
@@ -317,18 +320,51 @@ def deflated_hessian(x, gradient, hessian, minima,
     term1 = hessian(x) * deflation_derivative(x, minima, radius_squared, alpha)
     term2 = gradient(x) * deflation_factor(x, minima, radius_squared, alpha)
     return term1 + term2
-# ---------------------------------------------------------------------
 '''
+# ---------------------------------------------------------------------
 ## test
-f = np.sin
-f_p = np.cos
-b = np.array([[-10,10]])
-opt = HGDL(f, f_p, b)
+import scipy.optimize as sOpt
+
+def rosen(x, b, c=None):
+    if c is None:
+        print('bummer, my dood')
+        return
+    return sOpt.rosen(x)
+
+def rosen_der(x, b, c=None):
+    if c is None:
+        print('bummer, my dood')
+        return
+    return sOpt.rosen_der(x)
+
+def rosen_hess(x, b, c=None):
+    if c is None:
+        print('bummer, my dood')
+        return
+    return sOpt.rosen_hess(x)
+
+
+
+
+b = np.array([[-2,2],[-2,2],[-2,2]])
+opt = HGDL(rosen, b, localArgs={'jac':rosen_der,'args':(None, 1)})
+print(opt.run())
+
+'''
+print('new run\n')
+opt = HGDL(rosen, b, globalArgs={'popsize':100}, localArgs={'args':(None, 1)} )
+print(opt.run())
+print('new run\n')
+opt = HGDL(rosen, b, localArgs={'jac':rosen_der,'options':{'verbose':True},'args':(None, 1)})
 print(opt.run())
 
 print('new run\n')
-def hess(x):
-    return -1.*np.sin(x)
-opt = HGDL(f, f_p, b, hess=hess)
-opt.run()
+opt = HGDL(rosen, b, localArgs={'jac':rosen_der, 'hess':rosen_hess,'args':(None,1)})
+print(opt.run())
+
+print('new run\n')
+opt = HGDL(rosen, b,
+    localArgs={'jac':rosen_der, 'hess':rosen_hess,'args':(None,1)},
+    globalArgs={'popsize':200})
+print(opt.run())
 '''
