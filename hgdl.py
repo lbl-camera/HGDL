@@ -5,417 +5,123 @@
 #     * D - uses deflation
 #     * L - uses local extremum localMethod
 #  imports
+
 import numpy as np
 import numba as nb
-from multiprocessing import Pool
-from functools import partial
 from math import ceil
 from psutil import cpu_count
-import scipy.optimize
+from functools import partial
+from multiprocessing import Pool
 
-# main class
-class HGDL(object):
+from newton import newton, in_bounds
+
+def random_sample(N,k,bounds):
+    sample = np.random.random((N, k))
+    sample *= bounds[:,1] - bounds[:,0]
+    sample += bounds[:,0]
+    return sample
+
+def alreadyFound(newMinima, oldMinima, radius_squared, k):
     """
-    This is a bounded hybrid local optimizer that uses
-        scipy's minimize, deflation, and a global optimizer.
-    This is the class that wraps up all the functions
+    check if the new minimum is within range of the old ones
     """
-    def __init__(self, func, bounds, localArgs={}, globalArgs={}):
-        """
-        This function does the following:
-        + while global condition is not met:
-            - while local condition is not met:
-                * run deflated local optimization
-                * gather up found optima to use in deflation
-        takes:
-            required:
-                function: a function that takes only a numpy array x
-                gradient: function's derivative in the same format
-                    (if you need to give args that are the same every
-                        time, use functools.partial)
-                bounds: a numpy arrary of shape (dim, 2)
-                    of the lower and upper bounds for each dimension
-            kwargs (and the defaults):
-                localArgs:
-                globalArgs:
-        returns:
-            res - {'x','success','fun'}
-        """
-        self.k = len(bounds)
-        self.N = 5
-        # initialize constants
-        self.rng = np.random.default_rng()
-        self.unfairness = 2.5
-        self.wildness = .01
-        # save user input
-        self.func = localMethod(func, bounds, localArgs)
-        self.bounds = bounds
-<<<<<<< HEAD
-        self.globalArgs = globalArgs
-        self.localArgs = localArgs
-=======
-        # process kwargs/use defaults
-        self.hessian = kwargs.get('hess', None)
-        self.N = kwargs.get('N', 3)
-        self.x0 = kwargs.get('x0', self.random_sample(self.N))
-        self.localMethod = kwargs.get('localMethod', 'L-BFGS-B')
-        self.maxLocalSteps = kwargs.get('maxLocalSteps', 100)
-        self.maxLocalNonePerc = kwargs.get('maxLocalNonePerc', 0.5)
-        self.maxEpochs = kwargs.get('maxEpochs', 10)
-        self.unfairness = kwargs.get('unfairness', 1.)
-        self.wildness = kwargs.get('wildness', .6)
-        self.alpha = kwargs.get('alpha', 0.1)
-        self.keepLastX = kwargs.get('keepLastX', 3)
-        self.numWorkers = kwargs.get('numWorkers', cpu_count())
-        self.radius_squared = self.k*(kwargs.get('rms', 0.5)**2)
-        self.tol = kwargs.get('tol', 0.1)
-        self.earlyStop = kwargs.get('earlyStop', lambda x: False)
-        self.verbose = kwargs.get('verbose', True)
-        # initialize worker pool
-        self.workers = Pool(self.numWorkers)
-        # initialize record of best results
-        self.best = np.inf*np.ones(self.keepLastX)
-        self.res = np.empty((0, self.k+1))
->>>>>>> parent of 1a9a7df... changing defaults
+    c = oldMinima[:,:k] - newMinima[0,:k]
+    return (np.sum(c*c,1)<radius_squared).any()
 
-    def run(self):
-        results = np.empty((0, self.k))
-        workers = Pool(cpu_count(logical=False)-1)
-
-        while not (stopping_criteria(results)):
-            self.update_results(results, workers)
-        res = {
-                'x':results[:,:-1],
-                'fun':results[:,-1],
-                'success',len(results)>0}
-    def stopping_criteria(self, results):
-        if self.user_stopping_criteria(results):
-            return True
-        elif self.epoch > self.max_epochs:
-            return True
-
-    def update_results(results, workers):
-        genetic_step_guesses = self.GeneticStep(results[:,:-1],results[:,-1])
-        if len(genetic_step_guesses)<self.N:
-            startingGuesses = self.random_sample(self.N-len(genetic_step_guesses))
-            guesses = np.concatenate((genetic_step_guesses,startingGuesses),axis=0)
-        else:
-            guesses = genetic_step_guesses
-        for i in range(3):
-            pass
-
-
-
-    def random_sample(self, N):
-        sample = self.rng.random((N, self.k))
-        sample *= self.bounds[:,1] - self.bounds[:,0]
-        sample += self.bounds[:,0]
-        return sample
-
-
-    # This is my implementation of a genetic algorithm
-    def GeneticStep(self, X, y):
-        """
-        Input:
-        X is the individuals - points on a surface
-        y is the performance - f(X)
-        Notes:
-        the children can be outside of the bounds!
-        """
-        numChoose = min(len(y), self.N)
-        # normalize the performances to (0,1)
-        y = -y
-        y = y - np.amin(y)
-        y = y + 1
+# This is my implementation of a genetic algorithm
+def GeneticStep(X, y, bounds):
+    """
+    Input:
+    X is the individuals - points on a surface
+    y is the performance - f(X)
+    Notes:
+    the children can be outside of the bounds!
+    """
+    unfairness = 5.
+    wildness = 0.01
+    N, k = X.shape
+    # normalize the performances to (0,1)
+    y -= np.amin(y)
+    amax = np.amax(y)
+    # if the distribution of performance has no width,
+    #   give everyone an equal shot
+    if np.isclose(amax,0.):
+        p = np.ones(N)*1./N
+    else:
+        y /= np.amax(y)
+        y *= -1.
+        y -= np.amin(y)
+        y += 1
         p = y/np.sum(y)
-        # This chooses from the sample based on the power law,
-        #  allowing replacement means that the the individuals
-        #  can have multiple kids
-        p = self.unfairness*np.power(p,self.unfairness-1)
-        p /= np.sum(p)
-        if np.isnan(p).any():
-            raise ValueError("isnan in performances")
-        parents = self.rng.choice(
-                np.arange(len(p)), size=(2,numChoose), p=p)
-        # calculate a perturbation to the weighted median
-        #   of each individual's parents 
-        scaling = (p[parents[0]]+p[parents[1]])
-        mom = X[parents[0]].T * (p[parents[0]]/scaling)
-        dad = X[parents[1]].T * (p[parents[1]]/scaling)
-        children = (mom+dad).T
+    #This chooses from the sample based on the power law,
+    #  allowing replacement means that the the individuals
+    #  can have multiple kids
+    p = unfairness*np.power(p,unfairness-1)
+    p /= np.sum(p)
+    if np.isnan(p).any():
+        raise Exception("got isnans in GeneticStep")
+    moms = np.random.choice(N, N, replace=True, p=p)
+    dads = np.random.choice(N, N, replace=True, p=p)
+    # calculate a perturbation to the median
+    #   of each individual's parents
+    perturbation = np.random.normal(
+            loc = 0.,
+            scale=wildness*(bounds[:,1]-bounds[:,0]),
+            size=(N,k))
+    # the children are the median of their parents plus a perturbation
+    norm = p[moms]+p[dads]
+    weights = (p[moms]/norm, p[dads]/norm)
+    weighted_linear_sum = weights[0].reshape(-1,1)*X[moms] + weights[0].reshape(-1,1)*X[dads]
+    children = weighted_linear_sum + perturbation
+    return children
 
-        perturbation = self.rng.normal(
-                scale=self.wildness*(self.bounds[:,1]-self.bounds[:,0]),
-                size=(numChoose,self.k))
-        # the children are the median of their parents plus a perturbation
-        return children + perturbation
-
-    ## Utility Functions
-
-class  localMethod(object):
-    def __init__(self, func, bounds, localArgs):
-        self.func = func
-        self.bounds = bounds
-        self.localArgs = localArgs
-        self.alpha = .1
-        self.radius_squared = .01
-        self.maxLocalSteps = 2
-
-    def base_function(self, x):
-        return scipy.optimize.minimize(
-                    fun = self.func,
-                    x0 = x,
-                    **self.localArgs)
-
-    def compute(self, x0):
-        numCpu = cpu_count(logical=False)
-        workers = Pool(numCpu-1)
-        newMinima = []
-        for i in range(self.maxLocalSteps):
-            numNone = 0
-            numAlreadyFound = 0
-            numOob = 0
-            singleStepResults = []
-            # chunk up and iterate through
-            chunksize = ceil(len(x0)/(numCpu-1))
-            walkerOutput = workers.imap_unordered(
-                    self.base_function,
-                    x0,
-                    chunksize=chunksize)
-            # check for stopping criterion
-            for i, x_found in enumerate(walkerOutput):
-                if x_found.success == False:
-                    numNone += 1
-                    if (numNone+numAlreadyFound+numOob)/len(x0) > 0.7:
-                        newMinima += singleStepResults
-                        return newMinima, (numNone, numAlreadyFound, numOob)
-                elif self.alreadyFound(
-                        x_found.x,
-                        [x.x for x in singleStepResults],
-                        self.radius_squared):
-                    numAlreadyFound += 1
-                    if (numNone+numAlreadyFound)/len(x0) > 0.7:
-                        newMinima += singleStepResults
-                        return newMinima, (numNone, numAlreadyFound, numOob)
-                elif not self.in_bounds(x_found.x, self.bounds):
-                    numOob += 1
-                    if (numNone+numAlreadyFound+numOob)/len(x0) > 0.7:
-                        newMinima += singleStepResults
-                        return newMinima, (numNone, numAlreadyFound, numOob)
+def deflated_local(starts, results_all, results_minima, gradient, hessian, bounds, workers,r,alpha):
+    for j in range(5):
+        percent_none = 0.
+        tmp_results = workers.imap_unordered(
+                partial(newton,minima=results_minima,gradient=gradient,hessian=hessian,bounds=bounds,r=r,alpha=alpha),
+                starts)
+        for x in tmp_results:
+            if not x["success"]:
+                percent_none += 1./starts.shape[0]
+            else:
+                if alreadyFound(x["x"].reshape(1,-1), results_all, r**2, starts.shape[1]):
+                    percent_none += 1./starts.shape[0]
                 else:
-                    singleStepResults.append(x_found)
-            newMinima += singleStepResults
-        return newMinima, (numNone, numAlreadyFound, numOob)
-
-    @staticmethod
-    def alreadyFound(newPt, oldPts, radius_squared):
-        """
-        check if the new minimum is within range of the old ones
-        """
-        print(newPt,oldPts)
-        for i in range(len(oldPts)):
-            r = newPt - oldPts[i]
-            if np.dot(r,r)<radius_squared:
-                return True
-        return False
-    @staticmethod
-    def in_bounds(x, bounds):
-        if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
-            return True
-        return False
-
-
-
-'''
-    def epoch_step(self):
-        self.epoch += 1
-        # take a single genetic step or random sample if no info
-        if len(self.res) != 0:
-            new_starts = self.GeneticStep(self.res[:,:-1], self.res[:,-1])
-            for i in range(len(new_starts)):
-                if not self.in_bounds(new_starts[i], self.bounds):
-                    new_starts[i] = self.random_sample(1)
-        else:
-            new_starts = self.random_sample(self.N)
-        # run the local minimizers
-        self.walk_individuals(new_starts)
-        # sort the results and update the best
-        self.res = self.res[self.res[:,-1].argsort()]
-        if len(self.res) != 0:
-            self.best[(self.epoch-1)%self.keepLastX] = self.res[0,-1]
-        if self.verbose: print('epoch:',self.epoch,
-                '\n\tres:\n\t',self.res.round(2),'\n\tbest:\n\t',self.best.round())
-
-    def walk_individuals(self, individuals):
-        """
-        Do the actual iteration through the deflated local optimizer
-        """
-        newMinima = np.empty((0, self.k+1))
-        for i in range(self.maxLocalSteps):
-            numNone = 0
-            # construct the jacobian, hessian, and objective.
-            #   This is inside the loop because of the minima
-            minimizer = self.deflate()
-            # chunk up and iterate through
-            chunksize = ceil(self.N/self.numWorkers)
-            walkerOutput = self.workers.imap_unordered(
-                    minimizer, individuals, chunksize=chunksize)
-            # check for stopping criterion
-            for i, x_found in enumerate(walkerOutput):
-                if x_found.success == False:
-                    numNone += 1
-                    if numNone/self.N > self.maxLocalNonePerc:
-                        if self.verbose:
-                            print('\t hit maximum % Nones')
-                        return
-                else:
-                    if not self.in_bounds(x_found.x, self.bounds):
-                        numNone += 1
-                        if numNone/self.N > self.maxLocalNonePerc:
-                            if self.verbose:
-                                print('\t hit maximum % Nones')
-                            return
+                    if x["edge"]:
+                        results_all = np.append(results_all, x["x"].reshape(1,-1), 0)
                     else:
-                        if not np.isscalar(x_found.fun): x_found.fun = x_found.fun[0]
-                        newMinima = np.array([*x_found.x, x_found.fun]).reshape(1,-1)
-                        if len(self.res)==0:
-                            self.res = np.concatenate(
-                                    (newMinima, self.res), axis=0)
-                        elif not self.alreadyFound(newMinima, self.res,
-                                radius_squared=self.radius_squared, k=self.k):
-                            self.res = np.concatenate((newMinima, self.res), axis=0)
-        if self.verbose: print('\t hit max local steps')
+                        results_all = np.append(results_all, x["x"].reshape(1,-1), 0)
+                        results_minima = np.append(results_minima, x["x"].reshape(1,-1), 0)
+            if percent_none > 0.5:
+                return results_all, results_minima
+    return results_all, results_minima
 
-    ## Deflation Process
-    def deflate(self):
-        if self.hessian is not None:
-            Hess = partial(deflated_hessian,
-                    gradient = self.gradient,
-                    hessian = self.hessian,
-                    minima = self.res[:,:-1],
-                    radius_squared = self.radius_squared,
-                    alpha = self.alpha)
-        else:
-            Hess = None
-        if self.localMethod in ['L-BFGS-B', 'TNC', 'SLSQP', 'trust-constr']:
-            g = partial(minimize,
-                    jac = partial(deflated_gradient,
-                        gradient = self.gradient,
-                        minima = self.res[:,:-1],
-                        radius_squared = self.radius_squared,
-                        alpha = self.alpha),
-                    method=self.localMethod,
-                    hess = Hess,
-                    tol = self.tol,
-                    bounds = self.bounds,
-                    options = {"maxiter":self.maxLocalSteps})
-        else:
-             g = partial(minimize,
-                    jac = partial(deflated_gradient,
-                        gradient = self.gradient,
-                        minima = self.res[:,:-1],
-                        radius_squared = self.radius_squared,
-                        alpha = self.alpha),
-                    method=self.localMethod,
-                    hess = Hess,
-                    tol = self.tol,
-                    options = {"maxiter":self.maxLocalSteps})
-        return partial(wrapped_scipy, f=self.objective, g=g)
+def HGDL(func, grad, hess, bounds, r=.3, alpha=.1):
+    k = len(bounds)
+    starts = random_sample(5, k, bounds)
+    func_vals = np.array([func(x) for x in starts])
+    results_all = np.empty((0,k))
+    results_minima = np.empty((0,k))
+    workers = Pool(processes=cpu_count(logical=False)-1)
+    for i in range(10):
+        print('starts',starts.round(4), func_vals.round(4))
+        print('minima - all',results_all.round(4))
+        print('minima - true',results_minima.round(4))
+        starts = GeneticStep(starts, func_vals, bounds)
+        func_vals = np.array([func(x) for x in starts])
+        results_all, results_minima = deflated_local(starts, results_all, results_minima, grad, hess, bounds, workers, r, alpha)
 
-# wrapper that can't be a local object
-def wrapped_scipy(x, f, g):
-    return g(f, x)
+    func_vals_all = np.array([func(x) for x in results_all])
+    if len(results_all) == 0:
+        return {"success":False}
+    x = np.append(results_all, starts, 0)
+    y = np.append(func_vals_all, func_vals)
+    c = np.argsort(y)
+    x, y = x[c][:5], y[c][:5]
+    return {"success":True,"x":x,"func":y}
 
-## Math functions
-# the bump function itself
-@nb.vectorize([nb.float64(nb.float64,nb.float64,nb.float64)],
-        nopython=True, cache=True)
-def bump_function(dist2center, radius_squared, alpha):
-    """ vectorized, eager. 1./1-b(x-x0) """
-    bump_term = np.exp( (-alpha)/(radius_squared - dist2center)
-            + (alpha/radius_squared) )
-    return 1./(1.-bump_term)
-# the derivative of the bump function
-@nb.vectorize([nb.float64(nb.float64,nb.float64,nb.float64)],
-        nopython=True)
-def bump_derivative(dist2center, radius_squared, alpha):
-    """ vectorized, eager. (1./1-b(x-x0))' """
-    bump_der = np.exp((-alpha)/(radius_squared - dist2center)
-            + (alpha/radius_squared))
-    bump_der *= -2*alpha*np.sqrt(dist2center) \
-            /np.power(radius_squared-dist2center,2)
-    return  np.power(bump_function(dist2center,
-        radius_squared,alpha),2)*bump_der
-    # the bump function for a bunch of minimai
-@nb.njit(nb.float64(nb.float64[:], nb.float64[:,:],
-    nb.float64, nb.float64))
-def deflation_factor(x, x0s, radius_squared, alpha):
-    r = np.sum(np.power(x0s-x,2),1)
-    return np.prod(bump_function(r[r<radius_squared],
-        radius_squared, alpha))
-    # the bump function's derivative for a bunch of minima
-def deflation_derivative(x, x0s, radius_squared, alpha):
-    r = np.sum(np.power(x0s-x,2),1)
-    return np.prod(bump_derivative(r[r<radius_squared],
-        radius_squared, alpha))
-    ## Wrappers
-def deflated_gradient(x, gradient, minima,
-        radius_squared, alpha):
-    return gradient(x) * deflation_factor(x, minima, radius_squared, alpha)
-def deflated_hessian(x, gradient, hessian, minima,
-        radius_squared, alpha):
-    term1 = hessian(x) * deflation_derivative(x, minima, radius_squared, alpha)
-    term2 = gradient(x) * deflation_factor(x, minima, radius_squared, alpha)
-    return term1 + term2
+#from scipy.optimize import rosen, rosen_der, rosen_hess
+#b = np.array([[-20, 20],[-30,30.]])
+#HGDL(rosen, rosen_der, rosen_hess, b)
 
-# ---------------------------------------------------------------------
-## test
-import scipy.optimize as sOpt
-
-def rosen(x, b, c=None):
-    if c is None:
-        print('bummer, my dood')
-        return
-    return sOpt.rosen(x)
-
-def rosen_der(x, b, c=None):
-    if c is None:
-        print('bummer, my dood')
-        return
-    return sOpt.rosen_der(x)
-
-def rosen_hess(x, b, c=None):
-    if c is None:
-        print('bummer, my dood')
-        return
-    return sOpt.rosen_hess(x)
-
-
-
-
-b = np.array([[-2,2],[-2,2],[-2,2]])
-opt = HGDL(rosen, b, localArgs={'jac':rosen_der,'args':(None, 1)})
-print(opt.run())
-
-print('new run\n')
-<<<<<<< HEAD
-opt = HGDL(rosen, b, globalArgs={'popsize':100}, localArgs={'args':(None, 1)} )
-print(opt.run())
-print('new run\n')
-opt = HGDL(rosen, b, localArgs={'jac':rosen_der,'options':{'verbose':True},'args':(None, 1)})
-print(opt.run())
-
-print('new run\n')
-opt = HGDL(rosen, b, localArgs={'jac':rosen_der, 'hess':rosen_hess,'args':(None,1)})
-print(opt.run())
-
-print('new run\n')
-opt = HGDL(rosen, b,
-    localArgs={'jac':rosen_der, 'hess':rosen_hess,'args':(None,1)},
-    globalArgs={'popsize':200})
-print(opt.run())
-def hess(x):
-    return -1.*np.sin(x)
-opt = HGDL(f, f_p, b, hess=hess)
-opt.run()
-'''
