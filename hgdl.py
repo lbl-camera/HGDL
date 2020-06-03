@@ -105,9 +105,6 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1):
     results_minima = np.empty((0,k))
     workers = Pool(processes=cpu_count(logical=False)-1)
     for i in range(5):
-        print('starts',starts.round(4), func_vals.round(4))
-        print('minima - all',results_all.round(4))
-        print('minima - true',results_minima.round(4))
         starts = GeneticStep(starts, func_vals, bounds)
         func_vals = np.array([func(x) for x in starts])
         results_all, results_minima = deflated_local(starts, results_all, results_minima, grad, hess, bounds, workers, r, alpha)
