@@ -13,7 +13,7 @@ from psutil import cpu_count
 from functools import partial
 from multiprocessing import Pool
 
-from newton import newton, in_bounds
+from .newton import newton, in_bounds
 
 def random_sample(N,k,bounds):
     sample = np.random.random((N, k))
