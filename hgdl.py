@@ -37,7 +37,7 @@ def GeneticStep(X, y, bounds):
     Notes:
     the children can be outside of the bounds!
     """
-    unfairness = 5.
+    unfairness = 2.5
     wildness = 0.01
     N, k = X.shape
     # normalize the performances to (0,1)
@@ -110,7 +110,7 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1):
         print('minima - true',results_minima.round(4))
         starts = GeneticStep(starts, func_vals, bounds)
         func_vals = np.array([func(x) for x in starts])
-        #results_all, results_minima = deflated_local(starts, results_all, results_minima, grad, hess, bounds, workers, r, alpha)
+        results_all, results_minima = deflated_local(starts, results_all, results_minima, grad, hess, bounds, workers, r, alpha)
 
     func_vals_all = np.array([func(x) for x in results_all])
     x = np.append(results_all, starts, 0)
