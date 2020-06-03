@@ -28,11 +28,7 @@ def newton(x, minima, gradient, hessian, bounds, r, alpha):
         jac = gradient(x)
         hess = hessian(x)
         f, b = reduced_bump_derivative(x, minima, r, alpha)
-        try:
-            update = np.linalg.solve(hess+np.outer(jac,f), jac)
-        except np.linalg.LinAlgError:
-            print(hess,np.outer(jac,f),'singular') 
-            return {"success":False}
+        update = np.linalg.lstsq(hess+np.outer(jac,f), jac)
         xNew = x - update
         if not in_bounds(xNew, bounds):
             for i in range(1,4):
