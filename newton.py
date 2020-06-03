@@ -28,7 +28,7 @@ def newton(x, minima, gradient, hessian, bounds, r, alpha):
         jac = gradient(x)
         hess = hessian(x)
         f, b = reduced_bump_derivative(x, minima, r, alpha)
-        update = np.linalg.lstsq(hess+np.outer(jac,f), jac, rcond=None)
+        update = np.linalg.lstsq(hess+np.outer(jac,f), jac, rcond=None)[0]
         xNew = x - update
         if not in_bounds(xNew, bounds):
             for i in range(1,4):
