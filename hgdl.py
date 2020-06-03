@@ -93,7 +93,7 @@ def deflated_local(starts, results_all, results_minima, gradient, hessian, bound
                     else:
                         results_all = np.append(results_all, x["x"].reshape(1,-1), 0)
                         results_minima = np.append(results_minima, x["x"].reshape(1,-1), 0)
-            if percent_none > 0.5:
+            if percent_none > 0.2:
                 return results_all, results_minima
     return results_all, results_minima
 

@@ -24,7 +24,7 @@ def reduced_bump_derivative(x, minima, r, alpha):
     return factors, b
 
 def newton(x, minima, gradient, hessian, bounds, r, alpha):
-    for i in range(30):
+    for i in range(20):
         jac = gradient(x)
         hess = hessian(x)
         f, b = reduced_bump_derivative(x, minima, r, alpha)
@@ -37,7 +37,7 @@ def newton(x, minima, gradient, hessian, bounds, r, alpha):
                     return {"success":True,"x":xNew,"edge":True}
             return {"success":False}
         x = xNew
-        if np.linalg.norm(jac)*b < 1e-5:
+        if np.linalg.norm(jac)*b < 1e-5*len(x):
             return {"success":True,"x":x,"edge":False}
     return {"success":False}
 
