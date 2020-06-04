@@ -17,8 +17,9 @@ def reduced_bump_derivative(x, minima, r, alpha):
             exp_denom = r2-dist2
             b = np.exp(-alpha/exp_denom + alpha/r2)
             der = -2*alpha*np.power(exp_denom,-2)
+            f = b*der/(1.-b)
             for j in range(len(factors)):
-                factors[j] *= b*der*dist_vec[j]/(1.-b)
+                factors[j] *= f*dist_vec[j]
     if not modified:
         return np.zeros_like(factors), 0.
     return factors, b

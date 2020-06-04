@@ -75,8 +75,8 @@ def GeneticStep(X, y, bounds):
     children = weighted_linear_sum + perturbation
     return children
 
-def deflated_local(starts, results_all, results_minima, gradient, hessian, bounds, workers,r,alpha):
-    for j in range(5):
+def deflated_local(starts, results_all, results_minima, gradient, hessian, bounds, workers,r,alpha, maxLocal):
+    for j in range(maxLocal):
         percent_none = 0.
         tmp_results = workers.imap_unordered(
                 partial(newton,minima=results_minima,gradient=gradient,hessian=hessian,bounds=bounds,r=r,alpha=alpha),
@@ -97,17 +97,18 @@ def deflated_local(starts, results_all, results_minima, gradient, hessian, bound
                 return results_all, results_minima
     return results_all, results_minima
 
-def HGDL(func, grad, hess, bounds, r=.3, alpha=.1):
+def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5, maxLocal=5, numWorkers=None, bestX=5):
     k = len(bounds)
-    starts = random_sample(5, k, bounds)
+    starts = random_sample(numIndividuals, k, bounds)
     func_vals = np.array([func(x) for x in starts])
     results_all = np.empty((0,k))
     results_minima = np.empty((0,k))
-    workers = Pool(processes=cpu_count(logical=False)-1)
-    for i in range(5):
+    if numWorkers is None: numWorkers = max(cpu_count(logical=False)-1,1)
+    workers = Pool(processes=numWorkers)
+    for i in range(maxEpochs):
         starts = GeneticStep(starts, func_vals, bounds)
         func_vals = np.array([func(x) for x in starts])
-        results_all, results_minima = deflated_local(starts, results_all, results_minima, grad, hess, bounds, workers, r, alpha)
+        results_all, results_minima = deflated_local(starts, results_all, results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
 
     func_vals_all = np.array([func(x) for x in results_all])
     x = np.append(results_all, starts, 0)
@@ -115,7 +116,10 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1):
     if len(x) == 0:
         return {"success":False}
     c = np.argsort(y)
-    x, y = x[c][:5], y[c][:5]
+    if len(x) < bestX:
+        orint("well there buckaroo, i couldn't find all ya asked for, my guy")
+        return {"success":True,"x":x,"func":y}
+    x, y = x[c][:bestX], y[c][:bestX]
     return {"success":True,"x":x,"func":y}
 
 #from scipy.optimize import rosen, rosen_der, rosen_hess
