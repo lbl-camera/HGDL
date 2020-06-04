@@ -110,7 +110,9 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         newFuncVals = np.array([func(x) for x in newStarts])
         starts = np.append(starts, newStarts, 0)
         func_vals = np.append(func_vals, newFuncVals)
-        results_all, results_minima = deflated_local(starts, results_all, results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
+        c = np.argsort(func_vals)
+        starts, func_vals = starts[c], func_vals[c]
+        results_all, results_minima = deflated_local(starts[:numIndividuals], results_all, results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
 
     func_vals_all = np.array([func(x) for x in results_all])
     x = np.append(results_all, starts, 0)
