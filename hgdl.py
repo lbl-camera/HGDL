@@ -106,8 +106,8 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
     if numWorkers is None: numWorkers = max(cpu_count(logical=False)-1,1)
     workers = Pool(processes=numWorkers)
     for i in range(maxEpochs):
-        starts = GeneticStep(starts, func_vals, bounds)
-        func_vals = np.array([func(x) for x in starts])
+        starts = np.append(starts, GeneticStep(starts, func_vals, bounds), 0)
+        func_vals = np.append(func_vals, np.array([func(x) for x in starts[-numIndividuals:]]))
         results_all, results_minima = deflated_local(starts, results_all, results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
 
     func_vals_all = np.array([func(x) for x in results_all])
