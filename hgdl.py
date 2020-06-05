@@ -135,6 +135,7 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
 #        if i%2==1:
 #            starts, func_vals = starts[:2*numIndividuals], func_vals[:2*numIndividuals]
         results_all, results_minima = deflated_local(starts[:numIndividuals], results_all, results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
+        print('found:',results_all)
 
     workers.close()
     func_vals_all = np.array([func(x) for x in results_all])
