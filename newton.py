@@ -40,7 +40,7 @@ def newton(x, minima, gradient, hessian, bounds, r, alpha):
                     return {"success":True,"x":xNew,"edge":True}
             return {"success":False}
         x = xNew
-        if np.linalg.norm(jac)*b < 1e-5:
+        if np.linalg.norm(jac) < 1e-5:
             print(jac,b)
             print({"success":True,"x":x,"edge":False})
             return {"success":True,"x":x,"edge":False}
