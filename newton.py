@@ -1,7 +1,7 @@
 import numpy as np
 import numba as nb
 
-@nb.njit(cache=True)
+#@nb.njit(cache=True)
 def reduced_bump_derivative(x, minima, r, alpha):
     r2 = r**2.
     factors = np.ones_like(x)
