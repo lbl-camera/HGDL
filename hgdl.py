@@ -118,6 +118,7 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         either {"success":False} if len(x) is 0
         or {"success":True, "x",x, "y",y} with the bestX x's and their y's
     """
+    print('hi')
     k = len(bounds)
     starts = random_sample(numIndividuals, k, bounds)
     func_vals = np.array([func(x) for x in starts])
@@ -126,7 +127,6 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
     if numWorkers is None: numWorkers = max(cpu_count(logical=False)-1,1)
     workers = Pool(processes=numWorkers)
     for i in range(maxEpochs):
-        print('hi') 
         newStarts = GeneticStep(starts, func_vals, bounds)
         newFuncVals = np.array([func(x) for x in newStarts])
         starts = np.append(starts, newStarts, 0)
