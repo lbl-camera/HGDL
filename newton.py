@@ -25,7 +25,7 @@ def reduced_bump_derivative(x, minima, r, alpha):
     return factors, b
 
 def newton(x, minima, gradient, hessian, bounds, r, alpha):
-    for i in range(20):
+    for i in range(30):
         jac = gradient(x)
         hess = hessian(x)
         f, b = reduced_bump_derivative(x, minima, r, alpha)
