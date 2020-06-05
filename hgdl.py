@@ -139,8 +139,8 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
 
     workers.close()
     func_vals_all = np.array([func(x) for x in results_all])
-    x = np.append(results_all, starts, 0)
-    y = np.append(func_vals_all, func_vals)
+    x = results_all #np.append(results_all, starts, 0)
+    y = func_vals_all #np.append(func_vals_all, func_vals)
     if len(x) == 0:
         return {"success":False}
     c = np.argsort(y)
