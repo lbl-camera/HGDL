@@ -132,14 +132,14 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         func_vals = np.append(func_vals, newFuncVals)
         c = np.argsort(func_vals)
         starts, func_vals = starts[c], func_vals[c]
-        if i%2==1:
-            starts, func_vals = starts[:2*numIndividuals], func_vals[:2*numIndividuals]
+#        if i%2==1:
+#            starts, func_vals = starts[:2*numIndividuals], func_vals[:2*numIndividuals]
         results_all, results_minima = deflated_local(starts[:numIndividuals], results_all, results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
 
     workers.close()
     func_vals_all = np.array([func(x) for x in results_all])
-    x = results_all #np.append(results_all, starts, 0)
-    y = func_vals_all #np.append(func_vals_all, func_vals)
+    x = np.append(results_all, starts, 0)
+    y = np.append(func_vals_all, func_vals)
     if len(x) == 0:
         return {"success":False}
     c = np.argsort(y)
