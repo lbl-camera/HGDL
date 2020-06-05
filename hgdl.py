@@ -1,9 +1,4 @@
 # coding: utf-8
-# # HGDL
-#     * Hybrid - uses both local and global optimization
-#     * G - uses global optimizer
-#     * D - uses deflation
-#     * L - uses local extremum localMethod
 #  imports
 
 import numpy as np
@@ -98,6 +93,31 @@ def deflated_local(starts, results_all, results_minima, gradient, hessian, bound
     return results_all, results_minima
 
 def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5, maxLocal=5, numWorkers=None, bestX=5):
+    """
+    HGDL
+        * Hybrid - uses both local and global optimization
+        * G - uses global optimizer
+        * D - uses deflation
+        * L - uses local extremum localMethod
+    Mandatory Parameters:
+        * func - should return a scalar given a numpy array x
+        -- note: use functools.partial if you have optional params
+        * grad - gradient vector at x
+        * hess - hessian array at x
+        * bounds - numpy array of bounds in same format as scipy.optimize
+    Optional Parameters:
+        * r (0.3) - the radius of the deflation operator
+        * alpha (0.1) - the alpha term of the bump function
+        * maxEpochs (5) - the maximum number of epochs
+        * numIndividuals (5) - the number of individuals to run
+        * maxLocal (5) - the maximum number of local runs to do
+        * numWorkers (logical cpu cores -1) - how many processes to use
+        * bestX (5) - return the best X x's
+    Returns:
+        a dict of the form
+        either {"success":False} if len(x) is 0
+        or {"success":True, "x",x, "y",y} with the bestX x's and their y's
+    """
     k = len(bounds)
     starts = random_sample(numIndividuals, k, bounds)
     func_vals = np.array([func(x) for x in starts])
@@ -113,7 +133,7 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         c = np.argsort(func_vals)
         starts, func_vals = starts[c], func_vals[c]
         results_all, results_minima = deflated_local(starts[:numIndividuals], results_all, results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
-
+    workers.close()
     func_vals_all = np.array([func(x) for x in results_all])
     x = np.append(results_all, starts, 0)
     y = np.append(func_vals_all, func_vals)
@@ -121,7 +141,7 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         return {"success":False}
     c = np.argsort(y)
     if len(x) < bestX:
-        orint("well there buckaroo, i couldn't find all ya asked for, my guy")
+        print("well there buckaroo, i couldn't find all ya asked for, my guy")
         return {"success":True,"x":x,"func":y}
     x, y = x[c][:bestX], y[c][:bestX]
     return {"success":True,"x":x,"func":y}
