@@ -37,10 +37,12 @@ def newton(x, minima, gradient, hessian, bounds, r, alpha):
                 xNew = x - update/(2.**i)
                 if in_bounds(xNew, bounds):
                     return {"success":True,"x":xNew,"edge":True}
+            print('failed at ',xNew.round(2),' because outside bounds') 
             return {"success":False}
         x = xNew
         if np.linalg.norm(jac) < 1e-4*k:
             return {"success":True,"x":x,"edge":False}
+    print('failed at ',xNew.round(2),' because on iteration',i)
     return {"success":False}
 
 def in_bounds(x, bounds):
