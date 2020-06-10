@@ -82,7 +82,7 @@ def deflated_local(starts, results_edge, results_minima, gradient, hessian, boun
             if not x["success"]:
                 percent_none += 1./starts.shape[0]
             else:
-                if alreadyFound(x["x"], results_edge, r**2) or alreadyFound(x["x"], results_minima, r**2):
+                if alreadyFound(x["x"], results_minima, r**2):
                     percent_none += 1./starts.shape[0]
                 else:
                     if x["edge"]:
@@ -136,7 +136,7 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         results_edge, results_minima = deflated_local(
                 genetic_x[:numIndividuals], results_edge,
                 results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
-        print("at epoch ",i+1,", found edges",results_edge.round(2),"\nminima",results_minima.round(2))
+#        print("at epoch ",i+1,", found edges",results_edge.round(2),"\nminima",results_minima.round(2))
 
     workers.close()
     func_vals_edge = np.array([func(x) for x in results_edge])
