@@ -1,5 +1,5 @@
-# MBSB-HGDL
-Wow, what a messy title. I promise it's way simpler than that.
+# HGDL
+This is the README file for the Hybrid Global Deflated Local (HGDL) optimization algorithm
 
 ## What is this?
 This is a minimization procedure written in python that uses a 
@@ -8,6 +8,6 @@ This is a minimization procedure written in python that uses a
 * Deflated - found minima are avoided by the local minimizer
 * Local - local minimization method, such as Newton's method
 minimization scheme to find minima in a function.
-This tries to find several minima, so if you have only one, lucky you - you don't want this.
-This uses a deflated minimization method, so if you don't have the gradient, you're up a creek, since finite differencing is not great.
+The algorithm uses global and local optimization, together with deflation to find the global
+minimum along with many local optima. Of course, as always, there is no guarantee the global minimum will be found. 
 
