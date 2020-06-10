@@ -146,7 +146,23 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
     results_edge, func_vals_edge = results_edge[c_edge], func_vals_edge[c_edge]
     if len(results_minima) < bestX:
         print("well there buckaroo, i couldn't find all ya asked for, my guy")
+    if len(func_vals_minima)==0:
+        y1 = np.inf
+        x1 = np.empty_like(genetic_x[0])
+    else:
+        x1 = results_minima[0]
+        y1 = func_vals_minima[0]
+    if len(func_vals_edge)==0:
+        y2 = np.inf
+        x2 = np.empty_like(genetic_x[0])
+    else:
+        x2 = results_edge[0]
+        y2 = func_vals_edge[0]
+    best_y = np.array([y1, y2, genetic_y[0]])
+    best_x = np.array([x1, x2, genetic_y[0]])
+    c = np.argmin(best_y)
     return {
+            "best":best_x[c], "best_y":best_y[c],
             "minima":results_minima, "minima_y":func_vals_minima,
             "edge":results_edge, "edge_y": func_vals_edge,
             "genetic":genetic_x, "genetic_y":genetic_y}
