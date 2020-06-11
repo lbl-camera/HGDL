@@ -72,25 +72,27 @@ def GeneticStep(X, y, bounds, numChoose):
     children[oob] = random_sample(np.sum(oob), k, bounds)
     return children
 
-def deflated_local(starts, results_edge, results_minima, gradient, hessian, bounds, workers,r,alpha, maxLocal):
-    for j in range(maxLocal):
-        percent_none = 0.
-        tmp_results = workers.imap_unordered(
-                partial(newton,minima=results_minima,gradient=gradient,hessian=hessian,bounds=bounds,r=r,alpha=alpha),
-                starts)
-        for x in tmp_results:
-            if not x["success"]:
-                percent_none += 1./starts.shape[0]
-            else:
-                if alreadyFound(x["x"], results_minima, r**2):
+def deflated_local(starts, results_edge, results_minima, gradient, hessian, bounds, r,alpha, maxLocal, numWorkers):
+    with Pool(numWorkers) as workers:
+        for j in range(maxLocal):
+            percent_none = 0.
+            tmp_results = workers.imap_unordered(
+                    partial(newton,minima=results_minima,
+                        gradient=gradient,hessian=hessian,bounds=bounds,r=r,alpha=alpha),
+                    starts)
+            for x in tmp_results:
+                if not x["success"]:
                     percent_none += 1./starts.shape[0]
                 else:
-                    if x["edge"]:
-                        results_edge = np.append(results_edge, x["x"].reshape(1,-1), 0)
+                    if alreadyFound(x["x"], results_minima, r**2):
+                        percent_none += 1./starts.shape[0]
                     else:
-                        results_minima = np.append(results_minima, x["x"].reshape(1,-1), 0)
-            if percent_none > 0.2:
-                return results_edge, results_minima
+                        if x["edge"]:
+                            results_edge = np.append(results_edge, x["x"].reshape(1,-1), 0)
+                        else:
+                            results_minima = np.append(results_minima, x["x"].reshape(1,-1), 0)
+                if percent_none > 0.2:
+                    return results_edge, results_minima
     return results_edge, results_minima
 
 def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5, maxLocal=5, numWorkers=None, bestX=5):
@@ -125,7 +127,6 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
     results_edge = np.empty((0,k))
     results_minima = np.empty((0,k))
     if numWorkers is None: numWorkers = max(cpu_count(logical=False)-1,1)
-    workers = Pool(processes=numWorkers)
     for i in range(maxEpochs):
         newStarts = GeneticStep(genetic_x, genetic_y, bounds, numIndividuals)
         newFuncVals = np.array([func(x) for x in newStarts])
@@ -135,12 +136,12 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         genetic_x, genetic_y = genetic_x, genetic_y
         results_edge, results_minima = deflated_local(
                 genetic_x[:numIndividuals], results_edge,
-                results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
+                results_minima, grad, hess, bounds,
+                r, alpha, maxLocal, numWorkers)
         print("at epoch ",i+1,", found top 10:")
         print("edges",results_edge[:10].round(2),"\nminima",results_minima[:10].round(2))
         print("genetic",genetic_x[:10].round(2))
 
-    workers.close()
     func_vals_edge = np.array([func(x) for x in results_edge])
     func_vals_minima = np.array([func(x) for x in results_minima])
     c_edge, c_minima = np.argsort(func_vals_edge), np.argsort(func_vals_minima)
