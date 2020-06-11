@@ -36,12 +36,10 @@ def newton(x, minima, gradient, hessian, bounds, r, alpha):
             for i in range(1,4):
                 xNew = x - update/(2.**i)
                 if in_bounds(xNew, bounds):
-                    print('success at new x: ',xNew) 
                     return {"success":True,"x":xNew,"edge":True}
             return {"success":False}
         x = xNew
         if np.linalg.norm(jac) < 1e-6*k and np.isclose(b,0):
-            print('success at x: ',xNew)
             return {"success":True,"x":x,"edge":False}
     return {"success":False}
 
