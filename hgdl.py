@@ -33,7 +33,7 @@ def GeneticStep(X, y, bounds, numChoose):
     the children can be outside of the bounds!
     """
     unfairness = 2.5
-    wildness = 0.01
+    wildness = 0.05
     N, k = X.shape
     # normalize the performances to (0,1)
     y -= np.amin(y)
@@ -110,7 +110,7 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         * r (0.3) - the radius of the deflation operator
         * alpha (0.1) - the alpha term of the bump function
         * maxEpochs (5) - the maximum number of epochs
-        * numIndividuals (5) - the number of individuals to run
+        * numIndividuals (15) - the number of individuals to run
         * maxLocal (5) - the maximum number of local runs to do
         * numWorkers (logical cpu cores -1) - how many processes to use
         * bestX (5) - return the best X x's
@@ -136,7 +136,9 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
         results_edge, results_minima = deflated_local(
                 genetic_x[:numIndividuals], results_edge,
                 results_minima, grad, hess, bounds, workers, r, alpha, maxLocal)
-#        print("at epoch ",i+1,", found edges",results_edge.round(2),"\nminima",results_minima.round(2))
+        print("at epoch ",i+1,", found top 10:")
+        print("edges",results_edge[:10].round(2),"\nminima",results_minima[:10].round(2))
+        print("genetic",genetic_x[:10].round(2))
 
     workers.close()
     func_vals_edge = np.array([func(x) for x in results_edge])
@@ -146,23 +148,7 @@ def HGDL(func, grad, hess, bounds, r=.3, alpha=.1, maxEpochs=5, numIndividuals=5
     results_edge, func_vals_edge = results_edge[c_edge], func_vals_edge[c_edge]
     if len(results_minima) < bestX:
         print("well there buckaroo, i couldn't find all ya asked for, my guy")
-    if len(func_vals_minima)==0:
-        y1 = np.inf
-        x1 = np.empty_like(genetic_x[0])
-    else:
-        x1 = results_minima[0]
-        y1 = func_vals_minima[0]
-    if len(func_vals_edge)==0:
-        y2 = np.inf
-        x2 = np.empty_like(genetic_x[0])
-    else:
-        x2 = results_edge[0]
-        y2 = func_vals_edge[0]
-    best_y = np.array([y1, y2, genetic_y[0]])
-    best_x = np.array([x1, x2, genetic_y[0]])
-    c = np.argmin(best_y)
     return {
-            "best":best_x[c], "best_y":best_y[c],
             "minima":results_minima, "minima_y":func_vals_minima,
             "edge":results_edge, "edge_y": func_vals_edge,
             "genetic":genetic_x, "genetic_y":genetic_y}
