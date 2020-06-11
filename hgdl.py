@@ -76,15 +76,15 @@ def deflated_local(starts, results_edge, results_minima, gradient, hessian, boun
     with Pool(numWorkers) as workers:
         for j in range(maxLocal):
             percent_none = 0.
-#            tmp_results = workers.imap_unordered(
-#                    partial(newton,minima=results_minima,
-#                        gradient=gradient,hessian=hessian,bounds=bounds,r=r,alpha=alpha),
-#                    starts)
-            func = partial(newton,minima=results_minima,
-                        gradient=gradient,hessian=hessian,bounds=bounds,r=r,alpha=alpha)
-#            for x in tmp_results:
-            for i in range(len(starts)):
-                x = func(starts[i])
+            tmp_results = workers.imap_unordered(
+                    partial(newton,minima=results_minima,
+                        gradient=gradient,hessian=hessian,bounds=bounds,r=r,alpha=alpha),
+                    starts)
+#            func = partial(newton,minima=results_minima,
+#                        gradient=gradient,hessian=hessian,bounds=bounds,r=r,alpha=alpha)
+            for x in tmp_results:
+#            for i in range(len(starts)):
+#                x = func(starts[i])
                 if not x["success"]:
                     percent_none += 1./starts.shape[0]
                 else:
