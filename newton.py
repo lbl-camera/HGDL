@@ -33,8 +33,8 @@ def newton(x, minima, gradient, hessian, bounds, r, alpha):
         update = np.linalg.lstsq(hess+np.outer(jac,f), jac, rcond=None)[0]
         xNew = x - update
         if not in_bounds(xNew, bounds):
-            for i in range(1,4):
-                xNew = x - update/(2.**i)
+            for j in range(1,4):
+                xNew = x - update/(2.**j)
                 if in_bounds(xNew, bounds):
                     return {"success":True,"x":xNew,"edge":True}
             return {"success":False}
