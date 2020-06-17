@@ -79,11 +79,11 @@ class HGDL:
         gr[indices] = ((-2.0*d2[indices])/(a**2)) * np.exp(-1.0/a)
         return gr
     ###########################################################################
-    def deflation_operator(self,x,x_0):
-        return 1.0/(1.0-self.bump_function(x,x0))
+    def deflation_operator(self,x,x0):
+        return 1.0/(1.0-self.bump_function(np.array([x]),x0))
     ###########################################################################
     def deflation_operator_gradient(self,x,x0):
-        return self.bump_function_gradient(x,x0)
+        return self.bump_function_gradient(np.array([x]),x0)
     ###########################################################################
     def deflation_function(self,x,x0):
         if len(x0) == 0: return 1.0
@@ -103,77 +103,103 @@ class HGDL:
             hessian = self.hess_func(x, self.argument_dict)
             d = self.deflation_function(x,x0)
             dg = self.deflation_function_gradient(x,x0)
-            gamma = np.linalg.solve(hessian+(np.outer(gradient,dg)/d),-gradient)
+            gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
             x += gamma
             print("current position: ",x,"epsilon: ",e)
         return x,self.obj_func(x, self.argument_dict),e,np.linalg.eig(hessian)[0]
     ###########################################################################
     def hgdl(self):
+        self.plot_schwefel(bounds = [[-10,10],[-10,10]],deflation_points = np.array([[0,0],[200,200]]))
+        exit()
         break_condition = False
         x = self.initial_positions
+        print("initial points: ", x)
+        temp = np.array(x)
         f = np.empty((len(x)))
         e = np.empty((len(x)))
         eig = np.empty((len(x), self.dim))
         x0 = []
-        optima_list = None
+        optima_list = {"points": np.empty((0,2)), \
+                "func evals": np.empty((0)), \
+                "classifier": [], "eigen values": np.empty((0,self.dim)), \
+                "gradient norm":np.empty((0))}
         while break_condition is False:
             ##walk walkers with DNewton
             for i in range(self.number_of_walkers):
                 x[i],f[i],e[i], eig[i] = self.DNewton(x[i],x0,self.local_tol)
+            print("results of the newton: ",x,f)
+            print("deflations @: ", x0)
             ##assemble optima_list
             optima_list = self.fill_in_optima_list(optima_list, x,f,e,eig)
+            x0 = optima_list["points"]
+            ###this is in place of the global replacement later:
+            x = np.array(temp)
+            #np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], 
+            #size = (self.number_of_walkers,len(self.bounds)))
+            ########################################################
             print(optima_list)
+            self.plot_schwefel(points = optima_list["points"], deflation_points = optima_list["points"])
+            print("=================================================")
+            print("=================================================")
+            print("=================================================")
+            print("=================================================")
+            input()
             ##if something break_condition is True
             ##replace walkers by global step
             #x = self.global_step(genetic_step,x,Y)
         return x
     ###########################################################################
     def fill_in_optima_list(self,optima_list,x,f,grad_norm,eig):
-        if optima_list is None:
-            classifier = []
-            for i in range(len(x)):
-                if grad_norm[i] > self.local_tol: classifier.append("degenerate")
-                else:
-                    if len(np.where(eig[i] > 0.0)[0]) == len(eig[i]): classifier.append("minimum")
-                    elif len(np.where(eig[i] < 0.0)[0]) == len(eig[i]): classifier.append("maximum")
-                    elif len(np.where(eig[i] == 0.0)[0])  > 0: classifier.append("zero curvature")
-                    elif len(np.where(eig[i] < 0.0)[0])  < len(eig[i]): classifier.append("sattle point")
-                    else: print("something is up with the eigen values: ", eig[i]); exit()
-            optima_list = {"points": x, "func evals": f, "classifier": classifier, "eigen values": eig, "gradient norm":grad_norm}
-            #print("----------------------------------------------------")
-            #print(optima_list)
-            sort_indices = np.argsort(optima_list["func evals"])
-            #print("----------------------------------------------------")
-            #print(sort_indices)
-            #print("----------------------------------------------------")
-            optima_list["points"] = optima_list["points"][sort_indices]
-            optima_list["func evals"] = optima_list["func evals"][sort_indices]
-            optima_list["classifier"] = [optima_list["classifier"][i] for i in sort_indices]
-            optima_list["eigen values"] = optima_list["eigen values"][sort_indices]
-            optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices]
-            #print("----------------------------------------------------")
-            #print(optima_list)
-            #print("----------------------------------------------------")
-            #exit()
-        else:
-            for i in range(len(x)):
-                ...
-        print(optima_list)
-        exit()
+        print("optima list before update: ", optima_list)
+        print("new x")
+        print(x,f,grad_norm,eig)
+        print("=================")
+        #if optima_list is None:
+        classifier = []
+        for i in range(len(x)):
+            if grad_norm[i] > self.local_tol: classifier.append("degenerate")
+            elif len(np.where(eig[i] > 0.0)[0]) == len(eig[i]): classifier.append("minimum")
+            elif len(np.where(eig[i] < 0.0)[0]) == len(eig[i]): classifier.append("maximum")
+            elif len(np.where(eig[i] == 0.0)[0])  > 0: classifier.append("zero curvature")
+            elif len(np.where(eig[i] < 0.0)[0])  < len(eig[i]): classifier.append("sattle point")
+            else: print("something is up with the eigen values: ", eig[i]); exit()
+
+        optima_list = {"points":       np.vstack([optima_list["points"],x]), \
+                       "func evals":   np.append(optima_list["func evals"],f), \
+                       "classifier":   optima_list["classifier"] + classifier, \
+                       "eigen values": np.vstack([optima_list["eigen values"],eig]),\
+                       "gradient norm":np.append(optima_list["gradient norm"],grad_norm)}
+        #print("----------------------------------------------------")
+        #print(optima_list)
+        sort_indices = np.argsort(optima_list["func evals"])
+        #print("----------------------------------------------------")
+        #print(sort_indices)
+        #print("----------------------------------------------------")
+        optima_list["points"] = optima_list["points"][sort_indices]
+        optima_list["func evals"] = optima_list["func evals"][sort_indices]
+        optima_list["classifier"] = [optima_list["classifier"][i] for i in sort_indices]
+        optima_list["eigen values"] = optima_list["eigen values"][sort_indices]
+        optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices]
+        #print("----------------------------------------------------")
+        #print(optima_list)
+        #print("----------------------------------------------------")
+        #exit()
+        print("new optima list: ", optima_list)
+        print("elements in optima list: ", len(optima_list["points"]))
         return optima_list
     ###########################################################################
     ##################TEST FUNCTION############################################
     ###########################################################################
     ###########################################################################
-    def schwefel(self,x,args):
+    def schwefel(self,x,args = None):
         return 418.9829*len(x) - np.sum(x*np.sin(np.sqrt(np.abs(x))))
     ###########################################################################
-    def schwefel_gradient(self,x,args):
+    def schwefel_gradient(self,x,args = None):
         indices = np.where(x==0)
         x[indices] = 0.00001
         return -(np.sin(np.sqrt(np.abs(x)))+(x*np.cos(np.sqrt(np.abs(x)))*(0.5/np.sqrt(np.abs(x)))*(np.sign(x))))
     ###########################################################################
-    def schwefel_hessian(self,x,args):
+    def schwefel_hessian(self,x,args = None):
         e = 1e-4
         hessian=np.zeros((len(x),len(x)))
         for i in range(len(hessian)):
@@ -184,3 +210,31 @@ class HGDL:
             a = (((self.schwefel_gradient(x_aux1,args)-self.schwefel_gradient(x_aux2,args))/(2.0*e)))
             hessian[i,i] = a[i]
         return hessian
+    def plot_schwefel(self,bounds = [[-500,500],[-500,500]], resolution = 50, points = None, deflation_points = None):
+        import numpy as np
+        import matplotlib.pyplot as plt
+        from matplotlib import cm
+
+        X = np.linspace(bounds[0][0], bounds[0][1], resolution)
+        Y = np.linspace(bounds[1][0], bounds[1][1], resolution)
+        X, Y = np.meshgrid(X, Y)
+        schwefel = np.empty((X.shape))
+        gr = np.empty((X.shape))
+
+        for i in range(len(X)):
+            for j in range(len(Y)):
+                schwefel[i,j] = self.schwefel(np.array([X[i,j],Y[i,j]]))
+                if deflation_points is not None:
+                    #gr[i,j] = self.schwefel_gradient(np.array([X[i,j],Y[i,j]]))[0] * self.deflation_function(np.array([[X[i,j],Y[i,j]]]), deflation_points)
+                    gr[i,j] = self.deflation_function(np.array([[X[i,j],Y[i,j]]]), deflation_points)
+                    #gr[i,j] = self.bump_function(np.array([[X[i,j],Y[i,j]]]), np.array([0,0]))
+
+
+        fig = plt.figure(0)
+        plt.pcolormesh(X, Y, schwefel, cmap=cm.viridis)
+        if points is not None: plt.scatter(points[:,0], points[:,1])
+
+        if deflation_points is not None:
+            fig = plt.figure(1)
+            plt.pcolormesh(X, Y, gr, cmap=cm.viridis)
+        plt.show()
