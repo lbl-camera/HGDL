@@ -55,48 +55,52 @@ class HGDL:
         res = self.hgdl()
         print(res)
     ###########################################################################
-    def bump_function(self,x,x0,r = 1.0):
+    def bump_function(self,x,x0,r = 20.0):
         """
         evaluates the bump function
         x ... 2d numpy array of points
         x0 ... 1d numpy array of location of bump function
         """
+        if x.ndim == 1: x = np.array([x])
         np.seterr(all = 'ignore')
         d = np.linalg.norm((x - x0),axis = 1)
         b = np.zeros((d.shape))
         indices = np.where(d<r)
         a = 1.0-((d[indices]/r)**2)
-        b[indices] = np.exp(-1.0/a)
+        b[indices] = np.exp(1.0) * np.exp(-1.0/a)
         return b
     ###########################################################################
-    def bump_function_gradient(self,x,x0, r = 1.0):
+    def bump_function_gradient(self,x,x0, r = 20.0):
+        if x.ndim == 1: x = np.array([x])
         np.seterr(all = 'ignore')
         d = np.array([np.linalg.norm((x - x0),axis = 1),]*len(x[0])).T
         d2= (x - x0)
         gr = np.zeros((d2.shape))
         indices = np.where(d<r) 
         a = 1.0-((d[indices]/r)**2)
-        gr[indices] = ((-2.0*d2[indices])/(a**2)) * np.exp(-1.0/a)
+        gr[indices] = np.exp(1.0) * ((-2.0*d2[indices])/(a**2)) * np.exp(-1.0/a)
         return gr
     ###########################################################################
-    def deflation_operator(self,x,x0):
-        return 1.0/(1.0-self.bump_function(np.array([x]),x0))
+    #def deflation_operator(self,x,x0):
+    #    return 1.0/(1.0-self.bump_function(np.array([x]),x0))
     ###########################################################################
-    def deflation_operator_gradient(self,x,x0):
-        return self.bump_function_gradient(np.array([x]),x0)
+    #def deflation_operator_gradient(self,x,x0):
+    #    return self.bump_function_gradient(np.array([x]),x0)
     ###########################################################################
     def deflation_function(self,x,x0):
         if len(x0) == 0: return 1.0
-        s = np.array([self.deflation_operator(x,x0[i]) for i in range(len(x0))])
-        return np.sum(s)
+        s = np.array([self.bump_function(x,x0[i]) for i in range(len(x0))])
+        return (1.0/(1.0-sum(s)))
     ###########################################################################
     def deflation_function_gradient(self,x,x0):
         if len(x0) == 0: return np.zeros((len(x)))
-        s = np.array([self.deflation_operator_gradient(x,x0[i]) for i in range(len(x0))])
-        return np.sum(s)
+        s1 = np.array([self.bump_function(x,x0[i]) for i in range(len(x0))])
+        s2 = np.array([self.bump_function_gradient(x,x0[i]) for i in range(len(x0))])
+        return (1.0/((1.0-sum(s1))**2))*np.sum(s2)
     ###########################################################################
     def DNewton(self,x,x0,tol):
         e = np.inf
+        print("in newton: ",x,x0)
         while e > tol:
             gradient = self.grad_func(x, self.argument_dict)
             e = np.linalg.norm(gradient)
@@ -105,12 +109,11 @@ class HGDL:
             dg = self.deflation_function_gradient(x,x0)
             gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
             x += gamma
+            if len(x0) != 0: self.plot_schwefel( deflation_points = np.array(x0), points = np.array([x]))
             print("current position: ",x,"epsilon: ",e)
         return x,self.obj_func(x, self.argument_dict),e,np.linalg.eig(hessian)[0]
     ###########################################################################
     def hgdl(self):
-        self.plot_schwefel(bounds = [[-10,10],[-10,10]],deflation_points = np.array([[0,0],[200,200]]))
-        exit()
         break_condition = False
         x = self.initial_positions
         print("initial points: ", x)
@@ -188,6 +191,16 @@ class HGDL:
         print("elements in optima list: ", len(optima_list["points"]))
         return optima_list
     ###########################################################################
+    def global_step(self,x,y):
+        c = 1.0
+        y  = y -  np.min(y)
+        y =  y/np.max(y)
+        cov = np.cov(x, aweights = 1.0 - (y**c))
+        mean= np.mean(x , axis = 0)
+        offspring = np.random.multivariate_normal(mean, cov, size = len(x))
+        return offspring
+
+    ###########################################################################
     ##################TEST FUNCTION############################################
     ###########################################################################
     ###########################################################################
@@ -210,7 +223,7 @@ class HGDL:
             a = (((self.schwefel_gradient(x_aux1,args)-self.schwefel_gradient(x_aux2,args))/(2.0*e)))
             hessian[i,i] = a[i]
         return hessian
-    def plot_schwefel(self,bounds = [[-500,500],[-500,500]], resolution = 50, points = None, deflation_points = None):
+    def plot_schwefel(self,bounds = [[-500,500],[-500,500]], resolution = 100, points = None, deflation_points = None):
         import numpy as np
         import matplotlib.pyplot as plt
         from matplotlib import cm
@@ -225,16 +238,17 @@ class HGDL:
             for j in range(len(Y)):
                 schwefel[i,j] = self.schwefel(np.array([X[i,j],Y[i,j]]))
                 if deflation_points is not None:
-                    #gr[i,j] = self.schwefel_gradient(np.array([X[i,j],Y[i,j]]))[0] * self.deflation_function(np.array([[X[i,j],Y[i,j]]]), deflation_points)
-                    gr[i,j] = self.deflation_function(np.array([[X[i,j],Y[i,j]]]), deflation_points)
-                    #gr[i,j] = self.bump_function(np.array([[X[i,j],Y[i,j]]]), np.array([0,0]))
+                    gr[i,j] = self.schwefel_gradient(np.array([X[i,j],Y[i,j]]))[0] * self.deflation_function(np.array([[X[i,j],Y[i,j]]]), deflation_points)
+                    #gr[i,j] = self.deflation_function(np.array([[X[i,j],Y[i,j]]]), deflation_points)
 
 
         fig = plt.figure(0)
-        plt.pcolormesh(X, Y, schwefel, cmap=cm.viridis)
+        a = plt.pcolormesh(X, Y, schwefel, cmap=cm.viridis)
+        plt.colorbar(a)
         if points is not None: plt.scatter(points[:,0], points[:,1])
 
-        if deflation_points is not None:
-            fig = plt.figure(1)
-            plt.pcolormesh(X, Y, gr, cmap=cm.viridis)
+        if len(deflation_points) != 0: plt.scatter(deflation_points[:,0], deflation_points[:,1])
+        #    fig = plt.figure(1)
+        #    b = plt.pcolormesh(X, Y, gr, cmap=cm.viridis, vmin = -1.5, vmax = 1.5)
+        #    plt.colorbar(b)
         plt.show()
