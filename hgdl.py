@@ -6,6 +6,12 @@ import time
 ###institution: CAMERA @ Lawrence Berkeley National Laboratory
 
 
+
+####TODO:   *currently walkers that walk out in Newton are dicarded. We should do a line search then
+            *currently individuals are replaced randomly, we should do the genetic step or the global_gaussian_pdf step
+            *the radius is still ad hoc, should be related to curvature
+
+
 class HGDL:
     """
     doc string here
@@ -55,7 +61,7 @@ class HGDL:
         res = self.hgdl()
         print(res)
     ###########################################################################
-    def bump_function(self,x,x0,r = 20.0):
+    def bump_function(self,x,x0,r = 40.0):
         """
         evaluates the bump function
         x ... 2d numpy array of points
@@ -70,7 +76,7 @@ class HGDL:
         b[indices] = np.exp(1.0) * np.exp(-1.0/a)
         return b
     ###########################################################################
-    def bump_function_gradient(self,x,x0, r = 20.0):
+    def bump_function_gradient(self,x,x0, r = 40.0):
         if x.ndim == 1: x = np.array([x])
         np.seterr(all = 'ignore')
         d = np.array([np.linalg.norm((x - x0),axis = 1),]*len(x[0])).T
@@ -101,7 +107,16 @@ class HGDL:
     def DNewton(self,x,x0,tol):
         e = np.inf
         print("in newton: ",x,x0)
+        success = True
+        counter = 0
         while e > tol:
+            counter += 1
+            if counter >= self.local_max_iter or self.out_of_bounds(x):
+                success = False
+                print("out of bounds or iter limit reached: ", x, "after ", counter," iterations")
+                x = np.zeros((x.shape))
+                #input()
+                return x,0,0,0,success
             gradient = self.grad_func(x, self.argument_dict)
             e = np.linalg.norm(gradient)
             hessian = self.hess_func(x, self.argument_dict)
@@ -109,9 +124,9 @@ class HGDL:
             dg = self.deflation_function_gradient(x,x0)
             gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
             x += gamma
-            if len(x0) != 0: self.plot_schwefel( deflation_points = np.array(x0), points = np.array([x]))
+            #if len(x0) != 0: self.plot_schwefel( deflation_points = np.array(x0), points = np.array([x]))
             print("current position: ",x,"epsilon: ",e)
-        return x,self.obj_func(x, self.argument_dict),e,np.linalg.eig(hessian)[0]
+        return x,self.obj_func(x, self.argument_dict),e,np.linalg.eig(hessian)[0], success
     ###########################################################################
     def hgdl(self):
         break_condition = False
@@ -121,6 +136,7 @@ class HGDL:
         f = np.empty((len(x)))
         e = np.empty((len(x)))
         eig = np.empty((len(x), self.dim))
+        success = np.empty((len(x)), dtype = bool)
         x0 = []
         optima_list = {"points": np.empty((0,2)), \
                 "func evals": np.empty((0)), \
@@ -129,35 +145,36 @@ class HGDL:
         while break_condition is False:
             ##walk walkers with DNewton
             for i in range(self.number_of_walkers):
-                x[i],f[i],e[i], eig[i] = self.DNewton(x[i],x0,self.local_tol)
-            print("results of the newton: ",x,f)
-            print("deflations @: ", x0)
+                x[i],f[i],e[i], eig[i],success[i] = self.DNewton(x[i],x0,self.local_tol)
+            #print("results of the newton: ",x,f)
+            #print(success)
+            #print("deflations @: ", x0)
             ##assemble optima_list
-            optima_list = self.fill_in_optima_list(optima_list, x,f,e,eig)
+            optima_list = self.fill_in_optima_list(optima_list, x,f,e,eig,success)
             x0 = optima_list["points"]
             ###this is in place of the global replacement later:
-            x = np.array(temp)
-            #np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], 
-            #size = (self.number_of_walkers,len(self.bounds)))
+            x = \
+            np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], 
+            size = (self.number_of_walkers,len(self.bounds)))
             ########################################################
-            print(optima_list)
+            #print(optima_list)
             self.plot_schwefel(points = optima_list["points"], deflation_points = optima_list["points"])
             print("=================================================")
             print("=================================================")
             print("=================================================")
             print("=================================================")
-            input()
+            #input()
             ##if something break_condition is True
             ##replace walkers by global step
             #x = self.global_step(genetic_step,x,Y)
         return x
     ###########################################################################
-    def fill_in_optima_list(self,optima_list,x,f,grad_norm,eig):
-        print("optima list before update: ", optima_list)
-        print("new x")
-        print(x,f,grad_norm,eig)
-        print("=================")
-        #if optima_list is None:
+    def fill_in_optima_list(self,optima_list,x,f,grad_norm,eig, success):
+        clean_indices = np.where(success == True)
+        clean_x = x[clean_indices]
+        clean_f = f[clean_indices]
+        clean_grad_norm = grad_norm[clean_indices]
+        clean_eig = eig[clean_indices]
         classifier = []
         for i in range(len(x)):
             if grad_norm[i] > self.local_tol: classifier.append("degenerate")
@@ -167,29 +184,24 @@ class HGDL:
             elif len(np.where(eig[i] < 0.0)[0])  < len(eig[i]): classifier.append("sattle point")
             else: print("something is up with the eigen values: ", eig[i]); exit()
 
-        optima_list = {"points":       np.vstack([optima_list["points"],x]), \
-                       "func evals":   np.append(optima_list["func evals"],f), \
+        optima_list = {"points":       np.vstack([optima_list["points"],clean_x]), \
+                       "func evals":   np.append(optima_list["func evals"],clean_f), \
                        "classifier":   optima_list["classifier"] + classifier, \
-                       "eigen values": np.vstack([optima_list["eigen values"],eig]),\
-                       "gradient norm":np.append(optima_list["gradient norm"],grad_norm)}
-        #print("----------------------------------------------------")
-        #print(optima_list)
+                       "eigen values": np.vstack([optima_list["eigen values"],clean_eig]),\
+                       "gradient norm":np.append(optima_list["gradient norm"],clean_grad_norm)}
         sort_indices = np.argsort(optima_list["func evals"])
-        #print("----------------------------------------------------")
-        #print(sort_indices)
-        #print("----------------------------------------------------")
         optima_list["points"] = optima_list["points"][sort_indices]
         optima_list["func evals"] = optima_list["func evals"][sort_indices]
         optima_list["classifier"] = [optima_list["classifier"][i] for i in sort_indices]
         optima_list["eigen values"] = optima_list["eigen values"][sort_indices]
         optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices]
-        #print("----------------------------------------------------")
-        #print(optima_list)
-        #print("----------------------------------------------------")
-        #exit()
-        print("new optima list: ", optima_list)
-        print("elements in optima list: ", len(optima_list["points"]))
         return optima_list
+    ###########################################################################
+    def out_of_bounds(self,x):
+        for i in range(len(x)):
+            if x[i] < self.bounds[i,0] or x[i] > self.bounds[i,1]:
+                return True
+        return False
     ###########################################################################
     def global_step(self,x,y):
         c = 1.0
