@@ -6,11 +6,12 @@ import time
 ###institution: CAMERA @ Lawrence Berkeley National Laboratory
 
 
-
-####TODO:   *currently walkers that walk out in Newton are dicarded. We should do a line search then
-            *currently individuals are replaced randomly, we should do the genetic step or the global_gaussian_pdf step
-            *the radius is still ad hoc, should be related to curvature
-
+"""
+TODO:   *currently walkers that walk out in Newton are discarded. We should do a line search instead
+        *currently individuals are replaced randomly, we should do the genetic step or the global_gaussian_pdf step
+        *the radius is still ad hoc, should be related to curvature
+        *need a good global break condition
+"""
 
 class HGDL:
     """
@@ -68,31 +69,33 @@ class HGDL:
         x0 ... 1d numpy array of location of bump function
         """
         if x.ndim == 1: x = np.array([x])
-        np.seterr(all = 'ignore')
-        d = np.linalg.norm((x - x0),axis = 1)
-        b = np.zeros((d.shape))
-        indices = np.where(d<r)
-        a = 1.0-((d[indices]/r)**2)
-        b[indices] = np.exp(1.0) * np.exp(-1.0/a)
-        return b
+        x = x[0]
+        d = np.linalg.norm(x-x0)
+        if d >= r: return 0.0
+        else: return np.exp(1.0) * np.exp(-1.0/(1.0-((d/r)**2)))
+        #np.seterr(all = 'ignore')
+        #d = np.linalg.norm((x - x0),axis = 1)
+        #b = np.zeros((d.shape))
+        #indices = np.where(d<r)
+        #a = 1.0-((d[indices]/r)**2)
+        #b[indices] = np.exp(1.0) * np.exp(-1.0/a)
+        #return b
     ###########################################################################
     def bump_function_gradient(self,x,x0, r = 40.0):
         if x.ndim == 1: x = np.array([x])
-        np.seterr(all = 'ignore')
-        d = np.array([np.linalg.norm((x - x0),axis = 1),]*len(x[0])).T
+        x = x[0]
+        d = np.linalg.norm(x-x0)
         d2= (x - x0)
-        gr = np.zeros((d2.shape))
-        indices = np.where(d<r) 
-        a = 1.0-((d[indices]/r)**2)
-        gr[indices] = np.exp(1.0) * ((-2.0*d2[indices])/(a**2)) * np.exp(-1.0/a)
+        if d >= r: return 0.0
+        else: return np.exp(1.0) * ((-2.0*d2)/((1.0-((d/r)**2))**2)) * np.exp(-1.0/(1.0-((d/r)**2)))
+        #np.seterr(all = 'ignore')
+        #d = np.array([np.linalg.norm((x - x0),axis = 1),]*len(x[0])).T
+        #d2= (x - x0)
+        #gr = np.zeros((d2.shape))
+        #indices = np.where(d<r) 
+        #a = 1.0-((d[indices]/r)**2)
+        #gr[indices] = np.exp(1.0) * ((-2.0*d2[indices])/(a**2)) * np.exp(-1.0/a)
         return gr
-    ###########################################################################
-    #def deflation_operator(self,x,x0):
-    #    return 1.0/(1.0-self.bump_function(np.array([x]),x0))
-    ###########################################################################
-    #def deflation_operator_gradient(self,x,x0):
-    #    return self.bump_function_gradient(np.array([x]),x0)
-    ###########################################################################
     def deflation_function(self,x,x0):
         if len(x0) == 0: return 1.0
         s = np.array([self.bump_function(x,x0[i]) for i in range(len(x0))])
@@ -106,16 +109,14 @@ class HGDL:
     ###########################################################################
     def DNewton(self,x,x0,tol):
         e = np.inf
-        print("in newton: ",x,x0)
         success = True
         counter = 0
         while e > tol:
             counter += 1
             if counter >= self.local_max_iter or self.out_of_bounds(x):
                 success = False
-                print("out of bounds or iter limit reached: ", x, "after ", counter," iterations")
+                #print("out of bounds or iter limit reached: ", x, "after ", counter," iterations")
                 x = np.zeros((x.shape))
-                #input()
                 return x,0,0,0,success
             gradient = self.grad_func(x, self.argument_dict)
             e = np.linalg.norm(gradient)
@@ -124,8 +125,7 @@ class HGDL:
             dg = self.deflation_function_gradient(x,x0)
             gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
             x += gamma
-            #if len(x0) != 0: self.plot_schwefel( deflation_points = np.array(x0), points = np.array([x]))
-            print("current position: ",x,"epsilon: ",e)
+            #print("current position: ",x,"epsilon: ",e)
         return x,self.obj_func(x, self.argument_dict),e,np.linalg.eig(hessian)[0], success
     ###########################################################################
     def hgdl(self):
@@ -138,35 +138,27 @@ class HGDL:
         eig = np.empty((len(x), self.dim))
         success = np.empty((len(x)), dtype = bool)
         x0 = []
+        n = 5
+        best_n = np.zeros((n)) + np.inf
         optima_list = {"points": np.empty((0,2)), \
                 "func evals": np.empty((0)), \
                 "classifier": [], "eigen values": np.empty((0,self.dim)), \
                 "gradient norm":np.empty((0))}
+        global_counter = 0
         while break_condition is False:
+            print("HGDL in iteration: ", global_counter)
+            global_counter += 1
             ##walk walkers with DNewton
             for i in range(self.number_of_walkers):
                 x[i],f[i],e[i], eig[i],success[i] = self.DNewton(x[i],x0,self.local_tol)
-            #print("results of the newton: ",x,f)
-            #print(success)
-            #print("deflations @: ", x0)
             ##assemble optima_list
             optima_list = self.fill_in_optima_list(optima_list, x,f,e,eig,success)
             x0 = optima_list["points"]
             ###this is in place of the global replacement later:
-            x = \
-            np.random.uniform(low = self.bounds[:,0], high = self.bounds[:,1], 
-            size = (self.number_of_walkers,len(self.bounds)))
+            x = self.genetic_step(x0, optima_list["func evals"], bounds = self.bounds, numChoose= len(x))
             ########################################################
-            #print(optima_list)
-            self.plot_schwefel(points = optima_list["points"], deflation_points = optima_list["points"])
-            print("=================================================")
-            print("=================================================")
-            print("=================================================")
-            print("=================================================")
-            #input()
-            ##if something break_condition is True
-            ##replace walkers by global step
-            #x = self.global_step(genetic_step,x,Y)
+            if global_counter == self.global_max_iter: break_condition = True
+        #self.plot_schwefel(points = optima_list["points"], deflation_points = optima_list["points"])
         return x
     ###########################################################################
     def fill_in_optima_list(self,optima_list,x,f,grad_norm,eig, success):
@@ -202,6 +194,15 @@ class HGDL:
             if x[i] < self.bounds[i,0] or x[i] > self.bounds[i,1]:
                 return True
         return False
+    def in_bounds(self, x, bounds):
+        if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
+            return True
+        return False
+    def random_sample(self,N,k,bounds):
+        sample = np.random.random((N, k))
+        sample *= bounds[:,1] - bounds[:,0]
+        sample += bounds[:,0]
+        return sample
     ###########################################################################
     def global_step(self,x,y):
         c = 1.0
@@ -211,7 +212,54 @@ class HGDL:
         mean= np.mean(x , axis = 0)
         offspring = np.random.multivariate_normal(mean, cov, size = len(x))
         return offspring
-
+    ###########################################################################
+    def genetic_step(self,X, y, bounds, numChoose):
+        """
+        Input:
+        X is the individuals - points on a surface
+        y is the performance - f(X)
+        Notes:
+        the children can be outside of the bounds!
+        """
+        unfairness = 2.5
+        wildness = 0.05
+        N, k = X.shape
+        # normalize the performances to (0,1)
+        y -= np.amin(y)
+        amax = np.amax(y)
+        # if the distribution of performance has no width,
+        #   give everyone an equal shot
+        if np.isclose(amax,0.):
+            p = np.ones(N)*1./N
+        else:
+            y /= np.amax(y)
+            y *= -1.
+            y -= np.amin(y)
+            y += 1
+            p = y/np.sum(y)
+        #This chooses from the sample based on the power law,
+        #allowing replacement means that the the individuals
+        #can have multiple kids
+        p = unfairness*np.power(p,unfairness-1)
+        p /= np.sum(p)
+        if np.isnan(p).any():
+            raise Exception("got isnans in GeneticStep")
+        moms = np.random.choice(N, size=numChoose, replace=True, p=p)
+        dads = np.random.choice(N, size=numChoose, replace=True, p=p)
+        # calculate a perturbation to the median
+        #   of each individual's parents
+        perturbation = np.random.normal(
+                loc = 0.,
+                scale=wildness*(bounds[:,1]-bounds[:,0]),
+                size=(numChoose,k))
+        # the children are the median of their parents plus a perturbation
+        norm = p[moms]+p[dads]
+        weights = (p[moms]/norm, p[dads]/norm)
+        weighted_linear_sum = weights[0].reshape(-1,1)*X[moms] + weights[0].reshape(-1,1)*X[dads]
+        children = weighted_linear_sum + perturbation
+        oob = np.logical_not([self.in_bounds(x,bounds) for x in children])
+        children[oob] = self.random_sample(np.sum(oob), k, bounds)
+        return children
     ###########################################################################
     ##################TEST FUNCTION############################################
     ###########################################################################
@@ -260,7 +308,4 @@ class HGDL:
         if points is not None: plt.scatter(points[:,0], points[:,1])
 
         if len(deflation_points) != 0: plt.scatter(deflation_points[:,0], deflation_points[:,1])
-        #    fig = plt.figure(1)
-        #    b = plt.pcolormesh(X, Y, gr, cmap=cm.viridis, vmin = -1.5, vmax = 1.5)
-        #    plt.colorbar(b)
         plt.show()
