@@ -1,7 +1,7 @@
+import numpy as np
 
-def random_sample(N,k,bounds):
-    sample = np.random.random((N, k))
-    sample *= bounds[:,1] - bounds[:,0]
-    sample += bounds[:,0]
-    return sample
+def in_bounds(x, bounds):
+    if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
+        return True
+    return False
 

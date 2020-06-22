@@ -1,30 +1,12 @@
 import numpy as np
-import numba as nb
+from scipy.optimize import minimize
 
-@nb.njit(cache=True)
-def reduced_bump_derivative(x, minima, r, alpha):
-    r2 = r**2.
-    for i in range(minima.shape[0]):
-        dist_vec = x - minima[i]
-        dist2 = np.sum(np.power(dist_vec,2))
-        if dist2 > r2:
-            continue
-        else:
-            for j in range(i+1,minima.shape[0]):
-                if np.sum(np.power(x-minima[j],2))<r2:
-                    raise NotImplementedError("there are two minima in range of this point. Exiting")
-            exp_denom = r2-dist2
-            bump = np.exp(-alpha/exp_denom + alpha/r2)
-            if bump==1.:
-                return np.inf*np.ones_like(x), 1.
-            der = -bump*2*alpha*dist_vec*np.power(exp_denom,-2)
-            deflation = 1/(1.-bump)
-            return 2*deflation*der, bump
-    return np.zeros_like(x), 0.
-
-def newton(x, minima, gradient, hessian, bounds, r, alpha):
-    k = x.shape[0]
-    for i in range(30):
+def scipy_newton(hgdl):
+    
+    for i in range(hgdl.max_local):
+        for j in range(len(hgdl.num_individuals)):
+            res = minimze(fun=hgdl.func, jac=hgdl.jac, hess=hgdl.hess, method='SLSQP')
+            if 
         jac = gradient(x)
         hess = hessian(x)
         # if x is near 2 minima 
