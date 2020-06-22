@@ -24,12 +24,12 @@ def reduced_bump_derivative(x, minima, r, alpha):
 
 def newton(x, minima, gradient, hessian, bounds, r, alpha):
     k = x.shape[0]
-    for i in range(20):
+    for i in range(30):
         jac = gradient(x)
         hess = hessian(x)
         # if x is near 2 minima 
         try:
-            f, b = reduced_bump_derivative(x, minima, r, alpha)
+            b = 0 #f, b = reduced_bump_derivative(x, minima, r, alpha)
         except NotImplementedError:
             print("exited bc was near two points")
             return {"success":False}
@@ -37,7 +37,7 @@ def newton(x, minima, gradient, hessian, bounds, r, alpha):
             return {"success":True,"x":x,"edge":False}
         # newton step 
         try:
-            update = np.linalg.lstsq(hess+np.outer(jac,f), jac, rcond=None)[0]
+            update = np.linalg.lstsq(hess, jac, rcond=None)[0]
         # if you are right on top of a minima, there will be annoying infinities 
         # otherwise, just try to move over a little and keep trucking 
         except np.linalg.LinAlgError:
