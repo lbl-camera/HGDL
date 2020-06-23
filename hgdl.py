@@ -18,7 +18,7 @@ class HGDL(object):
     def __init__(
             self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=5,
             num_individuals=15, max_local=5, num_workers=None, bestX=5,
-            x0=None, global_method='genetic', local_method='my_newton',
+            x0=None, global_method='genetic', local_method='scipy',
             ):
         """
         Mandatory Parameters:
@@ -67,7 +67,9 @@ class HGDL(object):
 
     def run(self):
         for i in range(self.max_epochs):
-            self.results.update_genetic(run_global(self))
+            self.x0 = run_global(self)
+            self.results.update_genetic(self.x0)
+            run_local(self)
         return self.results.roll_up()
 
     def random_sample(self, N, k,bounds):
