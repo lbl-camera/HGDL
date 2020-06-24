@@ -6,8 +6,50 @@ from Global.run_global import run_global
 from Local.run_local import run_local
 from utility import in_bounds
 from results import Results
+from multiprocessing import Process, Queue, Lock
+from time import sleep
 
 class HGDL(object):
+    def __init__(self, *args, **kwargs):
+        self.queue = Queue()
+        self.lock = Lock()
+        self.hgdl = HGDL_worker(
+            hgdl=self,
+            *args, **kwargs)
+        self.worker = Process(target=self.hgdl.run)
+        self.worker.start()
+        self.done = False
+
+    def get_best(self):
+        if self.done:
+            result = {
+                    "best_x":self.result["best_x"],
+                    "best_y":self.result["best_y"],
+                    }
+        else:
+            self.lock.acquire()
+            res = self.queue.get()
+            self.lock.release()
+            if res["final"]:
+                self.done = True
+                self.result = res
+            result = {
+                    "best_x":res["best_x"],
+                    "best_y":res["best_y"]
+                    }
+        return result
+
+    def get_final(self):
+        self.worker.join()
+        if self.done:
+            return self.result
+        else:
+            self.lock.acquire()
+            res = self.queue.get()
+            self.lock.release()
+            return res
+
+class HGDL_worker(object):
     """
     HGDL
         * Hybrid - uses both local and global optimization
@@ -16,7 +58,7 @@ class HGDL(object):
         * L - uses local extremum localMethod
     """
     def __init__(
-            self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=5,
+            self, func, grad, hess, bounds, hgdl, r=.3, alpha=.1, max_epochs=5,
             num_individuals=15, max_local=5, num_workers=None, bestX=5,
             x0=None, global_method='genetic', local_method='scipy',
             ):
@@ -41,6 +83,8 @@ class HGDL(object):
             or {"success":True, "x",x, "y",y} with the bestX x's and their y's
         """
         self.rng = np.random.default_rng(42)
+        self.lock = hgdl.lock
+        self.queue = hgdl.queue
         self.func = func
         self.grad = grad
         self.hess = hess
@@ -70,7 +114,16 @@ class HGDL(object):
             self.x0 = run_global(self)
             self.results.update_genetic(self.x0)
             run_local(self)
-        return self.results.roll_up()
+            self.lock.acquire()
+            while not self.queue.empty(): self.queue.get()
+            self.queue.put(self.results.epoch_end())
+            self.lock.release()
+            sleep(10)
+        self.lock.acquire()
+        while not self.queue.empty(): self.queue.get()
+        self.queue.get()
+        self.queue.put(self.results.roll_up())
+        self.lock.release()
 
     def random_sample(self, N, k,bounds):
         sample = self.rng.random((N, k))

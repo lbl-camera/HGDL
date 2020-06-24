@@ -12,11 +12,13 @@ def already_found(x, other_x, r):
 
 def modified_jac(x, hgdl):
     j = hgdl.grad(x)
+    return j
     defl = deflation(x, hgdl.results.minima_x, hgdl.r**2, hgdl.alpha)
     return j*defl
 
 def modified_hess(x, hgdl):
     h = hgdl.hess(x)
+    return h
     j = hgdl.grad(x)
     defl = deflation(x, hgdl.results.minima_x, hgdl.r**2, hgdl.alpha)
     defl_der = deflation_der(x, hgdl.results.minima_x, hgdl.r**2, hgdl.alpha)
