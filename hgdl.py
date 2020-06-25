@@ -29,9 +29,8 @@ class HGDL(object):
     def __init__(self, *args, **kwargs):
         self.data = locked_queue()
         self.hgdl = HGDL_worker(
-            data=self.data,
             *args, **kwargs)
-        self.worker = Process(target=self.hgdl.run)
+        self.worker = Process(target=self.hgdl.run, args=(self.data,))
         self.worker.start()
 
     def get_best(self):
@@ -61,7 +60,7 @@ class HGDL_worker(object):
         * L - uses local extremum localMethod
     """
     def __init__(
-            self, func, grad, hess, bounds, data, r=.3, alpha=.1, max_epochs=5,
+            self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=5,
             num_individuals=15, max_local=5, num_workers=None, bestX=5,
             x0=None, global_method='genetic', local_method='scipy',
             ):
@@ -86,7 +85,6 @@ class HGDL_worker(object):
             or {"success":True, "x",x, "y",y} with the bestX x's and their y's
         """
         self.rng = np.random.default_rng(42)
-        self.data = data
         self.func = func
         self.grad = grad
         self.hess = hess
@@ -111,13 +109,13 @@ class HGDL_worker(object):
         self.results.update_genetic(self.x0)
         self.in_bounds = in_bounds
 
-    def run(self):
+    def run(self, data):
         for i in range(self.max_epochs):
             self.x0 = run_global(self)
             self.results.update_genetic(self.x0)
             run_local(self)
-            self.data.upload(self.results.epoch_end())
-        self.data.upload(self.results.roll_up())
+            data.upload(self.results.epoch_end())
+        data.upload(self.results.roll_up())
 
     def random_sample(self, N, k,bounds):
         sample = self.rng.random((N, k))
