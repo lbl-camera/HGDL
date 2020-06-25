@@ -42,6 +42,6 @@ def genetic_step(hgdl):
     weights = (p[moms]/norm, p[dads]/norm)
     weighted_linear_sum = weights[0].reshape(-1,1)*X[moms] + weights[0].reshape(-1,1)*X[dads]
     children = weighted_linear_sum + perturbation
-    oob = np.logical_not([hgdl.in_bounds(x,bounds) for x in children])
+    oob = np.logical_not([hgdl.in_bounds(x) for x in children])
     children[oob] = hgdl.random_sample(np.sum(oob), k, bounds)
     return children

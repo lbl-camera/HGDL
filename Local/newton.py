@@ -1,34 +1,31 @@
 import numpy as np
-import numba as nb
-def newton(x, minima, gradient, hessian, bounds, r, alpha):
-    k = x.shape[0]
-    for i in range(30):
-        jac = gradient(x)
-        hess = hessian(x)
-        # if x is near 2 minima 
+
+def newton(x, func, jac, hess, in_bounds):
+    for i in range(15):
         try:
-            b = 0 #f, b = reduced_bump_derivative(x, minima, r, alpha)
-        except NotImplementedError:
-            print("exited bc was near two points")
+            j, h = jac(x), hess(x)
+        except ZeroDivisionError:
             return {"success":False}
-        if np.isclose(np.linalg.norm(jac),0.) and np.isclose(b,0.):
+        except:
+            raise
+        if np.isclose(np.linalg.norm(j),0.):
             return {"success":True,"x":x,"edge":False}
         # newton step 
-        try:
-            update = np.linalg.lstsq(hess, jac, rcond=None)[0]
         # if you are right on top of a minima, there will be annoying infinities 
         # otherwise, just try to move over a little and keep trucking 
+        try:
+            update = np.linalg.lstsq(h, j, rcond=None)[0]
         except np.linalg.LinAlgError:
             x += np.random.normal(loc=0.,scale=3*r,size=x.shape)
             update = np.zeros_like(x)
         xNew = x - update
         # if you stepped out of bounds 
-        if not in_bounds(xNew, bounds):
+        if not in_bounds(xNew):
             for j in range(1,4):
                 if i+j-1 >= 20:
                     return {"success":False}
                 xNew = x - update/(2.**j)
-                if in_bounds(xNew, bounds):
+                if in_bounds(xNew):
                     break
             else:
                 return {"success":False}

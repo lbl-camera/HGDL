@@ -4,7 +4,6 @@
 import numpy as np
 from Global.run_global import run_global
 from Local.run_local import run_local
-from utility import in_bounds
 from results import Results
 from multiprocessing import Process, Queue, Lock
 from time import sleep
@@ -19,6 +18,7 @@ class locked_queue(object):
         self.queue.put(x)
         self.lock.release()
     def download(self):
+        # get cannot be locked 
         x = self.queue.get()
         self.lock.acquire()
         self.queue.put(x)
@@ -62,7 +62,7 @@ class HGDL_worker(object):
     def __init__(
             self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=5,
             num_individuals=15, max_local=5, num_workers=None, bestX=5,
-            x0=None, global_method='genetic', local_method='scipy',
+            x0=None, global_method='genetic', local_method='my_newton',
             ):
         """
         Mandatory Parameters:
@@ -107,7 +107,6 @@ class HGDL_worker(object):
         self.global_method = global_method
         self.local_method = local_method
         self.results.update_genetic(self.x0)
-        self.in_bounds = in_bounds
 
     def run(self, data):
         for i in range(self.max_epochs):
@@ -122,4 +121,8 @@ class HGDL_worker(object):
         sample *= bounds[:,1] - bounds[:,0]
         sample += bounds[:,0]
         return sample
+    def in_bounds(self, x):
+        if (self.bounds[:,1]-x > 0).all() and (self.bounds[:,0] - x < 0).all():
+            return True
+        return False
 

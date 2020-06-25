@@ -9,4 +9,5 @@ hgdl = HGDL(rosen, rosen_der, rosen_hess, b, max_epochs=10, num_workers=2)
 
 for i in range(10):
     print(hgdl.get_best())
+
 print(hgdl.get_final())

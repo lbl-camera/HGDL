@@ -17,7 +17,7 @@ def deflation(x, minima, r, alpha):
             bump = np.exp(-alpha/exp_denom + alpha/r2)
             deflation = 1/(1.-bump)
             return deflation
-    return 0.
+    return 1.
 
 @nb.njit(cache=True)
 def deflation_der(x, minima, r, alpha):

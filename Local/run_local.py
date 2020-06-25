@@ -14,13 +14,11 @@ def already_found(x, other_x, r):
 
 def modified_jac(x, hgdl):
     j = hgdl.grad(x)
-    return j
     defl = deflation(x, hgdl.results.minima_x, hgdl.r**2, hgdl.alpha)
     return j*defl
 
 def modified_hess(x, hgdl):
     h = hgdl.hess(x)
-    return h
     j = hgdl.grad(x)
     defl = deflation(x, hgdl.results.minima_x, hgdl.r**2, hgdl.alpha)
     defl_der = deflation_der(x, hgdl.results.minima_x, hgdl.r**2, hgdl.alpha)
@@ -35,7 +33,8 @@ def run_local(hgdl):
         hess = partial(modified_hess, hgdl=hgdl)
 
         if hgdl.local_method == 'my_newton':
-            func = newton
+            func = partial(newton,
+                    func=hgdl.func, jac=jac, hess=hess, in_bounds=hgdl.in_bounds)
         elif hgdl.local_method == "scipy":
             func = partial(scipy_minimize,
                     func=hgdl.func, jac=jac)
@@ -53,11 +52,13 @@ def run_local(hgdl):
             except NotImplementedError:
                 num_none += 1
                 continue
+            except StopIteration:
+                break
             except:
-                raise Exception
+                raise
             if not res["success"]:
                 num_none += 1
-            elif not hgdl.in_bounds(res["x"], hgdl.bounds):
+            elif not hgdl.in_bounds(res["x"]):
                 num_none += 1
             elif already_found(res["x"], new_minima, hgdl.r**2):
                 num_none += 1
