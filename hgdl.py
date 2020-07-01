@@ -14,7 +14,7 @@ class locked_queue(object):
         self.queue = Queue()
     def upload(self, x):
         self.lock.acquire()
-        for i in range(self.queue.qsize()): self.queue.get()
+        while not self.queue.empty(): self.queue.get()
         self.queue.put(x)
         self.lock.release()
     def download(self):
@@ -106,14 +106,19 @@ class HGDL_worker(object):
         self.x0 = x0
         self.global_method = global_method
         self.local_method = local_method
-        self.results.update_genetic(self.x0)
+        self.results.update_global(self.x0)
+        self.local_args = ()
+        self.local_kwargs = {}
+        self.global_args = ()
+        self.global_kwargs = {}
 
     def run(self, data):
         for i in range(self.max_epochs):
             self.x0 = run_global(self)
-            self.results.update_genetic(self.x0)
+            self.results.update_global(self.x0)
             run_local(self)
             data.upload(self.results.epoch_end())
+            print('epoch best is ',self.results.epoch_end())
         data.upload(self.results.roll_up())
 
     def random_sample(self, N, k,bounds):

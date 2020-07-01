@@ -1,7 +1,8 @@
+# to do: args for local/global method 
 import numpy as np
 from functools import partial
-from multiprocessing import Pool
-
+import dask.config
+import dask.distributed
 from .bump import deflation, deflation_der
 from .newton import newton
 from .scipy_minimize import scipy_minimize
@@ -25,6 +26,9 @@ def modified_hess(x, hgdl):
     return h*defl + np.outer(defl_der, j)
 
 def run_local(hgdl):
+    #dask.config.set(scheduler="processes")
+    #cluster = dask.distributed.LocalCluster(dashboard_address=0)
+    workers = dask.distributed.Client(dashboard_address=0)#cluster)
 
     for i in range(hgdl.max_local):
         new_minima = np.empty((0, hgdl.k))
@@ -34,28 +38,22 @@ def run_local(hgdl):
 
         if hgdl.local_method == 'my_newton':
             func = partial(newton,
-                    func=hgdl.func, jac=jac, hess=hess, in_bounds=hgdl.in_bounds)
+                    func=hgdl.func, jac=jac,
+                    hess=hess, in_bounds=hgdl.in_bounds)
         elif hgdl.local_method == "scipy":
             func = partial(scipy_minimize,
                     func=hgdl.func, jac=jac)
         else:
             raise NotImplementedError("local method not understood")
-
-        if hgdl.num_workers != 1:
-            workers = Pool(processes=hgdl.num_workers)
-            iterable = workers.imap_unordered(func, hgdl.x0)
-        else:
-            iterable = (func(z) for z in hgdl.x0)
-        while num_none / hgdl.num_individuals < .4:
+        futures = workers.map(func, hgdl.x0)
+        for f in dask.distributed.as_completed(futures):
             try:
-                res = next(iterable)
+                res = f.result()
             except NotImplementedError:
                 num_none += 1
                 continue
-            except StopIteration:
+            if num_none / hgdl.num_individuals > .4:
                 break
-            except:
-                raise
             if not res["success"]:
                 num_none += 1
             elif not hgdl.in_bounds(res["x"]):
@@ -64,5 +62,6 @@ def run_local(hgdl):
                 num_none += 1
             else:
                 new_minima = np.append(new_minima, res["x"].reshape(1,-1), 0)
-        if hgdl.num_workers != 1: workers.close()
+        #workers.cancel(futures)
         hgdl.results.update_minima(new_minima)
+    #workers.shutdown()
