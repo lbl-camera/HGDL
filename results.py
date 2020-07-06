@@ -2,12 +2,13 @@ import numpy as np
 
 class Results(object):
     def __init__(self, hgdl):
+        self.func = hgdl.func
+        self.bestX = hgdl.bestX
+        self.N = hgdl.num_individuals
         self.minima_x = np.empty((0, hgdl.k), np.float64)
         self.minima_y = np.empty(0, np.float64)
         self.global_x = np.empty((0, hgdl.k), np.float64)
         self.global_y = np.empty(0, np.float64)
-        self.func = hgdl.func
-        self.bestX = hgdl.bestX
 
     def update_minima(self, new_minima):
         minima_y = np.array([self.func(x) for x in new_minima])

@@ -1,9 +1,7 @@
 import numpy as np
 
 # This is my implementation of a genetic algorithm
-def genetic_step(hgdl):
-    X = hgdl.results.global_x.copy()
-    y = hgdl.results.global_y.copy()
+def genetic_step(hgdl, X, y):
     bounds = hgdl.bounds
 
     unfairness = 2.5

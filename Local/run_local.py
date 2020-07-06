@@ -1,11 +1,12 @@
 # to do: args for local/global method 
 import numpy as np
 from functools import partial
-import dask.config
-import dask.distributed
 from .bump import deflation, deflation_der
 from .newton import newton
 from .scipy_minimize import scipy_minimize
+import os
+import dask
+import dask.distributed
 
 def already_found(x, other_x, r):
     dist2 = np.sum(np.power(x-other_x,2),1)
@@ -26,10 +27,7 @@ def modified_hess(x, hgdl):
     return h*defl + np.outer(defl_der, j)
 
 def run_local(hgdl):
-    #dask.config.set(scheduler="processes")
-    #cluster = dask.distributed.LocalCluster(dashboard_address=0)
-    workers = dask.distributed.Client(dashboard_address=0)#cluster)
-
+    print("hi i'm ",os.getpid())
     for i in range(hgdl.max_local):
         new_minima = np.empty((0, hgdl.k))
         num_none = 0
@@ -42,14 +40,21 @@ def run_local(hgdl):
                     hess=hess, in_bounds=hgdl.in_bounds)
         elif hgdl.local_method == "scipy":
             func = partial(scipy_minimize,
-                    func=hgdl.func, jac=jac)
+                    func=hgdl.func, jac=jac,
+                    hess=hess, *hgdl.local_args,
+                    **hgdl.local_kwargs)
         else:
             raise NotImplementedError("local method not understood")
-        futures = workers.map(func, hgdl.x0)
-        for f in dask.distributed.as_completed(futures):
-            try:
+        client = dask.distributed.Client(dashboard_address=0)
+        def inc(x):
+            return x + 1
+        results = client.map(inc, range(4))
+        for f in dask.distributed.as_completed(results): print(f.result())
+        """ 
+        for f in results:
+            if f.exception() is None:
                 res = f.result()
-            except NotImplementedError:
+            else:
                 num_none += 1
                 continue
             if num_none / hgdl.num_individuals > .4:
@@ -62,6 +67,6 @@ def run_local(hgdl):
                 num_none += 1
             else:
                 new_minima = np.append(new_minima, res["x"].reshape(1,-1), 0)
-        #workers.cancel(futures)
+        """
+        client.shutdown()
         hgdl.results.update_minima(new_minima)
-    #workers.shutdown()

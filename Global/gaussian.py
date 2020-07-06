@@ -1,7 +1,6 @@
 import numpy as np
-def gaussian_step(hgdl):
-    x = hgdl.results.global_x.copy().T
-    y = hgdl.results.global_y.copy()
+def gaussian_step(hgdl, x, y):
+    x = x.T
     c = 1.0
     y  = y -  np.min(y)
     y =  y/np.max(y)

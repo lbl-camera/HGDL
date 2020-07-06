@@ -6,7 +6,7 @@ from Global.run_global import run_global
 from Local.run_local import run_local
 from results import Results
 from multiprocessing import Process, Queue, Lock
-from time import sleep
+import dask.distributed
 
 class locked_queue(object):
     def __init__(self):
@@ -60,9 +60,10 @@ class HGDL_worker(object):
         * L - uses local extremum localMethod
     """
     def __init__(
-            self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=5,
-            num_individuals=15, max_local=5, num_workers=None, bestX=5,
+            self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=2,
+            num_individuals=15, max_local=3, num_workers=None, bestX=5,
             x0=None, global_method='genetic', local_method='my_newton',
+            local_args=(), local_kwargs={}, global_args=(), global_kwargs={}
             ):
         """
         Mandatory Parameters:
@@ -84,43 +85,52 @@ class HGDL_worker(object):
             either {"success":False} if len(x) is 0
             or {"success":True, "x",x, "y",y} with the bestX x's and their y's
         """
-        self.rng = np.random.default_rng(42)
+
         self.func = func
         self.grad = grad
         self.hess = hess
         self.bounds = bounds
-        self.k = len(bounds)
         self.r = r
         self.alpha = alpha
         self.max_epochs = max_epochs
         self.max_local = max_local
         self.num_individuals = num_individuals
-        if num_workers is None:
-            from psutil import cpu_count
-            num_workers = cpu_count(logical=False)-1
         self.num_workers = num_workers
         self.bestX = bestX
+        self.global_method = global_method
+        self.local_method = local_method
+        self.local_args = local_args
+        self.local_kwargs = local_kwargs
+        self.global_args = global_args
+        self.global_kwargs = global_kwargs
+
+        self.rng = np.random.default_rng(42)
+        self.k = len(bounds)
         self.results = Results(self)
+
+        if num_workers is None:
+            from psutil import cpu_count
+            self.num_workers = cpu_count(logical=False)-1
         if x0 is None:
             x0 = self.random_sample(self.num_individuals, self.k, self.bounds)
         self.x0 = x0
-        self.global_method = global_method
-        self.local_method = local_method
         self.results.update_global(self.x0)
-        self.local_args = ()
-        self.local_kwargs = {}
-        self.global_args = ()
-        self.global_kwargs = {}
 
     def run(self, data):
+        #cluster = dask.distributed.LocalCluster(dask_dashboard=None)
+        client = dask.distributed.Client()
+        print(client)
+        print('hi')
+        data.upload(12)
+        client.shutdown()
+        """
         for i in range(self.max_epochs):
             self.x0 = run_global(self)
             self.results.update_global(self.x0)
             run_local(self)
             data.upload(self.results.epoch_end())
-            print('epoch best is ',self.results.epoch_end())
         data.upload(self.results.roll_up())
-
+        """
     def random_sample(self, N, k,bounds):
         sample = self.rng.random((N, k))
         sample *= bounds[:,1] - bounds[:,0]
