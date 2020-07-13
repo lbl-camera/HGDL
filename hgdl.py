@@ -10,32 +10,6 @@ from multiprocessing import Process, Queue, Lock
 import asyncio
 
 class HGDL(object):
-    def __init__(self, *args, **kwargs):
-        self.data = locked_queue()
-        self.hgdl = HGDL_worker(
-            *args, **kwargs)
-        self.worker = Process(target=self.hgdl.run, args=(self.data,))
-        self.worker.start()
-
-    def get_best(self):
-        res = self.data.download()
-        result = {
-            "best_x":res["best_x"],
-            "best_y":res["best_y"]
-                }
-        return result
-
-    def get_final(self):
-        self.worker.join()
-        res = self.data.download()
-        self.worker.close()
-        return res
-
-    def kill(self):
-        self.worker.kill()
-        return self.get_best()
-
-class HGDL(object):
     """
     HGDL
         * Hybrid - uses both local and global optimization
