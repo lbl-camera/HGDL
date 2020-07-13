@@ -9,23 +9,6 @@ from multiprocessing import Process, Queue, Lock
 #import dask.distributed
 import asyncio
 
-class locked_queue(object):
-    def __init__(self):
-        self.lock = Lock()
-        self.queue = Queue()
-    def upload(self, x):
-        self.lock.acquire()
-        while not self.queue.empty(): self.queue.get()
-        self.queue.put(x)
-        self.lock.release()
-    def download(self):
-        # get cannot be locked 
-        x = self.queue.get()
-        self.lock.acquire()
-        self.queue.put(x)
-        self.lock.release()
-        return x
-
 class HGDL(object):
     def __init__(self, *args, **kwargs):
         self.data = locked_queue()
