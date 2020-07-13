@@ -6,7 +6,8 @@ from Global.run_global import run_global
 from Local.run_local import run_local
 from results import Results
 from multiprocessing import Process, Queue, Lock
-import dask.distributed
+#import dask.distributed
+import asyncio
 
 class locked_queue(object):
     def __init__(self):
@@ -51,7 +52,7 @@ class HGDL(object):
         self.worker.kill()
         return self.get_best()
 
-class HGDL_worker(object):
+class HGDL(object):
     """
     HGDL
         * Hybrid - uses both local and global optimization
@@ -60,8 +61,8 @@ class HGDL_worker(object):
         * L - uses local extremum localMethod
     """
     def __init__(
-            self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=2,
-            num_individuals=15, max_local=3, num_workers=None, bestX=5,
+            self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=5,
+            num_individuals=15, max_local=4, num_workers=None, bestX=5,
             x0=None, global_method='genetic', local_method='my_newton',
             local_args=(), local_kwargs={}, global_args=(), global_kwargs={}
             ):
@@ -115,22 +116,41 @@ class HGDL_worker(object):
             x0 = self.random_sample(self.num_individuals, self.k, self.bounds)
         self.x0 = x0
         self.results.update_global(self.x0)
+        self.event = asyncio.Event()
+        self.tasks = []
+        self.loop = asyncio.get_event_loop()
+        self.loop.run_until_complete(self.first_step())
 
-    def run(self, data):
-        #cluster = dask.distributed.LocalCluster(dask_dashboard=None)
-        client = dask.distributed.Client()
-        print(client)
-        print('hi')
-        data.upload(12)
-        client.shutdown()
-        """
-        for i in range(self.max_epochs):
-            self.x0 = run_global(self)
-            self.results.update_global(self.x0)
-            run_local(self)
-            data.upload(self.results.epoch_end())
-        data.upload(self.results.roll_up())
-        """
+    def get_final(self):
+        self.loop.run_until_complete(asyncio.gather(*self.tasks))
+        return self.best
+
+    def get_best(self):
+        self.loop.run_until_complete(asyncio.gather(self.tasks[0]))
+        return self.best
+
+    async def first_step(self):
+        self.tasks.append(asyncio.create_task(self.step()))
+        self.tasks.append(asyncio.create_task(self.next_steps()))
+
+    async def next_steps(self):
+        await self.event.wait()
+        self.tasks.append(asyncio.create_task(self.run()))
+
+    async def run(self):
+        for i in range(1,self.max_epochs):
+            self.best = await self.step()
+        self.best = self.results.roll_up()
+        return self.best
+
+    async def step(self):
+        self.x0 = run_global(self)
+        self.results.update_global(self.x0)
+        run_local(self)
+        self.best = self.results.epoch_end()
+        self.event.set()
+        return self.best
+
     def random_sample(self, N, k,bounds):
         sample = self.rng.random((N, k))
         sample *= bounds[:,1] - bounds[:,0]

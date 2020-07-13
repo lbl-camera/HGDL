@@ -6,10 +6,8 @@ from sys import exit
 b = np.array([[-2, 2],[-3,3.]])
 
 hgdl = HGDL(rosen, rosen_der, rosen_hess, b)
+import asyncio
+for i in range(2):
+    print(hgdl.get_best())
 
-#for i in range(2):
-#    print(hgdl.get_best())
-
-res = hgdl.get_final()
-
-print(res)
+print(hgdl.get_final())

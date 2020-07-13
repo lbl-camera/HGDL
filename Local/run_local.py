@@ -27,7 +27,6 @@ def modified_hess(x, hgdl):
     return h*defl + np.outer(defl_der, j)
 
 def run_local(hgdl):
-    print("hi i'm ",os.getpid())
     for i in range(hgdl.max_local):
         new_minima = np.empty((0, hgdl.k))
         num_none = 0
@@ -45,16 +44,16 @@ def run_local(hgdl):
                     **hgdl.local_kwargs)
         else:
             raise NotImplementedError("local method not understood")
-        client = dask.distributed.Client(dashboard_address=0)
-        def inc(x):
-            return x + 1
-        results = client.map(inc, range(4))
-        for f in dask.distributed.as_completed(results): print(f.result())
-        """ 
-        for f in results:
-            if f.exception() is None:
-                res = f.result()
-            else:
+        #client = dask.distributed.Client(dashboard_address=0)
+        #def inc(x):
+        #    return x + 1
+        #results = client.map(inc, range(4))
+        #for f in dask.distributed.as_completed(results): print(f.result())
+        #""" 
+        for z in hgdl.x0:
+            try:
+                res = func(z)
+            except:
                 num_none += 1
                 continue
             if num_none / hgdl.num_individuals > .4:
@@ -67,6 +66,5 @@ def run_local(hgdl):
                 num_none += 1
             else:
                 new_minima = np.append(new_minima, res["x"].reshape(1,-1), 0)
-        """
-        client.shutdown()
+        #client.shutdown()
         hgdl.results.update_minima(new_minima)
