@@ -6,7 +6,7 @@ from Global.run_global import run_global
 from Local.run_local import run_local
 from results import Results
 from multiprocessing import Process, Queue, Lock
-#import dask.distributed
+import dask.distributed
 import asyncio
 
 class HGDL(object):
@@ -75,17 +75,21 @@ class HGDL(object):
         self.results.update_global(self.x0)
         self.event = asyncio.Event()
         self.tasks = []
+        self.cluster = dask.distributed.LocalCluster(dashboard_address=None)
+        self.client = dask.distributed.Client(self.cluster)
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self.first_step())
 
+    # user access functions
     def get_final(self):
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
+        self.close()
         return self.best
 
     def get_best(self):
         self.loop.run_until_complete(asyncio.gather(self.tasks[0]))
         return self.best
-
+    # auxilary functions
     async def first_step(self):
         self.tasks.append(asyncio.create_task(self.step()))
         self.tasks.append(asyncio.create_task(self.next_steps()))
@@ -93,8 +97,9 @@ class HGDL(object):
     async def next_steps(self):
         await self.event.wait()
         self.tasks.append(asyncio.create_task(self.run()))
-
+    # work functions
     async def run(self):
+        # await asyncio.sleep(10) # put this in to make sure you can get_best()
         for i in range(1,self.max_epochs):
             self.best = await self.step()
         self.best = self.results.roll_up()
@@ -107,6 +112,9 @@ class HGDL(object):
         self.best = self.results.epoch_end()
         self.event.set()
         return self.best
+    # utility functions
+    def close(self):
+        self.client.shutdown()
 
     def random_sample(self, N, k,bounds):
         sample = self.rng.random((N, k))
