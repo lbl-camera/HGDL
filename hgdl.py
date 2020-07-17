@@ -90,16 +90,25 @@ class HGDL(object):
         self.loop.run_until_complete(asyncio.gather(self.tasks[0]))
         return self.best
     # auxilary functions
+    # explanation of the asyncio stuff:
+    #  * self.tasks contains:
+    #     - a task for the first step of computation
+    #     - a task that waits on the first step then adds the last task
+    #     - a task for the rest of the computation
+    #  * what this satisfies:
+    #     - if the user does nothing, the first task should run
+    #        which wakes up the second task to add the last task
+    #        so that all the loops are run 
+    #     - if the user asks for the best, it must wait for the first
+    #        step to finish before return self.best
     async def first_step(self):
         self.tasks.append(asyncio.create_task(self.step()))
         self.tasks.append(asyncio.create_task(self.next_steps()))
-
     async def next_steps(self):
         await self.event.wait()
         self.tasks.append(asyncio.create_task(self.run()))
     # work functions
     async def run(self):
-        # await asyncio.sleep(10) # put this in to make sure you can get_best()
         for i in range(1,self.max_epochs):
             self.best = await self.step()
         self.best = self.results.roll_up()
@@ -115,7 +124,6 @@ class HGDL(object):
     # utility functions
     def close(self):
         self.client.shutdown()
-
     def random_sample(self, N, k,bounds):
         sample = self.rng.random((N, k))
         sample *= bounds[:,1] - bounds[:,0]
