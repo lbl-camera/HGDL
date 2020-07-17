@@ -21,7 +21,7 @@ class HGDL(object):
             self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=5,
             num_individuals=15, max_local=4, num_workers=None, bestX=5,
             x0=None, global_method='genetic', local_method='my_newton',
-            local_args=(), local_kwargs={}, global_args=(), global_kwargs={}
+            local_args=(), local_kwargs={}, global_args=(), global_kwargs={},
             client=None):
         """
         Mandatory Parameters:

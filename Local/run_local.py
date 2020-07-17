@@ -5,7 +5,8 @@ from .bump import deflation, deflation_der
 from .newton import newton
 from .scipy_minimize import scipy_minimize
 import os
-import dask import dask.distributed
+import dask
+import dask.distributed
 
 def in_bounds(x, bounds):
     if (bounds[:,1]-x > 0).all() and (bounds[:,0] - x < 0).all():
