@@ -16,7 +16,6 @@ def main():
     print(hess(x0*np.ones(2)))
     print(grad(x0*np.ones(2)))
     print("schwefel minimum @ ",x0 * np.ones(2),"  ", schwefel(x0*np.ones(2)))
-    input()
 
     from hgdl import HGDL
     hgdl = HGDL(schwefel_func, grad, hess, b, max_epochs=10, num_workers=20, bestX = 50, max_local = 10, r = 30)

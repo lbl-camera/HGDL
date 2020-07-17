@@ -22,7 +22,7 @@ class HGDL(object):
             num_individuals=15, max_local=4, num_workers=None, bestX=5,
             x0=None, global_method='genetic', local_method='my_newton',
             local_args=(), local_kwargs={}, global_args=(), global_kwargs={}
-            ):
+            client=None):
         """
         Mandatory Parameters:
             * func - should return a scalar given a numpy array x
@@ -75,8 +75,11 @@ class HGDL(object):
         self.results.update_global(self.x0)
         self.event = asyncio.Event()
         self.tasks = []
-        self.cluster = dask.distributed.LocalCluster(dashboard_address=None)
-        self.client = dask.distributed.Client(self.cluster)
+        if client is None:
+            self.cluster = dask.distributed.LocalCluster(dashboard_address=None)
+            self.client = dask.distributed.Client(self.cluster)
+        else:
+            self.client = client
         self.loop = asyncio.get_event_loop()
         self.loop.run_until_complete(self.first_step())
 
