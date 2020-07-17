@@ -117,7 +117,7 @@ class HGDL:
                 success = False
                 #print("out of bounds or iter limit reached: ", x, "after ", counter," iterations")
                 x = np.zeros((x.shape))
-                return x,0,0,0,success
+                return x,np.inf,0,0,success
             gradient = self.grad_func(x, self.argument_dict)
             e = np.linalg.norm(gradient)
             hessian = self.hess_func(x, self.argument_dict)
@@ -138,8 +138,6 @@ class HGDL:
         eig = np.empty((len(x), self.dim))
         success = np.empty((len(x)), dtype = bool)
         x0 = []
-        n = 5
-        best_n = np.zeros((n)) + np.inf
         optima_list = {"points": np.empty((0,2)), \
                 "func evals": np.empty((0)), \
                 "classifier": [], "eigen values": np.empty((0,self.dim)), \
@@ -153,15 +151,19 @@ class HGDL:
                 x[i],f[i],e[i], eig[i],success[i] = self.DNewton(x[i],x0,self.local_tol)
             ##assemble optima_list
             optima_list = self.fill_in_optima_list(optima_list, x,f,e,eig,success)
-            x0 = optima_list["points"]
+            x0 = np.array(optima_list["points"])
             ###this is in place of the global replacement later:
-            x = self.genetic_step(x0, optima_list["func evals"], bounds = self.bounds, numChoose= len(x))
+            x = self.genetic_step(x0, np.array(optima_list["func evals"]), bounds = self.bounds, numChoose= len(x))
             ########################################################
             if global_counter == self.global_max_iter: break_condition = True
         #self.plot_schwefel(points = optima_list["points"], deflation_points = optima_list["points"])
-        return x
+        return optima_list
     ###########################################################################
     def fill_in_optima_list(self,optima_list,x,f,grad_norm,eig, success):
+        #print("optima_list_before:")
+        #print(optima_list)
+        #print(x)
+        #print(f)
         clean_indices = np.where(success == True)
         clean_x = x[clean_indices]
         clean_f = f[clean_indices]
@@ -187,6 +189,9 @@ class HGDL:
         optima_list["classifier"] = [optima_list["classifier"][i] for i in sort_indices]
         optima_list["eigen values"] = optima_list["eigen values"][sort_indices]
         optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices]
+        #print("optima_list_after: ")
+        #print(optima_list)
+        #input()
         return optima_list
     ###########################################################################
     def out_of_bounds(self,x):
