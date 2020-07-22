@@ -18,11 +18,11 @@ class HGDL(object):
         * L - uses local extremum localMethod
     """
     def __init__(
-            self, func, grad, hess, bounds, r=.3, alpha=.1, max_epochs=5,
+            self, func, grad, hess, bounds, client,
+            r=.3, alpha=.1, max_epochs=5,
             num_individuals=15, max_local=4, num_workers=None, bestX=5,
-            x0=None, global_method='genetic', local_method='my_newton',
-            local_args=(), local_kwargs={}, global_args=(), global_kwargs={},
-            client=None):
+            x0=None, global_method='genetic', local_method='scipy',
+            local_args=(), local_kwargs={}, global_args=(), global_kwargs={}):
         """
         Mandatory Parameters:
             * func - should return a scalar given a numpy array x
@@ -48,6 +48,7 @@ class HGDL(object):
         self.grad = grad
         self.hess = hess
         self.bounds = bounds
+        self.client = client
         self.r = r
         self.alpha = alpha
         self.max_epochs = max_epochs
@@ -73,57 +74,65 @@ class HGDL(object):
             x0 = self.random_sample(self.num_individuals, self.k, self.bounds)
         self.x0 = x0
         self.results.update_global(self.x0)
+        # this is a flag that goes up after one epoch is made 
         self.event = asyncio.Event()
+        # what these will do as they're added
+        # tasks[0] - run one epoch - made at startup
+        # tasks[1] - wait until 1 epoch, make task[2] - made at startup
+        # tasks[2] - run rest of epochs - made at end of 1st epoch by tasks[1]
         self.tasks = []
-        if client is None:
-            self.cluster = dask.distributed.LocalCluster(dashboard_address=None)
-            self.client = dask.distributed.Client(self.cluster)
-        else:
-            self.client = client
         self.loop = asyncio.get_event_loop()
-        self.loop.run_until_complete(self.first_step())
+        self.loop.run_until_complete(self.first_epoch())
 
     # user access functions
     def get_final(self):
+        # wait until everything is done 
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
         self.close()
         return self.best
 
     def get_best(self):
+        # wait until at least one epoch is done 
         self.loop.run_until_complete(asyncio.gather(self.tasks[0]))
         return self.best
     # auxilary functions
     # explanation of the asyncio stuff:
     #  * self.tasks contains:
-    #     - a task for the first step of computation
-    #     - a task that waits on the first step then adds the last task
+    #     - a task for the first epoch of computation
+    #     - a task that waits on the first epoch then adds the last task
     #     - a task for the rest of the computation
     #  * what this satisfies:
     #     - if the user does nothing, the first task should run
     #        which wakes up the second task to add the last task
     #        so that all the loops are run 
     #     - if the user asks for the best, it must wait for the first
-    #        step to finish before return self.best
-    async def first_step(self):
-        self.tasks.append(asyncio.create_task(self.step()))
-        self.tasks.append(asyncio.create_task(self.next_steps()))
-    async def next_steps(self):
+    #        epoch to finish before return self.best
+    async def first_epoch(self):
+        self.tasks.append(asyncio.create_task(self.epoch()))
+        self.tasks.append(asyncio.create_task(self.wait_until_first_epoch()))
+    async def wait_until_first_epoch(self):
+        # wait until one epoch is done, then add next epochs (or epochs) 
         await self.event.wait()
-        self.tasks.append(asyncio.create_task(self.run()))
-    # work functions
-    async def run(self):
-        for i in range(1,self.max_epochs):
-            self.best = await self.step()
-        self.best = self.results.roll_up()
-        return self.best
+        # create task starts the task running, so we need to wait until
+        #  we get the results from the first epoch before running the next
+        self.tasks.append(asyncio.create_task(self.rest_of_epochs()))
 
-    async def step(self):
+    # work functions
+    async def rest_of_epochs(self):
+        for i in range(1,self.max_epochs):
+            self.best = await self.epoch()
+            if self.results.mimia_x.shape[0]>1: print(i) # debug
+        self.best = self.results.roll_up()
+    # a single epoch
+    async def epoch(self):
+        await asyncio.sleep(10)
         self.x0 = run_global(self)
         self.results.update_global(self.x0)
         run_local(self)
         self.best = self.results.epoch_end()
+        # raise flag saying that you made an epoch 
         self.event.set()
-        return self.best
+
     # utility functions
     def close(self):
         self.client.shutdown()

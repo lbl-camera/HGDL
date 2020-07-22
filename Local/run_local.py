@@ -48,8 +48,8 @@ def run_local(hgdl):
         elif hgdl.local_method == "scipy":
             func = partial(scipy_minimize,
                     func=hgdl.func, jac=jac,
-                    hess=hess, *hgdl.local_args,
-                    **hgdl.local_kwargs)
+                    hess=hess, bounds=hgdl.bounds,
+                    *hgdl.local_args, **hgdl.local_kwargs)
         else:
             raise NotImplementedError("local method not understood")
         futures = hgdl.client.map(func, hgdl.x0)
@@ -69,5 +69,8 @@ def run_local(hgdl):
             elif already_found(res["x"], new_minima, hgdl.r**2):
                 num_none += 1
             else:
+                #print(already_found(res["x"], new_minima, hgdl.r**2))
+                #print(already_found(res["x"], hgdl.results.minima_x, hgdl.r**2))
+                #print(hgdl.results.minima_x, new_minima, res) 
                 new_minima = np.append(new_minima, res["x"].reshape(1,-1), 0)
         hgdl.results.update_minima(new_minima)
