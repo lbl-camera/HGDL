@@ -1,0 +1,4 @@
+dask
+matplotlib
+numpy
+scipy

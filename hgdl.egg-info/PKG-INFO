@@ -1,0 +1,33 @@
+Metadata-Version: 1.2
+Name: hgdl
+Version: 1.0
+Summary: HGDL Optimization
+Home-page: https://github.com//hgdl
+Author: David Perryman, Marcus, Noack
+Author-email: MarcusNoack@lbl.gov
+License: Camera license
+Description: =====
+        hgdl
+        =====
+        
+        .. image:: https://img.shields.io/travis//hgdl.svg
+                :target: https://travis-ci.org//hgdl
+        
+        .. image:: https://img.shields.io/pypi/v/hgdl.svg
+                :target: https://pypi.python.org/pypi/hgdl
+        
+        
+        Hybrid GLobal Deflated Local Optimization
+        
+        * Free software: GPL license
+        * Documentation: (COMING SOON!) https://.github.io/hgdl.
+        
+        Features of hgdl
+        --------
+        
+        
+Platform: UNKNOWN
+Classifier: Development Status :: 2 - Pre-Alpha
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3
+Requires-Python: >=3.6
