@@ -7,7 +7,7 @@ import hgdl.glob as glob
 from multiprocessing import Process, Queue, Lock
 import dask.distributed
 import asyncio
-
+from psutil import cpu_count
 
 ###authors: David Perryman, Marcus Noack
 ###institution: CAMERA @ Lawrence Berkeley National Laboratory
@@ -24,8 +24,8 @@ class HGDL:
     """
     doc string here
     """
-    def __init__(self,obj_func,grad_func,hess_func, bounds,dask_client = None, maxEpochs=5,
-            radius = 0.1,local_tol = 1e-4, global_tol = 1e-4,
+    def __init__(self,obj_func,grad_func,hess_func, bounds,dask_client = None, maxEpochs=10,
+            radius = 20.0,local_tol = 1e-4, global_tol = 1e-4,
             local_max_iter = 20, global_max_iter = 120,
             number_of_walkers = 20, number_of_optima = 10,
             number_of_workers = None, x0 = None, 
@@ -57,48 +57,49 @@ class HGDL:
         self.number_of_walkers = number_of_walkers
         self.number_of_optima = number_of_optima
         self.maxEpochs = maxEpochs
-
-        if number_of_workers is None:
-            from psutil import cpu_count
-            number_of_workers = cpu_count(logical=False)-1
+        if dask_client is None: client = dask.distributed.Client()
+        self.client = client
+        if number_of_workers is None: number_of_workers = cpu_count(logical=False)-1
         self.number_of_workers = number_of_workers
-
-        if x0 is None:
-            x0 = misc.random_population(self.bounds,self.number_of_walkers)
+        if x0 is None:x0 = misc.random_population(self.bounds,self.number_of_walkers)
         self.x0 = x0
-        if len(self.x0) != self.number_of_walkers:
-            exit("number of initial position does not match the number of walkers")
+        if len(self.x0) != self.number_of_walkers: exit("number of initial position != number of walkers")
         self.argument_dict = argument_dict
+        ########################################
         #init optima list:
         self.optima_list = {"x": np.empty((0,self.dim)), \
                 "func evals": np.empty((0)), \
                 "classifier": [], "eigen values": np.empty((0,self.dim)), \
                 "gradient norm":np.empty((0))}
-        #make event loop
-        #self.loop = asyncio.get_event_loop()
         ####################################
+        #first run
         x,f,grad_norm,eig,success = self.run_dNewton(self.x0)
+        print("HGDL starting positions: ")
         print(self.x0)
-        print(np.where(success)[0])
-        print("Found ",len(np.where(success == True)[0])," optima in my first run")
-        print("They are now ready to be called")
+        print("I found ",len(np.where(success == True)[0])," optima in my first run")
+        print("They are now stored in the optima_list")
         self.optima_list = self.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
-        #exit()
         #################################
-        self.hgdl()
-        #self.hgdl_loop = asyncio.get_event_loop()
-        #tasks = [self.hgdl_loop.create_task(self.run_hgdl_epoch())]
-        #self.hgdl_loop.run_until_complete(*tasks)
-        #print("code continues")
-        #result = future.result()
-        #print(result)
+        #exit()
 
-        ##########################################
-        #res = self.hgdl()
+        #self.tasks = [None] * self.maxEpochs
+        #self.hgdl()
+        #self.tasks = [self.loop.create_task(self.hgdl())]
+        self.tasks = []
+        self.loop = asyncio.get_event_loop()
+        #self.loop.run_until_complete(*self.tasks)
+        self.loop.run_until_complete(self.create_list())
         #print(res)
     ###########################################################################
+    async def create_list(self):
+        await self.hgdl()
+    ###########################################################################
+    async def hgdl(self):
+        for i in range(self.maxEpochs):
+            await self.run_hgdl_epoch()
+    ###########################################################################
     def get_final(self):
-        # wait until everything is done 
+        # wait until everything is done
         self.loop.run_until_complete(asyncio.gather(*self.tasks))
         self.close()
         return self.optima_list
@@ -108,15 +109,15 @@ class HGDL:
         self.loop.run_until_complete(asyncio.gather(self.tasks[0]))
         return self.best
     ###########################################################################
-    def get_latest_res(self):
+    def get_latest(self):
         return self.optima_list
     ###########################################################################
-    def hgdl(self):
-        hgdl_loop = asyncio.get_event_loop()
-        tasks = []
-        for i in range(self.maxEpochs):
-            tasks.append(hgdl_loop.create_tasks(run_hgdl_epoch()))
-
+    def kill(self):
+        logging.info('received stop signal, cancelling tasks...')
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
+        logging.info('exiting hgdl')
+        return self.optima_list
     ###########################################################################
     async def run_hgdl_epoch(self):
         """
@@ -124,22 +125,29 @@ class HGDL:
         where one local run are several convergence runs of all workers from
         the x_init point
         """
+        #print("    Epoch initiated...")
+        #print("    Running global step")
         self.x0 = glob.genetic_step(np.array(self.optima_list["x"]),
         np.array(self.optima_list["func evals"]), bounds = self.bounds, numChoose= len(self.optima_list["func evals"]))
+        #print("    Running local step")
         self.run_local(self.x0, np.array(self.optima_list["x"]))
-        self.task.append(self.hgdl_loop.create_task(self.hgdl_epoch()))
     ###########################################################################
     def run_local(self,x_init, x_defl):
         break_condition = False
         x_init = np.array(x_init)
         x_defl = np.array(x_defl)
+        counter = 0
         while break_condition is False:
+            counter += 1
             ##walk walkers with DNewton
             x,f,grad_norm,eig,success = self.run_dNewton(x_init,x_defl)
             ##assemble optima_list
-            self.optima_list = self.fill_in_optima_list(self.optima_list, x,f,e,eig,success)
-            x0 = np.array(optima_list["x"])
+            self.optima_list = self.fill_in_optima_list(self.optima_list, x,f,grad_norm,eig,success)
+            x_defl = np.array(self.optima_list["x"])
+            #print(self.optima_list)
+            #input()
             if len(np.where(success == False)[0]) > len(success)/2.0: break_condition = True
+            if counter == self.local_max_iter: break_condition = True
     ###########################################################################
     def run_dNewton(self,x_init,x_defl = []):
         """
@@ -152,7 +160,6 @@ class HGDL:
         return:
             optima_locations, func values, gradient norms, eigenvalues, success(bool)
         """
-        loop = asyncio.get_event_loop()
         number_of_walkers = len(x_init)
         x = np.empty((number_of_walkers, self.dim))
         f = np.empty((number_of_walkers))
@@ -161,17 +168,26 @@ class HGDL:
         success = np.empty((number_of_walkers))
         tasks = [None] * number_of_walkers
         #submit a bunch of tasks:
+        #print("deflated points: ")
+        #print(x_defl)
         for i in range(number_of_walkers):
-            tasks[i]= loop.create_task(local.DNewton(self.obj_func, self.grad_func,self.hess_func,\
-            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter))
-        loop.run_until_complete(asyncio.gather(*tasks))
+            tasks[i]= self.client.submit(local.DNewton,self.obj_func, self.grad_func,self.hess_func,\
+            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter)
+        self.client.gather(tasks)
         #gather results and kick out optima that are too close:
         for i in range(number_of_walkers):
-            x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
+            x[i],f[i],grad_norm[i],eig[i],success[i] = \
+            local.DNewton(self.obj_func, self.grad_func,self.hess_func,\
+            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter)
+            #x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
             for j in range(i):
-                #exchange for function too_close():
+                #exchange for function def too_close():
                 if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * self.r: success[i] = False; break
-        loop.close()
+            for j in range(len(x_defl)):
+                if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 1e-5:
+                    print("CAUTION: Newton converged to deflated position")
+                    print(x[i],x_defl[j])
+                    input()
         return x, f, grad_norm, eig, success
     ###########################################################################
     def fill_in_optima_list(self,optima_list,x,f,grad_norm,eig, success):

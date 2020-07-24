@@ -2,6 +2,8 @@
 import numpy as np
 import hgdl.misc as misc
 import asyncio
+import time
+import matplotlib.pyplot as plt
 def bump_function(x,x0,r = 40.0):
     """
     evaluates the bump function
@@ -33,14 +35,26 @@ def deflation_function_gradient(x,x0):
     s2 = np.array([bump_function_gradient(x,x0[i]) for i in range(len(x0))])
     return (1.0/((1.0-sum(s1))**2))*np.sum(s2)
 ###########################################################################
-async def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, kwargs = {}):
+def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, kwargs = {}):
     #w = np.random.rand() * 10.0
     #print("DNewton from point:", x0," started, waits: ", w)
-    #await asyncio.sleep(w)
+    #time.sleep(w)
     e = np.inf
     success = True
     counter = 0
     x = np.array(x0)
+    #print("x_defl in dnewton:")
+    #print(x_defl)
+    #s1 = np.linspace(-500,500,100)
+    #s2 = np.linspace(-500,500,100)
+    #S1,S2 = np.meshgrid(s1,s2)
+    #Z = np.empty((S1.shape))
+    #for i in range(100):
+    #    for j in range(100):
+    #        Z[i,j] = deflation_function_gradient(np.array([S1[i,j],S2[i,j]]),x_defl)
+    #plt.pcolormesh(Z)
+    #plt.show()
+    #exit()
     while e > tol:
         counter += 1
         if counter >= max_iter or misc.out_of_bounds(x,bounds):
@@ -49,10 +63,11 @@ async def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, 
         gradient = grad(x, kwargs)
         e = np.linalg.norm(gradient)
         hessian = hess(x, kwargs)
-        d = deflation_function(x,x0)
-        dg = deflation_function_gradient(x,x0)
+        d = deflation_function(x,x_defl)
+        dg = deflation_function_gradient(x,x_defl)
         gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
         x += gamma
         #print("current position: ",x,"epsilon: ",e)
-    #print("DNewton from point:", x0," converged to ",x, "after waiting: ", w)
+    #print("DNewton from point:", x0," converged to ",x, "after waiting: ")
+    #input()
     return x,func(x, kwargs),e,np.linalg.eig(hessian)[0], success

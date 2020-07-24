@@ -123,7 +123,7 @@ class HGDL(object):
             self.best = await self.epoch()
             if self.results.mimia_x.shape[0]>1: print(i) # debug
         self.best = self.results.roll_up()
-    # a single epoch
+    #a single epoch
     async def epoch(self):
         await asyncio.sleep(10)
         self.x0 = run_global(self)
