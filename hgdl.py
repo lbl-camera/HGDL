@@ -120,6 +120,7 @@ class HGDL(object):
     # work functions
     async def rest_of_epochs(self):
         for i in range(1,self.max_epochs):
+            print("event loop ",i," started")
             self.best = await self.epoch()
             if self.results.mimia_x.shape[0]>1: print(i) # debug
         self.best = self.results.roll_up()

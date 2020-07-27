@@ -1,5 +1,9 @@
 import jax
 import jax.numpy as np
+import dask.distributed
+
+
+
 
 def schwefel(x):
     print('working on ',x) 
@@ -10,6 +14,7 @@ def main():
     schwefel_func = jax.jit(schwefel)
     grad = jax.jit(jax.grad(schwefel_func))
     hess = jax.jit(jax.jacfwd(jax.jacrev(schwefel_func)))
+    client = dask.distributed.Client()
     import numpy as onp
     b = onp.array([[-500.,500.],[-500.,500]])
     x0 = 420.96
@@ -18,12 +23,15 @@ def main():
     print("schwefel minimum @ ",x0 * np.ones(2),"  ", schwefel(x0*np.ones(2)))
 
     from hgdl import HGDL
-    hgdl = HGDL(schwefel_func, grad, hess, b, max_epochs=10, num_workers=20, bestX = 50, max_local = 10, r = 30)
+    hgdl = HGDL(schwefel_func, grad, hess, b, client
+            ,max_epochs=10, num_workers=20, bestX = 50, max_local = 10, r = 30)
     from time import sleep
-    for i in range(10):
-        print(hgdl.get_best())
-        sleep(10)
-    print(hgdl.get_final())
+    
+    #for i in range(10):
+    #    print(hgdl.get_best())
+    #    sleep(10)
+    #print(hgdl.get_final())
+    sleep(100)
     '''
 
     x, y = np.arange(-420,420.,7), np.arange(-420,420.,7)
