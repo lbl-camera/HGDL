@@ -8,8 +8,9 @@ def main():
     a = HGDL(schwefel, schwefel_gradient, schwefel_hessian, bounds = [[-500,500],[-500,500]])
 
     print(a.optima_list)
-    #time.sleep(15)
     print("submitted")
+    time.sleep(20)
+    a.kill()
 
 if __name__ == '__main__':
     main()

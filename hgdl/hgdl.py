@@ -80,22 +80,23 @@ class HGDL:
         print("They are now stored in the optima_list")
         self.optima_list = self.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
         #################################
-        #exit()
-
-        #self.tasks = [None] * self.maxEpochs
-        #self.hgdl()
-        #self.tasks = [self.loop.create_task(self.hgdl())]
-        self.tasks = []
+        #input()
+        
         self.loop = asyncio.get_event_loop()
-        #self.loop.run_until_complete(*self.tasks)
-        self.loop.run_until_complete(self.create_list())
+        self.task = self.loop.create_task(self.hgdl())
+        #self.loop.run_until_complete(self.task)
+        #self.loop.run_until_complete(self.create_list())
+        a = self.loop.run(self.task)
         #print(res)
     ###########################################################################
     async def create_list(self):
         await self.hgdl()
     ###########################################################################
     async def hgdl(self):
+        print("in hgdl")
         for i in range(self.maxEpochs):
+            await asyncio.sleep(5)
+            print(i)
             await self.run_hgdl_epoch()
     ###########################################################################
     def get_final(self):
@@ -113,10 +114,12 @@ class HGDL:
         return self.optima_list
     ###########################################################################
     def kill(self):
-        logging.info('received stop signal, cancelling tasks...')
-        for task in asyncio.Task.all_tasks():
-            task.cancel()
-        logging.info('exiting hgdl')
+        print("Shutdown initialized ...")
+
+        self.loop.close()
+        # Stop loop:
+        self.loop.stop()
+        print('exiting hgdl')
         return self.optima_list
     ###########################################################################
     async def run_hgdl_epoch(self):

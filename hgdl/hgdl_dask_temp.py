@@ -114,7 +114,7 @@ class HGDL(object):
         # wait until one epoch is done, then add next epochs (or epochs) 
         await self.event.wait()
         # create task starts the task running, so we need to wait until
-        #  we get the results from the first epoch before running the next
+        # we get the results from the first epoch before running the next
         self.tasks.append(asyncio.create_task(self.rest_of_epochs()))
 
     # work functions

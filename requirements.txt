@@ -1,6 +1,8 @@
+wheel
 numpy
+versioneer
 scipy
 matplotlib
 dask
-#dask\ distributed
-#asynchio
+torch
+distributed
