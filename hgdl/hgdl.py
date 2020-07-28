@@ -16,9 +16,8 @@ from multiprocessing import Process, Queue
 
 """
 TODO:   *currently walkers that walk out in Newton are discarded. We should do a line search instead
-        *currently individuals are replaced randomly, we should do the genetic step or the global_gaussian_pdf step
         *the radius is still ad hoc, should be related to curvature
-        *need a good global break condition
+        *work on the shut down
 """
 
 class HGDL:
@@ -28,21 +27,29 @@ class HGDL:
     def __init__(self,obj_func,grad_func,hess_func, bounds,dask_client = None, maxEpochs=10,
             radius = 20.0,local_tol = 1e-4, global_tol = 1e-4,
             local_max_iter = 20, global_max_iter = 120,
-            number_of_walkers = 20, number_of_optima = 10,
+            number_of_walkers = 20,
             number_of_workers = None, x0 = None, 
             argument_dict = None):
         """
         intialization for the HGDL class
 
-        input:
-        ------
-        Nothing has to be input. If "HGDL()" then Schefel's
-        function is used as example. If this is not a test and 
-        a user defined function has to be called the parameters are:
-            obj_func: function that calculates the scalar function value at a ppoint x
-            grad_func: function that calculates the gradient at a point x
-            hess_func: function that calculates the hessian at a point x
-            bounds(numpy array): array of bounds, len is the dimensionality of the problem
+        required input:
+        ---------------
+            obj_func
+            grad_func
+            hess_func
+            bounds
+        optional input:
+        ---------------
+            dask_client = dask.distributed.Client()
+            maxEpochs = 10
+            radius = 20
+            local_tol  = 1e-4
+            global_tol = 1e-4
+            local_max_iter = 20
+            number_of_workers = number of cpus -1
+            x0 = random
+            argument_dict = None
         """
         self.obj_func = obj_func
         self.grad_func = grad_func
@@ -56,9 +63,7 @@ class HGDL:
         self.local_max_iter = local_max_iter
         self.global_max_iter = global_max_iter
         self.number_of_walkers = number_of_walkers
-        self.number_of_optima = number_of_optima
         self.maxEpochs = maxEpochs
-        #if dask_client is None: client = dask.distributed.Client(asynchronous=True)
         if dask_client is None: client = dask.distributed.Client()
         self.client = client
         if number_of_workers is None: number_of_workers = cpu_count(logical=False)-1
@@ -107,24 +112,12 @@ class HGDL:
             print("Computing epoch ",i," of ",self.maxEpochs)
             self.q.put(self.run_hgdl_epoch())
     ###########################################################################
-    #def get_final(self):
-    #    # wait until everything is done
-    #    self.loop.run_until_complete(asyncio.gather(*self.tasks))
-    #    self.close()
-    #    return self.optima_list
-    ###########################################################################
-    #def get_best(self):
-    #    # wait until at least one epoch is done 
-    #    self.loop.run_until_complete(asyncio.gather(self.tasks[0]))
-    #    return self.best
-    ###########################################################################
     def get_latest(self, n):
         return {"x": self.optima_list["x"][0:n], \
                 "func evals": self.optima_list["func evals"][0:n], \
                 "classifier":self.optima_list["classifier"][0:n], 
                 "eigen values": self.optima_list["eigen values"][0:n], \
                 "gradient norm":self.optima_list["gradient norm"][0:n]}
-
     ###########################################################################
     def kill(self):
         print("Shutdown initialized ...")
@@ -132,7 +125,6 @@ class HGDL:
         print('exiting hgdl')
         return self.optima_list
     ###########################################################################
-    #async def run_hgdl_epoch(self):
     def run_hgdl_epoch(self):
         """
         an epoch is one local run and one global run,
