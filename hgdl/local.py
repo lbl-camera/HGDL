@@ -31,8 +31,8 @@ def deflation_function(x,x0):
 ###########################################################################
 def deflation_function_gradient(x,x0):
     if len(x0) == 0: return np.zeros((len(x)))
-    s1 = np.array([bump_function(x,x0[i]) for i in range(len(x0))])
-    s2 = np.array([bump_function_gradient(x,x0[i]) for i in range(len(x0))])
+    s1 = np.array([bump_function(x,x0[i]) for i in range(len(x0))], dtype = object)
+    s2 = np.array([bump_function_gradient(x,x0[i]) for i in range(len(x0))], dtype = object)
     return (1.0/((1.0-sum(s1))**2))*np.sum(s2)
 ###########################################################################
 def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, kwargs = {}):
@@ -43,18 +43,6 @@ def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, kwargs
     success = True
     counter = 0
     x = np.array(x0)
-    #print("x_defl in dnewton:")
-    #print(x_defl)
-    #s1 = np.linspace(-500,500,100)
-    #s2 = np.linspace(-500,500,100)
-    #S1,S2 = np.meshgrid(s1,s2)
-    #Z = np.empty((S1.shape))
-    #for i in range(100):
-    #    for j in range(100):
-    #        Z[i,j] = deflation_function_gradient(np.array([S1[i,j],S2[i,j]]),x_defl)
-    #plt.pcolormesh(Z)
-    #plt.show()
-    #exit()
     while e > tol:
         counter += 1
         if counter >= max_iter or misc.out_of_bounds(x,bounds):
@@ -68,6 +56,6 @@ def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, kwargs
         gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
         x += gamma
         #print("current position: ",x,"epsilon: ",e)
-    #print("DNewton from point:", x0," converged to ",x, "after waiting: ")
+    #print("DNewton from point:", x0," converged to ",x, "after waiting: ",w)
     #input()
     return x,func(x, kwargs),e,np.linalg.eig(hessian)[0], success

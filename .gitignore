@@ -4,3 +4,4 @@ __pycache__
 dask-worker-space/
 hgdl.egg-info
 *.txt
+*.swp
