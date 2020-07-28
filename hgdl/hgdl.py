@@ -87,6 +87,7 @@ class HGDL:
         #loop.create_task(self.hgdl())
         #try with queue and threading/multiprocessing
         self.q = Queue()
+        self.run = True
         thread = threading.Thread(target = self.hgdl, args=(), daemon = True).start()
         #self.p = Process(target = self.hgdl)
         #self.p.start()
@@ -97,6 +98,12 @@ class HGDL:
     ###########################################################################
     def hgdl(self):
         for i in range(self.maxEpochs):
+            if self.run is False: 
+                while any(f.status == 'pending' for f in tasks):
+                    print("finishing up last tasks...")
+                    time.sleep(0.1)
+                self.client.shutdown()
+                break
             print("Computing epoch ",i," of ",self.maxEpochs)
             self.q.put(self.run_hgdl_epoch())
     ###########################################################################
@@ -111,15 +118,17 @@ class HGDL:
     #    self.loop.run_until_complete(asyncio.gather(self.tasks[0]))
     #    return self.best
     ###########################################################################
-    def get_latest(self):
-        return self.optima_list
+    def get_latest(self, n):
+        return {"x": self.optima_list["x"][0:n], \
+                "func evals": self.optima_list["func evals"][0:n], \
+                "classifier":self.optima_list["classifier"][0:n], 
+                "eigen values": self.optima_list["eigen values"][0:n], \
+                "gradient norm":self.optima_list["gradient norm"][0:n]}
+
     ###########################################################################
     def kill(self):
         print("Shutdown initialized ...")
-
-        self.loop.close()
-        # Stop loop:
-        self.loop.stop()
+        self.run = False
         print('exiting hgdl')
         return self.optima_list
     ###########################################################################
@@ -180,7 +189,6 @@ class HGDL:
             tasks.append(self.client.submit(local.DNewton,self.obj_func, self.grad_func,self.hess_func,\
             x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter))
         while any(f.status == 'pending' for f in tasks):
-            #print("sleeping")
             time.sleep(0.1)
         if any(f.status == 'cancelled' for f in tasks):
             print("cancelled tasks")
