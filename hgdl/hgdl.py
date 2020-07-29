@@ -93,11 +93,8 @@ class HGDL:
         #try with queue and threading/multiprocessing
         self.q = Queue()
         self.run = True
+        #process= Process(target = self.hgdl).start()
         thread = threading.Thread(target = self.hgdl, args=(), daemon = True).start()
-        #self.p = Process(target = self.hgdl)
-        #self.p.start()
-        #self.p.join()
-        #self.q.get()
         #loop.run_forever()
         #self.hgdl()
     ###########################################################################
