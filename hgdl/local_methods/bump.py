@@ -1,7 +1,7 @@
 import numpy as np
 import numba as nb
 
-@nb.njit(cache=True)
+@nb.njit()
 def deflation(x, minima, r, alpha):
     r2 = r**2.
     for i in range(minima.shape[0]):
@@ -19,7 +19,7 @@ def deflation(x, minima, r, alpha):
             return deflation
     return 1.
 
-@nb.njit(cache=True)
+@nb.njit()
 def deflation_der(x, minima, r, alpha):
     r2 = r**2.
     for i in range(minima.shape[0]):
