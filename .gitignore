@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-.ipynb_checkpoints
-**dask-worker-space
-**__pycache__
-**.swp
-.*
-=======
 **.ipynb_checkpoints
 **__pycache__
 *.un*
@@ -14,4 +7,3 @@ build
 dist
 *.txt
 *.swp
->>>>>>> elliott_test
