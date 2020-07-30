@@ -1,7 +1,7 @@
 from os import path
 from setuptools import setup, find_packages
 import sys
-import versioneer
+#import versioneer
 
 
 # NOTE: This file must remain Python 2 compatible for the foreseeable future,
@@ -43,7 +43,7 @@ setup(
     author_email='MarcusNoack@lbl.gov',
     url='https://github.com//hgdl',
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
-    packages=find_packages(exclude=['docs', 'tests']),
+    packages=find_packages(exclude=['docs', 'tests', 'examples', 'paper']),
     entry_points={
         'console_scripts': [
             # 'command = some.module:some_function',
