@@ -1,4 +1,0 @@
-dask
-matplotlib
-numpy
-scipy
