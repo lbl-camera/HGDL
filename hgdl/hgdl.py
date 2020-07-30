@@ -52,10 +52,11 @@ class HGDL(object):
         self.grad = grad
         self.hess = hess
         self.bounds = bounds
-        if client is None: client = dask.distributed.Client()
+        if client is None:
+            client = dask.distributed.Client()
         self.client = client
-        if not fix_rng: seed = 42
-        else: seed = None
+        if not fix_rng: seed = None
+        else: seed = 42
         self.rng = np.random.default_rng(seed)
         self.r = r
         self.alpha = alpha
@@ -73,7 +74,7 @@ class HGDL(object):
         self.k = len(bounds)
         self.results = Results(self)
         # set this to False to run serially 
-        self.use_dask_map = False #True
+        self.use_dask_map = True
         if num_workers is None:
             from psutil import cpu_count
             self.num_workers = cpu_count(logical=False)-1

@@ -62,12 +62,14 @@ def main():
                 from scipy.optimize import minimize
                 res = minimize(fun=obj, x0=self.kernel_.theta,
                         jac=grad, bounds=self.kernel_.bounds)
-                from hgdl import HGDL
-                from dask.distributed import Client
+                from hgdl.hgdl import HGDL
+                from dask.distributed import LocalCluster, Client
                 res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, hess=None,
-                        r = 1., client = Client(),
+                        r = 1., client = Client(LocalCluster()),
+                        num_individuals=75, max_epochs=10,
                         local_method='scipy', local_kwargs={'method':'L-BFGS-B'})
                 res = res.get_final()
+                print(res)
                 self.log_marginal_likelihood_value_ = res['best_y']
                 self.kernel_.theta = res['best_x']
                 GPs = []
@@ -148,24 +150,16 @@ def main():
     rng = np.random.RandomState(0)
     X = rng.uniform(0, 5, 20)[:, np.newaxis]
     y = 0.5 * np.sin(3 * X[:, 0]) + rng.normal(0, 0.5, X.shape[0])
-    # use the example kernels
-    print('example -----------------------------------------------------------')
-    kernel1 = 1.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) \
-        + WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-10, 1e+1))
-    kernel2 = 1.0 * RBF(length_scale=100.0, length_scale_bounds=(1e-2, 1e3)) \
-        + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+1))
-    gp1 = GaussianProcessRegressor(kernel=kernel1,alpha=0.0).fit(X, y)
-    gp2 = GaussianProcessRegressor(kernel=kernel2,alpha=0.0).fit(X, y)
-    for i, gp in enumerate([gp1, gp2]):
-        print('gp - example (',i+1,'): ', gp, '\nkernel:', gp.kernel_)
-        print('likelihood:', gp.log_marginal_likelihood_value_)
-    # one function call to find many minima 
     print('HGDL -----------------------------------------------------------')
-    GPs = GaussianProcessRegressor(kernel=kernel1,alpha=0.0, optimizer='hgdl').fit(X, y)
+    kernel = 1.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) \
+        + WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-10, 1e+1))
+    GPs = GaussianProcessRegressor(kernel=kernel,alpha=0.0, optimizer='hgdl').fit(X, y)
     for i, gp in enumerate(GPs):
         print('gp - HGDL (',i+1,'): ', gp, '\nkernel:', gp.kernel_)
         print('likelihood:', gp.log_marginal_likelihood_value_)
 
+    thetas = np.array([gp.kernel_.theta for gp in GPs])
+    np.save('data/hgdl_thetas', thetas)
 
 
 if __name__ == "__main__":
