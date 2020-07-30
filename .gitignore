@@ -1,5 +1,17 @@
+<<<<<<< HEAD
 .ipynb_checkpoints
 **dask-worker-space
 **__pycache__
 **.swp
 .*
+=======
+**.ipynb_checkpoints
+**__pycache__
+*.un*
+**dask-worker-space/
+hgdl.egg-info
+build
+dist
+*.txt
+*.swp
+>>>>>>> elliott_test
