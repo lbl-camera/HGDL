@@ -94,20 +94,26 @@ class HGDL:
         self.q = Queue()
         self.run = True
         #process= Process(target = self.hgdl).start()
-        thread = threading.Thread(target = self.hgdl, args=(), daemon = True).start()
+        self.thread = threading.Thread(target = self.hgdl, args=(), daemon = True).start()
         #loop.run_forever()
         #self.hgdl()
     ###########################################################################
     def hgdl(self):
         for i in range(self.maxEpochs):
-            if self.run is False: 
-                while any(f.status == 'pending' for f in tasks):
-                    print("finishing up last tasks...")
-                    time.sleep(0.1)
-                self.client.shutdown()
+            if self.run is False:
+                self.finish_up_last_tasks()
+                self.q.put(self.client.shutdown())
+                self.thread.kill()
+                self.thread.join()
                 break
             print("Computing epoch ",i," of ",self.maxEpochs)
             self.q.put(self.run_hgdl_epoch())
+    def finish_up_last_tasks(self):
+        if any(f.status == 'cancelled' for f in self.tasks):
+            self.tasks = []
+        while any(f.status == 'pending' for f in self.tasks):
+            print("finishing up last tasks...")
+            time.sleep(1)
     ###########################################################################
     def get_latest(self, n):
         return {"x": self.optima_list["x"][0:n], \
@@ -119,7 +125,11 @@ class HGDL:
     def kill(self):
         print("Shutdown initialized ...")
         self.run = False
+        #self.thread.join()
+        #self.q.put(self.finish_up_last_tasks())
+        #self.q.put(self.client.shutdown())
         print('exiting hgdl')
+        #exit()
         return self.optima_list
     ###########################################################################
     def run_hgdl_epoch(self):
@@ -172,20 +182,20 @@ class HGDL:
         grad_norm = np.empty((number_of_walkers))
         eig = np.empty((number_of_walkers,self.dim))
         success = np.empty((number_of_walkers))
-        tasks = []
+        self.tasks = []
         for i in range(number_of_walkers):
             #print("submit ", i, " of ", number_of_walkers)
-            tasks.append(self.client.submit(local.DNewton,self.obj_func, self.grad_func,self.hess_func,\
+            self.tasks.append(self.client.submit(local.DNewton,self.obj_func, self.grad_func,self.hess_func,\
             x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter))
-        while any(f.status == 'pending' for f in tasks):
+        while any(f.status == 'pending' for f in self.tasks):
             time.sleep(0.1)
-        if any(f.status == 'cancelled' for f in tasks):
+        if any(f.status == 'cancelled' for f in self.tasks):
             print("cancelled tasks")
             exit()
-        self.client.gather(tasks)
+        self.client.gather(self.tasks)
         #gather results and kick out optima that are too close:
         for i in range(number_of_walkers):
-            x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
+            x[i],f[i],grad_norm[i],eig[i],success[i] = self.tasks[i].result()
             for j in range(i):
                 #exchange for function def too_close():
                 if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * self.r: success[i] = False; break
