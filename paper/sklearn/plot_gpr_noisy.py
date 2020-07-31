@@ -53,6 +53,7 @@ X_ = np.linspace(0, 5, 100)
 plt.plot(X_, 0.5*np.sin(3*X_), label='ground truth')
 
 for i, (gp, kernel) in enumerate(zip(GPs, kernels)):
+    print(gp.kernel_.theta)
     y_mean, y_cov = gp.predict(X_[:, np.newaxis], return_cov=True)
     #plt.plot(X_, y_mean, 'k', lw=3, zorder=9, label='sklearn kernel: '+str(i+1))
     plt.plot(X_, y_mean, label='sklearn kernel: '+str(i+1))

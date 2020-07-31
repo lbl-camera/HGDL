@@ -65,8 +65,8 @@ def main():
                 from hgdl.hgdl import HGDL
                 from dask.distributed import LocalCluster, Client
                 res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, hess=None,
-                        r = 1., client = Client(LocalCluster()),
-                        num_individuals=75, max_epochs=10,
+                        r = 1., bestX=-1,
+#                        num_individuals=25, max_epochs=3,
                         local_method='scipy', local_kwargs={'method':'L-BFGS-B'})
                 res = res.get_final()
                 print(res)
@@ -151,9 +151,11 @@ def main():
     X = rng.uniform(0, 5, 20)[:, np.newaxis]
     y = 0.5 * np.sin(3 * X[:, 0]) + rng.normal(0, 0.5, X.shape[0])
     print('HGDL -----------------------------------------------------------')
-    kernel = 1.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) \
+    kernel1 = 1.0 * RBF(length_scale=100.0, length_scale_bounds=(1e-2, 1e3)) \
+        + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+1))
+    kernel2 = 1.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) \
         + WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-10, 1e+1))
-    GPs = GaussianProcessRegressor(kernel=kernel,alpha=0.0, optimizer='hgdl').fit(X, y)
+    GPs = GaussianProcessRegressor(kernel=kernel1, alpha=0.0, optimizer='hgdl').fit(X, y)
     for i, gp in enumerate(GPs):
         print('gp - HGDL (',i+1,'): ', gp, '\nkernel:', gp.kernel_)
         print('likelihood:', gp.log_marginal_likelihood_value_)
