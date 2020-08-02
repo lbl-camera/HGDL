@@ -106,6 +106,7 @@ plt.contour(Theta0, Theta1, -LML,
             levels=level, colors='black', linewidths=1., norm=LogNorm(vmin=vmin, vmax=vmax))
 #plt.colorbar()
 thetas = np.exp(np.array([gp.kernel_.theta for gp in GPs]))
+for gp in GPs: print(gp.kernel_)
 x, y = thetas[:,1], thetas[:,2]
 for i, (pt_x, pt_y) in enumerate(zip(x,y)):
     name = str(i+1)

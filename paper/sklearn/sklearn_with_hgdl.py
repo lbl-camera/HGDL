@@ -64,12 +64,13 @@ def main():
                         jac=grad, bounds=self.kernel_.bounds)
                 from hgdl.hgdl import HGDL
                 from dask.distributed import LocalCluster, Client
+                x0 = np.array([-11.51292546, 4.69457218,  -0.45065571])
+                print(obj(x0), grad(x0))
                 res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, hess=None,
-                        r = 1., bestX=-1,
-#                        num_individuals=25, max_epochs=3,
+                        x0=x0.reshape(1,-1),
                         local_method='scipy', local_kwargs={'method':'L-BFGS-B'})
                 res = res.get_final()
-                print(res)
+                print(np.exp(res['minima_x']))
                 self.log_marginal_likelihood_value_ = res['best_y']
                 self.kernel_.theta = res['best_x']
                 GPs = []
@@ -158,9 +159,11 @@ def main():
     GPs = GaussianProcessRegressor(kernel=kernel1, alpha=0.0, optimizer='hgdl').fit(X, y)
     for i, gp in enumerate(GPs):
         print('gp - HGDL (',i+1,'): ', gp, '\nkernel:', gp.kernel_)
+        print('theta:', gp.kernel_.theta, np.exp(gp.kernel_.theta))
         print('likelihood:', gp.log_marginal_likelihood_value_)
 
     thetas = np.array([gp.kernel_.theta for gp in GPs])
+    print(thetas)
     np.save('data/hgdl_thetas', thetas)
 
 

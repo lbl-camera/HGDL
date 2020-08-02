@@ -8,9 +8,10 @@
 	* find out what's happening with eager return	
 	--------------------	
 	* unit testing
-	* get hgdl going on fvgp
 	* documentation
+	* example uses	
 	* get running on nersc
+	* get hgdl going on fvgp
  
  * work on the paper
 	* real work

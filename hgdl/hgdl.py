@@ -55,8 +55,8 @@ class HGDL(object):
         if client is None:
             client = dask.distributed.Client()
         self.client = client
-        if not fix_rng: seed = None
-        else: seed = 42
+        if fix_rng: seed = 42
+        else: seed = None
         self.rng = np.random.default_rng(seed)
         self.r = r
         self.alpha = alpha
@@ -139,7 +139,7 @@ class HGDL(object):
         self.event.set()
 
     def random_sample(self, N, bounds):
-        return np.random.uniform(
+        return self.rng.uniform(
                 low = bounds[:,0],
                 high = bounds[:,1],
                 size = (N,len(bounds)))

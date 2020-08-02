@@ -60,7 +60,7 @@ def run_local(hgdl):
         else:
             futures = hgdl.client.map(minimizer, hgdl.x0)
             iterable = (a.result() for a in dask.distributed.as_completed(futures))
-        for res in iterable:
+        for i, res in enumerate(iterable):
             if num_none / hgdl.num_individuals > .4:
                 break
             if not res["success"]:
