@@ -51,9 +51,13 @@ GPs = [gp1, gp2]
 X_ = np.linspace(0, 5, 100)
 #plt.plot(X_, 0.5*np.sin(3*X_), 'r', lw=3, zorder=9, label='ground truth')
 plt.plot(X_, 0.5*np.sin(3*X_), label='ground truth')
+for i, gp in enumerate(GPs):
+    print('gp - sklearn (',i+1,'): ', gp, '\nkernel:', gp.kernel_)
+    print('theta:', gp.kernel_.theta, np.exp(gp.kernel_.theta))
+    print('likelihood:', gp.log_marginal_likelihood_value_)
+
 
 for i, (gp, kernel) in enumerate(zip(GPs, kernels)):
-    print(gp.kernel_.theta)
     y_mean, y_cov = gp.predict(X_[:, np.newaxis], return_cov=True)
     #plt.plot(X_, y_mean, 'k', lw=3, zorder=9, label='sklearn kernel: '+str(i+1))
     plt.plot(X_, y_mean, label='sklearn kernel: '+str(i+1))
