@@ -27,7 +27,7 @@ class HGDL:
     """
     def __init__(self,obj_func,grad_func,hess_func, bounds,dask_client = None, maxEpochs=10,
             radius = 20.0,local_tol = 1e-4, global_tol = 1e-4,
-            local_max_iter = 20, global_max_iter = 120,
+            local_max_iter = 200, global_max_iter = 120,
             number_of_walkers = 20,
             number_of_workers = None, x0 = None, 
             args = (), kwargs = {}):
@@ -86,19 +86,17 @@ class HGDL:
         print("HGDL starting positions: ")
         print(self.x0)
         print("I found ",len(np.where(success == True)[0])," optima in my first run")
+        if len(np.where(success == True)[0]) == 0: 
+            print("no optima found")
+            success[:] = True
         print("They are now stored in the optima_list")
         self.optima_list = self.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
         #################################
-        ##try with asyncio:
-        #loop = asyncio.get_event_loop()
-        #loop.create_task(self.hgdl())
-        #try with queue and threading/multiprocessing
         self.q = Queue()
         self.run = True
-        #process= Process(target = self.hgdl).start()
         self.thread = threading.Thread(target = self.hgdl, args=(), daemon = True).start()
-        #loop.run_forever()
-        #self.hgdl()
+    ###########################################################################
+    ###########################################################################
     ###########################################################################
     def hgdl(self):
         for i in range(self.maxEpochs):
@@ -175,16 +173,14 @@ class HGDL:
         number_of_walkers = len(x_init)
         self.tasks = []
         for i in range(number_of_walkers):
-            #print("submit ", i, " of ", number_of_walkers)
             self.tasks.append(self.client.submit(local.DNewton,self.obj_func, self.grad_func,self.hess_func,\
-            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter,self.args))
+            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter,args  =  self.args))
         while any(f.status == 'pending' for f in self.tasks):
             time.sleep(0.1)
         if any(f.status == 'cancelled' for f in self.tasks):
             print("cancelled tasks")
             self.tasks = []
         self.client.gather(self.tasks)
-
         number_of_walkers = len(self.tasks)
         x = np.empty((number_of_walkers, self.dim))
         f = np.empty((number_of_walkers))

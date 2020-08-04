@@ -35,7 +35,7 @@ def deflation_function_gradient(x,x0):
     s2 = np.array([bump_function_gradient(x,x0[i]) for i in range(len(x0))], dtype = object)
     return (1.0/((1.0-sum(s1))**2))*np.sum(s2)
 ###########################################################################
-def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, *args):
+def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, args = None):
     #w = np.random.rand() * 10.0
     #print("DNewton from point:", x0," started, waits: ", w)
     #time.sleep(w)
@@ -46,16 +46,20 @@ def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, *args)
     while e > tol:
         counter += 1
         if counter >= max_iter or misc.out_of_bounds(x,bounds):
-            #print("DNewton from point:", x0," not converged",w)
-            return x,func(x, args),e,np.linalg.eig(hessian)[0],False
-        gradient = grad(x, args)
+            #print("DNewton from point:", x0," not converged ",w, " ", counter, misc.out_of_bounds(x,bounds))
+            return x,func(x, *args),e,np.linalg.eig(hessian)[0],False
+        gradient = grad(x, *args)
         e = np.linalg.norm(gradient)
-        hessian = hess(x, args)
+        hessian = hess(x, *args)
         d = deflation_function(x,x_defl)
         dg = deflation_function_gradient(x,x_defl)
-        gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
+        try:
+            gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
+        except Exception as error: 
+            print("solve in dNewton crashed because: ",str(e)," starting least squares")
+            gamma,a,b,c = np.linalg.lstsq(hessian + (np.outer(gradient,dg)/d),-gradient)
         x += gamma
-        #print("current position: ",x,"epsilon: ",e)
+        #print("current position: ",x,"epsilon: ",e, gamma, gradient, hessian)
     #print("DNewton from point:", x0," converged to ",x, "after waiting: ",w)
     #input()
-    return x,func(x, args),e,np.linalg.eig(hessian)[0], success
+    return x,func(x, *args),e,np.linalg.eig(hessian)[0], success
