@@ -4,6 +4,7 @@ import time
 import hgdl.misc as misc
 import hgdl.local as local
 import hgdl.glob as glob
+from functools import partial
 from multiprocessing import Process, Queue, Lock
 import dask.distributed
 import asyncio
@@ -29,7 +30,7 @@ class HGDL:
             local_max_iter = 20, global_max_iter = 120,
             number_of_walkers = 20,
             number_of_workers = None, x0 = None, 
-            argument_dict = None):
+            args = (), kwargs = {}):
         """
         intialization for the HGDL class
 
@@ -49,11 +50,12 @@ class HGDL:
             local_max_iter = 20
             number_of_workers = number of cpus -1
             x0 = random
-            argument_dict = None
+            args = (), a n-tuple of parameters
+            kwargs = {}, a dictionary
         """
         self.obj_func = obj_func
-        self.grad_func = grad_func
-        self.hess_func = hess_func
+        self.grad_func= grad_func
+        self.hess_func= hess_func
         self.bounds = np.asarray(bounds)
         self.client = dask_client
         self.r = radius
@@ -71,7 +73,7 @@ class HGDL:
         if x0 is None:x0 = misc.random_population(self.bounds,self.number_of_walkers)
         self.x0 = x0
         if len(self.x0) != self.number_of_walkers: exit("number of initial position != number of walkers")
-        self.argument_dict = argument_dict
+        self.args = args
         ########################################
         #init optima list:
         self.optima_list = {"x": np.empty((0,self.dim)), \
@@ -100,12 +102,11 @@ class HGDL:
     ###########################################################################
     def hgdl(self):
         for i in range(self.maxEpochs):
-            if self.run is False:
-                self.finish_up_last_tasks()
-                self.q.put(self.client.shutdown())
-                self.thread.kill()
-                self.thread.join()
-                break
+            if self.run is False: self.q.put(self.finish_up_last_tasks()); break
+            #    self.q.put(self.client.shutdown())
+            #    self.thread.kill()
+            #    self.thread.join()
+            #    break
             print("Computing epoch ",i," of ",self.maxEpochs)
             self.q.put(self.run_hgdl_epoch())
     def finish_up_last_tasks(self):
@@ -125,11 +126,6 @@ class HGDL:
     def kill(self):
         print("Shutdown initialized ...")
         self.run = False
-        #self.thread.join()
-        #self.q.put(self.finish_up_last_tasks())
-        #self.q.put(self.client.shutdown())
-        print('exiting hgdl')
-        #exit()
         return self.optima_list
     ###########################################################################
     def run_hgdl_epoch(self):
@@ -177,24 +173,26 @@ class HGDL:
             optima_locations, func values, gradient norms, eigenvalues, success(bool)
         """
         number_of_walkers = len(x_init)
+        self.tasks = []
+        for i in range(number_of_walkers):
+            #print("submit ", i, " of ", number_of_walkers)
+            self.tasks.append(self.client.submit(local.DNewton,self.obj_func, self.grad_func,self.hess_func,\
+            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter,self.args))
+        while any(f.status == 'pending' for f in self.tasks):
+            time.sleep(0.1)
+        if any(f.status == 'cancelled' for f in self.tasks):
+            print("cancelled tasks")
+            self.tasks = []
+        self.client.gather(self.tasks)
+
+        number_of_walkers = len(self.tasks)
         x = np.empty((number_of_walkers, self.dim))
         f = np.empty((number_of_walkers))
         grad_norm = np.empty((number_of_walkers))
         eig = np.empty((number_of_walkers,self.dim))
         success = np.empty((number_of_walkers))
-        self.tasks = []
-        for i in range(number_of_walkers):
-            #print("submit ", i, " of ", number_of_walkers)
-            self.tasks.append(self.client.submit(local.DNewton,self.obj_func, self.grad_func,self.hess_func,\
-            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter))
-        while any(f.status == 'pending' for f in self.tasks):
-            time.sleep(0.1)
-        if any(f.status == 'cancelled' for f in self.tasks):
-            print("cancelled tasks")
-            exit()
-        self.client.gather(self.tasks)
         #gather results and kick out optima that are too close:
-        for i in range(number_of_walkers):
+        for i in range(len(self.tasks)):
             x[i],f[i],grad_norm[i],eig[i],success[i] = self.tasks[i].result()
             for j in range(i):
                 #exchange for function def too_close():

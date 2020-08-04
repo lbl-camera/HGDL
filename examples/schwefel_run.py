@@ -4,7 +4,9 @@ from hgdl.test_functions import *
 import time
 
 def main():
-    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian, bounds = [[-500,500],[-500,500]], maxEpochs = 100)
+    number  = 5
+    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]], 
+            args = (number), maxEpochs = 100)
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")
@@ -15,6 +17,8 @@ def main():
     time.sleep(10)
     print("main thread kills optimization")
     a.kill()
+    print("hgdl was killed but I am waiting 2s")
+    time.sleep(2)
 
 if __name__ == '__main__':
     main()
