@@ -1,6 +1,5 @@
  What I will do today:
-	* fix LML for sklearn
-	* get first pass on bio. dataset
+	* get hgdl on bio dataset
   
  Task breakdown:
  * work on hgdl itself:
@@ -16,9 +15,8 @@
  * work on the paper
 	* real work
  		* -- most necessary --
-		* fix LML for sklearn
+		* implement hgdl on biosci dataset	
 		--------------------	
-		* implement on biosci dataset	
 	* writing
 		* -- most necessary --
 		* main figure for the paper	
