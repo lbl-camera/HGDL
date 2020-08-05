@@ -4,9 +4,10 @@ from hgdl.test_functions import *
 import time
 
 def main():
-    number  = 5
+    arr  = 5
+    brr  = 6
     a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]], 
-            args = (number), maxEpochs = 100)
+            args = (arr,brr), maxEpochs = 100)
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")
