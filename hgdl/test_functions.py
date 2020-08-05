@@ -7,8 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 
-def schwefel(x,*args):
+def schwefel(x,arr):
     x = x.astype(float)
+    #print(arr)
     return 418.9829*len(x) - np.sum(x*np.sin(np.sqrt(np.abs(x))))
 ###########################################################################
 def schwefel_gradient(x,*args):
