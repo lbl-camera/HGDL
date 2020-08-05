@@ -55,6 +55,10 @@ def fit(self, X, y):
             from dask.distributed import LocalCluster, Client
             res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, hess=None,
                     local_method='scipy', local_kwargs={'method':'L-BFGS-B'})
+            import time
+            time.sleep(10)
+            print(res.get_best())
+            return
             res = res.get_final()
             print(np.exp(res['minima_x']))
             self.log_marginal_likelihood_value_ = res['best_y']

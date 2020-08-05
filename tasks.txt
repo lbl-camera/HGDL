@@ -1,5 +1,5 @@
  What I will do today:
-	* get hgdl on bio dataset
+	* debug why hgdl freaks out on bio
   
  Task breakdown:
  * work on hgdl itself:
