@@ -52,7 +52,7 @@ class data_reader(object):
                 [self.X_train, self.X_test],
                 [self.y_train, self.y_test],
                 ["train", "test"]):
-            print(name,'----------------')
+            print(name,'---------------------------------------')
             y_pred, y_cov = gp.predict(x, return_cov=True)
             y_std = np.sqrt(np.diag(y_cov))
             residual = y-y_pred
@@ -67,7 +67,9 @@ class data_reader(object):
             plt.title('residual: y-y_pred')
             plt.scatter(useless, residual)
             plt.show()
-
+            plt.errorbar(useless, residual, yerr=y_std, fmt='.')
+            plt.show()
+    
             print('calculating percentage covered when 1,2,3,&4 sigma away')
             for i in range(1,5):
                 within = np.logical_and(y-i*y_std<=y_pred, y_pred<=y+i*y_std)

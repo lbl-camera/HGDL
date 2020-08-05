@@ -1,6 +1,10 @@
  What I will do today:
 	* debug why hgdl freaks out on bio
-  
+ 	* make sklearn plots very pretty
+	* make a main figure flowchart of hgdl
+	* 
+
+ 
  Task breakdown:
  * work on hgdl itself:
  	-- most necessary --
@@ -15,8 +19,9 @@
  * work on the paper
 	* real work
  		* -- most necessary --
-		* implement hgdl on biosci dataset	
+		* plots for sklearn	
 		--------------------	
+		* implement hgdl on biosci dataset	
 	* writing
 		* -- most necessary --
 		* main figure for the paper	
