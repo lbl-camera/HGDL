@@ -2,9 +2,9 @@
 
 #  imports
 import numpy as np
-from .global_methods.run_global import run_global
-from .local_methods.run_local import run_local
-from .results import Results
+from global_methods.run_global import run_global
+from local_methods.run_local import run_local
+from results import Results
 from multiprocessing import Process, Queue, Lock
 import dask.distributed
 import asyncio
@@ -127,6 +127,7 @@ class HGDL(object):
     # work functions
     async def rest_of_epochs(self):
         for i in range(1,self.max_epochs):
+            print(i)
             self.best = await self.epoch()
         self.best = self.results.roll_up()
     # a single epoch

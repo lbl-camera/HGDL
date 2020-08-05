@@ -13,7 +13,9 @@ def main():
     #t = perf_counter()
     #print(HGDL(newRosen, rosen_der, None, b, client, num_individuals=10, max_epochs=2).get_final())
     #print('hgdl took ', perf_counter()-t, 'seconds')
-    hgdl = HGDL(rosen, rosen_der, None, b, client, num_individuals=10, max_epochs=2)
+    hgdl = HGDL(rosen, rosen_der, None, b, client, num_individuals=10, max_epochs=200)
+    print("main awake")
+    sleep(20)
     res = hgdl.get_final()
     print(res)
 
