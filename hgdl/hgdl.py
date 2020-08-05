@@ -27,7 +27,7 @@ class HGDL:
     """
     def __init__(self,obj_func,grad_func,hess_func, bounds,dask_client = None, maxEpochs=10,
             radius = 20.0,local_tol = 1e-4, global_tol = 1e-4,
-            local_max_iter = 200, global_max_iter = 120,
+            local_max_iter = 20, global_max_iter = 120,
             number_of_walkers = 20,
             number_of_workers = None, x0 = None, 
             args = (), kwargs = {}):
@@ -100,13 +100,10 @@ class HGDL:
     ###########################################################################
     def hgdl(self):
         for i in range(self.maxEpochs):
-            if self.run is False: self.q.put(self.finish_up_last_tasks()); break
-            #    self.q.put(self.client.shutdown())
-            #    self.thread.kill()
-            #    self.thread.join()
-            #    break
+            if self.run is False: self.q.put(self.finish_up_last_tasks());break
             print("Computing epoch ",i," of ",self.maxEpochs)
             self.q.put(self.run_hgdl_epoch())
+        time.sleep(0.1)
     def finish_up_last_tasks(self):
         if any(f.status == 'cancelled' for f in self.tasks):
             self.tasks = []
@@ -174,7 +171,7 @@ class HGDL:
         self.tasks = []
         for i in range(number_of_walkers):
             self.tasks.append(self.client.submit(local.DNewton,self.obj_func, self.grad_func,self.hess_func,\
-            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter,args  =  self.args))
+            x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter,self.args))
         while any(f.status == 'pending' for f in self.tasks):
             time.sleep(0.1)
         if any(f.status == 'cancelled' for f in self.tasks):

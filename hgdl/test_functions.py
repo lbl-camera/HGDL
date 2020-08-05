@@ -7,17 +7,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 
-def schwefel(x,args = None):
+def schwefel(x,*args):
     x = x.astype(float)
     return 418.9829*len(x) - np.sum(x*np.sin(np.sqrt(np.abs(x))))
 ###########################################################################
-def schwefel_gradient(x,args = None):
+def schwefel_gradient(x,*args):
     x = x.astype(float)
     indices = np.where(x==0)
     x[indices] = 0.0001
     return -(np.sin(np.sqrt(np.abs(x))) + (x*np.cos(np.sqrt(np.abs(x)))*(0.5/np.sqrt(np.abs(x))) * (np.sign(x))))
 ###########################################################################
-def schwefel_hessian(x,args = None):
+def schwefel_hessian(x,*args):
     x = x.astype(float)
     e = 1e-4
     hessian = np.zeros((len(x),len(x)))
