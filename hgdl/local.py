@@ -36,7 +36,7 @@ def deflation_function_gradient(x,x0):
     return (1.0/((1.0-sum(s1))**2))*np.sum(s2)
 ###########################################################################
 def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, args = ()):
-    #w = np.random.rand() * 10.0
+    #w = 0.1 #np.random.rand() * 10.0
     #print("DNewton from point:", x0," started, waits: ", w)
     #time.sleep(w)
     e = np.inf
@@ -56,7 +56,7 @@ def DNewton(func, grad, hess, x0,x_defl,bounds,tol = 1e-6 ,max_iter = 20, args =
         try:
             gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
         except Exception as error: 
-            print("solve in dNewton crashed because: ",str(e)," starting least squares")
+            #print("solve in dNewton crashed because: ",str(e)," starting least squares")
             gamma,a,b,c = np.linalg.lstsq(hessian + (np.outer(gradient,dg)/d),-gradient)
         x += gamma
         #print("current position: ",x,"epsilon: ",e, gamma, gradient, hessian)
