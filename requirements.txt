@@ -6,3 +6,4 @@ matplotlib
 dask
 torch
 distributed
+bokeh
