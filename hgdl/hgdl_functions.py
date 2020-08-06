@@ -5,26 +5,25 @@ import hgdl.local as local
 import hgdl.glob as glob
 import dask.distributed
 from psutil import cpu_count
-from distributed import Client, get_client, secede, rejoin
+from distributed import Client, get_client, secede, rejoin, protocol
+import dask.distributed as distributed
 
-def hgdl(optima_list, 
+def hgdl(worker_optima_list,init_optima_list, 
         func, grad,hess, bounds,
         maxEpochs,radius, local_max_iter,global_max_iter,
         number_of_walkers, args, verbose):
     for i in range(maxEpochs):
-        #if run is False: 
-        #    q.put(finish_up_last_tasks()); 
-        #    break
         print("Computing epoch ",i," of ",maxEpochs)
         #if verbose is True: print("Putting Epoch ",i," put in queue")
-        #q.put(
-        #time.sleep(5)
-        optima_list = run_hgdl_epoch(func,grad,hess,bounds,optima_list,
+        optima_list = run_hgdl_epoch(func,grad,hess,bounds,init_optima_list,
                 radius,local_max_iter,global_max_iter,
                 number_of_walkers,args)
-        #)
+        a = distributed.protocol.serialize(optima_list)
+        worker_optima_list.set(a)
+        init_optima_list = dict(optima_list)
         #if verbose is True: print("Epoch ",i," put in queue")
     time.sleep(0.1)
+    return optima_list
 
 def run_hgdl_epoch(func,grad,hess,bounds,optima_list,radius,
         local_max_iter,global_max_iter,number_of_walkers,args):
@@ -98,11 +97,12 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
         for i in range(number_of_walkers):
             tasks.append(client.submit(local.DNewton,func, grad,hess,\
             x_init[i],x_defl,bounds,1e-6,local_max_iter,args))
-        while any(f.status == 'pending' for f in tasks):
-            time.sleep(0.1)
-        if any(f.status == 'cancelled' for f in tasks):
-            print("cancelled tasks")
-            tasks = []
+        tasks = finish_up_tasks(tasks)
+        #while any(f.status == 'pending' for f in tasks):
+        #    time.sleep(0.1)
+        #if any(f.status == 'cancelled' for f in tasks):
+        #    print("cancelled tasks")
+        #    tasks = []
         #secede()
         client.gather(tasks)
         #rejoin()
@@ -161,4 +161,13 @@ def fill_in_optima_list(optima_list,local_tol,x,f,grad_norm,eig, success):
     optima_list["eigen values"] = optima_list["eigen values"][sort_indices]
     optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices]
     return optima_list
+###########################################################################
+def finish_up_tasks(tasks):
+    for f in tasks:
+        if f.status == 'cancelled':
+            tasks.remove(f)
+    while any(f.status == 'pending' for f in tasks):
+        #print("finishing up last tasks...")
+        time.sleep(0.1)
+    return tasks
 
