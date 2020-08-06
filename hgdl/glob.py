@@ -19,7 +19,6 @@ def genetic_step(X, y, bounds, numChoose):
     Notes:
     the children can be outside of the bounds!
     """
-    print("about half way0")
     unfairness = 2.5
     wildness = 0.05
     N, k = X.shape
@@ -28,7 +27,6 @@ def genetic_step(X, y, bounds, numChoose):
     amax = np.amax(y)
     # if the distribution of performance has no width,
     #   give everyone an equal shot
-    print("about half way1")
     if np.isclose(amax,0.):
         p = np.ones(N)*1./N
     else:
@@ -37,16 +35,13 @@ def genetic_step(X, y, bounds, numChoose):
         y -= np.amin(y)
         y += 1
         p = y/np.sum(y)
-    print("about half way2")
     #This chooses from the sample based on the power law,
     #allowing replacement means that the the individuals
     #can have multiple kids
     p = unfairness*np.power(p,unfairness-1)
     p /= np.sum(p)
-    print("about half way3")
     if np.isnan(p).any():
         raise Exception("got isnans in GeneticStep")
-    print("about half way4")
     moms = np.random.choice(N, size=numChoose, replace=True, p=p)
     dads = np.random.choice(N, size=numChoose, replace=True, p=p)
     # calculate a perturbation to the median

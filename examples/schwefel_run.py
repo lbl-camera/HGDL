@@ -12,6 +12,7 @@ def main():
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")
     time.sleep(10)
+    exit()
     print("main thread asks for 10 best solutions:")
     print(a.get_latest(10))
     print("main sleeps for another 10 seconds")

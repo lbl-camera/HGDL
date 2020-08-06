@@ -4,6 +4,7 @@ import time
 import hgdl.misc as misc
 import hgdl.local as local
 import hgdl.glob as glob
+import hgdl.hgdl_functions as hgdl_functions
 from functools import partial
 from multiprocessing import Process, Lock
 from multiprocessing import Queue as mQueue
@@ -22,7 +23,6 @@ TODO:   *currently walkers that walk out in Newton are discarded. We should do a
         *the radius is still ad hoc, should be related to curvature
         *work on the shut down
 """
-
 class HGDL:
     """
     doc string here
@@ -68,9 +68,8 @@ class HGDL:
         self.global_max_iter = global_max_iter
         self.number_of_walkers = number_of_walkers
         self.maxEpochs = maxEpochs
-        if dask_client is True: dask_client = dask.distributed.Client()
-        self.client = dask_client
-        #dask.config.set(scheduler = "processes")
+        #if dask_client is True: dask_client = dask.distributed.Client()
+        client = dask.distributed.Client() #dask_client
         if number_of_workers is None: number_of_workers = cpu_count(logical=False)-1
         self.number_of_workers = number_of_workers
         if x0 is None:x0 = misc.random_population(self.bounds,self.number_of_walkers)
@@ -80,45 +79,69 @@ class HGDL:
         self.verbose = verbose
         ########################################
         #init optima list:
-        self.optima_list = {"x": np.empty((0,self.dim)), \
+        optima_list = {"x": np.empty((0,self.dim)), \
                 "func evals": np.empty((0)), \
                 "classifier": [], "eigen values": np.empty((0,self.dim)), \
                 "gradient norm":np.empty((0))}
         ####################################
         #first run
-        x,f,grad_norm,eig,success = self.run_dNewton(self.x0)
-        print("HGDL starting positions: ")
-        print(self.x0)
+        #x,f,grad_norm,eig,success = hgdl_functions.run_dNewton(
+        #        obj_func,
+        #        grad_func,hess_func,
+        #        np.array(bounds), client,radius,local_max_iter,
+        #        x0,args)
+        main_future = client.submit(hgdl_functions.run_dNewton,obj_func,
+                grad_func,hess_func,
+                np.array(bounds),radius,local_max_iter,
+                x0,args)
+        x,f,grad_norm,eig,success = main_future.result()
+        #print("HGDL starting positions: ")
+        #print(self.x0)
         print("I found ",len(np.where(success == True)[0])," optima in my first run")
         if len(np.where(success == True)[0]) == 0: 
             print("no optima found")
             success[:] = True
         print("They are now stored in the optima_list")
-        self.optima_list = self.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
+        optima_list = hgdl_functions.fill_in_optima_list(optima_list,1e-6,x,f,grad_norm,eig, success)
+        print(optima_list)
         #################################
-        self.q = mQueue()
-        self.run = True
+        #self.q = mQueue()
+        #self.run = True
         ##threading
         #self.thread = threading.Thread(target = self.hgdl, args=(), daemon = True)
         #self.thread.start()
         #multiprocessing
-        self.process =Process(target = self.hgdl, daemon = True)
-        self.process.start()
-        ####no multitheading:
-        #self.hgdl()
+        #self.process =Process(target = self.hgdl, daemon = True)
+        #self.process.start()
+        ####DASK.distributed onlyi
+        #client.restart()
+        #exit()
+        #main_future = client.submit(hgdl_functions.hgdl,optima_list,obj_func,
+        #        grad_func,hess_func,
+        #        bounds,maxEpochs,radius,local_max_iter,
+        #        global_max_iter,number_of_walkers,args, verbose)
+        ####no multithreading:
+        hgdl_functions.hgdl(optima_list,obj_func, grad_func,hess_func,
+                np.array(bounds),maxEpochs,radius,local_max_iter,
+                global_max_iter,number_of_walkers,args, verbose)
     ###########################################################################
     ###########################################################################
     ###########################################################################
     def hgdl(self):
+        self.client = dask.distributed.Client()
         for i in range(self.maxEpochs):
-            if self.run is False: self.q.put(self.finish_up_last_tasks());break
-            print("Computing epoch ",i," of ",self.maxEpochs)
+            #if self.run is False: 
+            #    self.q.put(self.finish_up_last_tasks()); 
+            #    self.process.join()
+            #    break
+            #print("Computing epoch ",i," of ",self.maxEpochs)
             #if self.verbose is True: print("Putting Epoch ",i," put in queue")
-            self.q.put(
+            #self.q.put(
+        #    time.sleep(5)
             self.run_hgdl_epoch()
-            )
+            #)
             #if self.verbose is True: print("Epoch ",i," put in queue")
-        time.sleep(0.1)
+        #time.sleep(0.1)
     def finish_up_last_tasks(self):
         if any(f.status == 'cancelled' for f in self.tasks):
             self.tasks = []
@@ -147,12 +170,12 @@ class HGDL:
         n = len(self.optima_list["x"])
         nn = min(n,self.number_of_walkers)
         #if self.verbose is True: print("    global step started")
-        print("global")
+        #print("global")
         self.x0 = glob.genetic_step(\
                 np.array(self.optima_list["x"][0:nn,:]),
                 np.array(self.optima_list["func evals"][0:nn]), 
                 bounds = self.bounds, numChoose= self.number_of_walkers)
-        print("local")
+        #print("local")
         #if self.verbose is True: print("    global step finished")
         self.run_local(self.x0, np.array(self.optima_list["x"]))
         #if self.verbose is True: print("    local step finished")
@@ -165,7 +188,6 @@ class HGDL:
         counter = 0
         while break_condition is False:
             counter += 1
-            print(counter)
             #walk walkers with DNewton
             x,f,grad_norm,eig,success = self.run_dNewton(x_init,x_defl)
             self.optima_list = self.fill_in_optima_list(self.optima_list, x,f,grad_norm,eig,success)
@@ -175,14 +197,14 @@ class HGDL:
     ###########################################################################
     def run_dNewton(self,x_init,x_defl = []):
         """
-        this function runs a deflated Newton for
-        all the walkers.
-        The loop below goes over every walker
-        input:
-            2d numpy array of initial positions
-            2d numpy array of positions of deflations (optional, default = [])
-        return:
-            optima_locations, func values, gradient norms, eigenvalues, success(bool)
+        #this function runs a deflated Newton for
+        #all the walkers.
+        #The loop below goes over every walker
+        #input:
+        #    2d numpy array of initial positions
+        #    2d numpy array of positions of deflations (optional, default = [])
+        #return:
+        #    optima_locations, func values, gradient norms, eigenvalues, success(bool)
         """
         if self.client is False:
             #this is in case we don't want distributed computing with DASK
@@ -193,7 +215,7 @@ class HGDL:
             eig = np.empty((number_of_walkers,self.dim))
             success = np.empty((number_of_walkers))
             for i in range(number_of_walkers):
-                print("newton for ", i)
+                #print("newton for ", i)
                 x[i],f[i],grad_norm[i],eig[i],success[i] =\
                 local.DNewton(self.obj_func, self.grad_func,self.hess_func,\
                 x_init[i],x_defl,self.bounds,self.local_tol,self.local_max_iter,self.args)
@@ -267,4 +289,3 @@ class HGDL:
         optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices]
         return optima_list
     ###########################################################################
-
