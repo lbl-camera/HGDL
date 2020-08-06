@@ -116,14 +116,14 @@ class HGDL:
         ####DASK.distributed onlyi
         #client.restart()
         #exit()
-        #main_future = client.submit(hgdl_functions.hgdl,optima_list,obj_func,
-        #        grad_func,hess_func,
-        #        bounds,maxEpochs,radius,local_max_iter,
-        #        global_max_iter,number_of_walkers,args, verbose)
-        ####no multithreading:
-        hgdl_functions.hgdl(optima_list,obj_func, grad_func,hess_func,
+        main_future = client.submit(hgdl_functions.hgdl,optima_list,obj_func,
+                grad_func,hess_func,
                 np.array(bounds),maxEpochs,radius,local_max_iter,
                 global_max_iter,number_of_walkers,args, verbose)
+        ####no multithreading:
+        #hgdl_functions.hgdl(optima_list,obj_func, grad_func,hess_func,
+        #        np.array(bounds),maxEpochs,radius,local_max_iter,
+        #        global_max_iter,number_of_walkers,args, verbose)
     ###########################################################################
     ###########################################################################
     ###########################################################################
