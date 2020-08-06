@@ -1,7 +1,6 @@
  What I will do today:
-	* make a main figure flowchart of hgdl
-	* debug why hgdl freaks out on bio
 	* use marcus's threading stuff 
+	* debug why hgdl freaks out on bio
 
  
  Task breakdown:
