@@ -97,19 +97,11 @@ class HGDL:
             success[:] = True
         print("They are now stored in the optima_list")
         optima_list = hgdl_functions.fill_in_optima_list(optima_list,1e-6,x,f,grad_norm,eig, success)
-        print(optima_list)
+        if verbose == True: print(optima_list)
         #################################
-        #self.q = mQueue()
-        #self.run = True
-        ##threading
-        #self.thread = threading.Thread(target = self.hgdl, args=(), daemon = True)
-        #self.thread.start()
-        #multiprocessing
-        #self.process =Process(target = self.hgdl, daemon = True)
-        #self.process.start()
-        ####DASK.distributed onlyi
-        self.transfer_data = distributed.Variable("worker_optima_list",self.client)
+        self.transfer_data = distributed.Variable("transfer_data",self.client)
         #self.break_out = distributed.Variable("break_out",self.client)
+        if verbose == True: print("Submitting main hgdl task")
         self.main_future = self.client.submit(hgdl_functions.hgdl,self.transfer_data,optima_list,obj_func,
                 grad_func,hess_func,
                 np.array(bounds),maxEpochs,radius,local_max_iter,

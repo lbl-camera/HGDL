@@ -8,25 +8,25 @@ from psutil import cpu_count
 from distributed import Client, get_client, secede, rejoin, protocol
 import dask.distributed as distributed
 
-def hgdl(worker_optima_list,init_optima_list, 
+def hgdl(transfer_data,init_optima_list, 
         func, grad,hess, bounds,
         maxEpochs,radius, local_max_iter,global_max_iter,
         number_of_walkers, args, verbose):
+    if verbose is True: print("    Starting ",maxEpochs," epochs.")
     for i in range(maxEpochs):
         print("Computing epoch ",i," of ",maxEpochs)
-        #if verbose is True: print("Putting Epoch ",i," put in queue")
         optima_list = run_hgdl_epoch(func,grad,hess,bounds,init_optima_list,
                 radius,local_max_iter,global_max_iter,
-                number_of_walkers,args)
+                number_of_walkers,args,verbose)
+        if verbose is True: print("    Epoch ",i," finished")
         a = distributed.protocol.serialize(optima_list)
-        worker_optima_list.set(a)
+        transfer_data.set(a)
         init_optima_list = dict(optima_list)
-        #if verbose is True: print("Epoch ",i," put in queue")
     time.sleep(0.1)
     return optima_list
 
 def run_hgdl_epoch(func,grad,hess,bounds,optima_list,radius,
-        local_max_iter,global_max_iter,number_of_walkers,args):
+        local_max_iter,global_max_iter,number_of_walkers,args,verbose):
     """
     an epoch is one local run and one global run,
     where one local run are several convergence runs of all workers from
@@ -34,31 +34,34 @@ def run_hgdl_epoch(func,grad,hess,bounds,optima_list,radius,
     """
     n = len(optima_list["x"])
     nn = min(n,number_of_walkers)
-    #if verbose is True: print("    global step started")
+    if verbose is True: print("    global step started")
     #print("global")
     x0 = glob.genetic_step(\
             np.array(optima_list["x"][0:nn,:]),
             np.array(optima_list["func evals"][0:nn]),
-            bounds, numChoose = number_of_walkers)
+            bounds, number_of_walkers,verbose)
     #print("local")
-    #if verbose is True: print("    global step finished")
+    if verbose is True: print("    global step finished")
+    if verbose is True: print("    local step started")
     optima_list = run_local(func,grad,hess,bounds,radius,
             local_max_iter,global_max_iter,
-            x0, np.array(optima_list["x"]),optima_list,args)
-    #if verbose is True: print("    local step finished")
+            x0, np.array(optima_list["x"]),optima_list,args,verbose)
+    if verbose is True: print("    local step finished")
     return optima_list
 
 def run_local(func,grad,hess,bounds, radius,
-        local_max_iter,global_max_iter,x_init, x_defl,optima_list,args):
+        local_max_iter,global_max_iter,x_init, x_defl,optima_list,args,verbose):
     break_condition = False
     x_init = np.array(x_init)
     x_defl = np.array(x_defl)
     counter = 0
     while break_condition is False or counter >= global_max_iter:
         counter += 1
+        if verbose is True: print("    local replacemet step: ",counter)
         #walk walkers with DNewton
         x,f,grad_norm,eig,success = run_dNewton(func, grad,hess,bounds,
                 radius,local_max_iter,x_init,args,x_defl)
+        if verbose is True: print("    Deflated Newton finished in step: ",counter)
         optima_list = fill_in_optima_list(optima_list, 1e-6,x,f,grad_norm,eig,success)
         x_defl = np.array(optima_list["x"])
         if len(np.where(success == False)[0]) > len(success)/2.0: break_condition = True

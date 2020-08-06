@@ -2,12 +2,14 @@ import numpy as np
 from hgdl.hgdl import HGDL
 from hgdl.test_functions import *
 import time
+import dask.distributed as distributed
 
 def main():
     arr  = 5
     brr  = 6
-    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]], 
-            args = (arr,brr), maxEpochs = 100, dask_client = None)
+    #dask_client = distributed.Client("10.0.0.184:8786")
+    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]], dask_client = None,
+            args = (arr,brr), maxEpochs = 100, verbose = False)
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")

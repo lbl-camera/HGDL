@@ -11,7 +11,7 @@ def global_step(x,y):
     offspring = np.random.multivariate_normal(mean, cov, size = len(x))
     return offspring
 ###########################################################################
-def genetic_step(X, y, bounds, numChoose):
+def genetic_step(X, y, bounds, numChoose, verbose):
     """
     Input:
     X is the individuals - points on a surface
@@ -27,6 +27,7 @@ def genetic_step(X, y, bounds, numChoose):
     amax = np.amax(y)
     # if the distribution of performance has no width,
     #   give everyone an equal shot
+    if verbose is True: print("        genetic step started")
     if np.isclose(amax,0.):
         p = np.ones(N)*1./N
     else:
@@ -42,8 +43,10 @@ def genetic_step(X, y, bounds, numChoose):
     p /= np.sum(p)
     if np.isnan(p).any():
         raise Exception("got isnans in GeneticStep")
+    if verbose is True: print("        genetic step initialized")
     moms = np.random.choice(N, size=numChoose, replace=True, p=p)
     dads = np.random.choice(N, size=numChoose, replace=True, p=p)
+    if verbose is True: print("        moms and dads chosen")
     # calculate a perturbation to the median
     #   of each individual's parents
     perturbation = np.random.normal(
@@ -57,5 +60,6 @@ def genetic_step(X, y, bounds, numChoose):
     children = weighted_linear_sum + perturbation
     oob = np.logical_not([misc.in_bounds(x,bounds) for x in children])
     children[oob] = misc.random_sample(np.sum(oob), k, bounds)
+    if verbose is True: print("        genetic step done")
     return children
 
