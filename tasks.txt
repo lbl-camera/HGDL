@@ -1,8 +1,7 @@
  What I will do today:
-	* debug why hgdl freaks out on bio
- 	* make sklearn plots very pretty
 	* make a main figure flowchart of hgdl
-	* 
+	* debug why hgdl freaks out on bio
+	* use marcus's threading stuff 
 
  
  Task breakdown:

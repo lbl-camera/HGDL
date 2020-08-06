@@ -104,7 +104,7 @@ LML = np.array(LML).T
 vmin, vmax = (-LML).min(), (-LML).max()
 vmax = 50
 level = np.around(np.logspace(np.log10(vmin), np.log10(vmax), 50), decimals=1)
-np.save('data/lml_arr', LML)
+#np.save('data/lml_arr', LML)
 plt.contour(Theta0, Theta1, -LML,
             #levels=level, norm=LogNorm(vmin=vmin, vmax=vmax))
             levels=level, colors='black', linewidths=1., norm=LogNorm(vmin=vmin, vmax=vmax))
@@ -112,10 +112,8 @@ plt.contour(Theta0, Theta1, -LML,
 thetas = np.exp(np.array([gp.kernel_.theta for gp in GPs]))
 for gp in GPs: print(gp.kernel_)
 x, y = thetas[:,1], thetas[:,2]
-for i, (pt_x, pt_y) in enumerate(zip(x,y)):
-    name = str(i+1)
-    plt.scatter(x, y, c='red', marker='x', label=name)
-plt.legend()
+for pt_x, pt_y in zip(x,y):
+    plt.scatter(x, y, c='red', marker='x')
 plt.xscale("log")
 plt.yscale("log")
 plt.xlabel("Length-scale")

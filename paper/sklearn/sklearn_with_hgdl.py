@@ -18,7 +18,7 @@ def main():
         + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+1))
     kernel2 = 1.0 * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e3)) \
         + WhiteKernel(noise_level=1e-5, noise_level_bounds=(1e-10, 1e+1))
-    GPs = GaussianProcessRegressor(kernel=kernel2, alpha=0.0, optimizer='hgdl').fit(X, y)
+    GPs = GaussianProcessRegressor(kernel=kernel2, alpha=0.0, optimizer='hgdl', random_state=42).fit(X, y)
     for i, gp in enumerate(GPs):
         print('gp - HGDL (',i+1,'): ', gp, '\nkernel:', gp.kernel_)
         print('theta:', gp.kernel_.theta, np.exp(gp.kernel_.theta))
@@ -27,7 +27,9 @@ def main():
     thetas = np.array([gp.kernel_.theta for gp in GPs])
     print(thetas)
     np.save('data/hgdl_thetas', thetas)
-
+    with open('data/GPs.pkl', 'wb') as file:
+        import pickle
+        pickle.dump(GPs, file)
 
 if __name__ == "__main__":
     main()

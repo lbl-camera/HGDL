@@ -5,6 +5,7 @@ from scipy.linalg import cholesky, cho_solve, solve_triangular
 from operator import itemgetter
 import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
+
 def fit(self, X, y):
     if self.kernel is None:  # Use an RBF kernel as default
         self.kernel_ = C(1.0, constant_value_bounds="fixed") \
@@ -55,14 +56,9 @@ def fit(self, X, y):
             from dask.distributed import LocalCluster, Client
             res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, hess=None,
                     local_method='scipy', local_kwargs={'method':'L-BFGS-B'})
-            import time
-            time.sleep(10)
-            print(res.get_best())
-            return
             res = res.get_final()
-            print(np.exp(res['minima_x']))
-            self.log_marginal_likelihood_value_ = res['best_y']
-            self.kernel_.theta = res['best_x']
+            #self.log_marginal_likelihood_value_ = res['best_y']
+            #self.kernel_.theta = res['best_x']
             GPs = []
             for i in range(len(res['minima_y'])):
                 x, y = res['minima_x'][i], res['minima_y'][i]
@@ -71,7 +67,10 @@ def fit(self, X, y):
                 gp = GaussianProcessRegressor(alpha=self.alpha, kernel=kernel)
                 gp.kernel_ = kernel
                 gp.log_marginal_likelihood_value_ = -y
+                gp.random_state = self.random_state
                 GPs.append(gp)
+            for i in range(len(GPs)):
+               GPs[i] = update(GPs[i], self.X_train_, self.y_train_)
             return GPs
         # end of the part that i wrote --------------------------------- 
         else:
@@ -116,6 +115,68 @@ def fit(self, X, y):
         self.log_marginal_likelihood_value_ = \
             self.log_marginal_likelihood(self.kernel_.theta,
                                          clone_kernel=False)
+
+    # Precompute quantities required for predictions which are independent
+    # of actual query points
+    K = self.kernel_(self.X_train_)
+    K[np.diag_indices_from(K)] += self.alpha
+    try:
+        self.L_ = cholesky(K, lower=True)  # Line 2
+        # self.L_ changed, self._K_inv needs to be recomputed
+        self._K_inv = None
+    except np.linalg.LinAlgError as exc:
+        exc.args = ("The kernel, %s, is not returning a "
+                    "positive definite matrix. Try gradually "
+                    "increasing the 'alpha' parameter of your "
+                    "GaussianProcessRegressor estimator."
+                    % self.kernel_,) + exc.args
+        raise
+    self.alpha_ = cho_solve((self.L_, True), self.y_train_)  # Line 3
+    return self
+
+
+def update(self, X, y):
+    if self.kernel is None:  # Use an RBF kernel as default
+        self.kernel_ = C(1.0, constant_value_bounds="fixed") \
+            * RBF(1.0, length_scale_bounds="fixed")
+    else:
+        self.kernel_ = clone(self.kernel)
+
+    self._rng = check_random_state(self.random_state)
+
+    if self.kernel_.requires_vector_input:
+        X, y = self._validate_data(X, y, multi_output=True, y_numeric=True,
+                                   ensure_2d=True, dtype="numeric")
+    else:
+        X, y = self._validate_data(X, y, multi_output=True, y_numeric=True,
+                                   ensure_2d=False, dtype=None)
+
+    # Normalize target value
+    if self.normalize_y:
+        self._y_train_mean = np.mean(y, axis=0)
+        self._y_train_std = np.std(y, axis=0)
+
+        # Remove mean and make unit variance
+        y = (y - self._y_train_mean) / self._y_train_std
+
+    else:
+        self._y_train_mean = np.zeros(1)
+        self._y_train_std = 1
+
+    if np.iterable(self.alpha) \
+       and self.alpha.shape[0] != y.shape[0]:
+        if self.alpha.shape[0] == 1:
+            self.alpha = self.alpha[0]
+        else:
+            raise ValueError("alpha must be a scalar or an array"
+                             " with same number of entries as y.(%d != %d)"
+                             % (self.alpha.shape[0], y.shape[0]))
+
+    self.X_train_ = np.copy(X) if self.copy_X_train else X
+    self.y_train_ = np.copy(y) if self.copy_X_train else y
+    self.log_marginal_likelihood_value_ = \
+        self.log_marginal_likelihood(self.kernel_.theta,
+                                        clone_kernel=False)
 
     # Precompute quantities required for predictions which are independent
     # of actual query points
