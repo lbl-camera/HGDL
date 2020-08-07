@@ -16,8 +16,8 @@ def main():
 
     print('HGDL -----------------------------------------------------------')
     from sklearn.gaussian_process.kernels import WhiteKernel, Matern
-    kernel = 1.**2 * Matern(length_scale=.1*np.ones(x.shape[1]),nu=2.0)\
-            + 0.1**2 * WhiteKernel(noise_level=1.)
+    kernel = 1.**2 * Matern(length_scale=.01*np.ones(x.shape[1]),nu=2.0)\
+            + 1.**2 * WhiteKernel(noise_level=1.)
     GPs = GaussianProcessRegressor(kernel=kernel,
                                   alpha=1e-5,
                                   optimizer='hgdl',
