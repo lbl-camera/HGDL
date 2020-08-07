@@ -4,7 +4,7 @@ def main():
     from hgdl.hgdl import HGDL
     from time import sleep, perf_counter
     b = np.array([[-2, 2],[-3,3.]])
-    hgdl = HGDL(rosen, rosen_der, b)
+    hgdl = HGDL(rosen, rosen_der, b, local_method='scipy')
     res = hgdl.get_final()
     print(res)
 
