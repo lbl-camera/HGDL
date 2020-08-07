@@ -79,6 +79,33 @@ class HGDL:
                 "classifier": [], "eigen values": np.empty((0,self.dim)), 
                 "gradient norm":np.empty((0))}
         ####################################
+
+        self.main_future = self.client.submit(hgdl_functions.run_dNewton,obj_func,
+                grad_func,hess_func,
+                np.asarray(bounds),radius,local_max_iter,
+                x0,args)
+        x,f,grad_norm,eig,success = self.main_future.result()
+        print("HGDL starting positions: ")
+        print(self.x0)
+        print("")
+        print("")
+        print("")
+        print("I found ",len(np.where(success == True)[0])," optima in my first run")
+        if len(np.where(success == True)[0]) == 0: 
+            print("no optima found")
+            success[:] = True
+        print("They are now stored in the optima_list")
+        self.optima_list = hgdl_functions.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
+        if self.verbose == True: print(optima_list)
+        #################################
+        self.transfer_data = distributed.Variable("transfer_data",self.client)
+        if self.verbose == True: print("Submitting main hgdl task")
+
+        self.main_future = self.client.submit(hgdl_functions.hgdl,self.transfer_data,self.optima_list,obj_func,
+                grad_func,hess_func,
+                np.asarray(bounds),maxEpochs,radius,local_max_iter,
+                global_max_iter,number_of_walkers,args,verbose)
+
     ###########################################################################
     ###########################################################################
     ###########################################################################
