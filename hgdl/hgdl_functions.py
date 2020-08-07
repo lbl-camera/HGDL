@@ -145,7 +145,7 @@ def fill_in_optima_list(optima_list,local_tol,x,f,grad_norm,eig, success):
         elif len(np.where(eig[i] > 0.0)[0]) == len(eig[i]): classifier.append("minimum")
         elif len(np.where(eig[i] < 0.0)[0]) == len(eig[i]): classifier.append("maximum")
         elif len(np.where(eig[i] == 0.0)[0])  > 0: classifier.append("zero curvature")
-        elif len(np.where(eig[i] < 0.0)[0])  < len(eig[i]): classifier.append("sattle point")
+        elif len(np.where(eig[i] < 0.0)[0])  < len(eig[i]): classifier.append("saddle point")
         else: classifier.append("ERROR")
 
     optima_list = {"x":       np.vstack([optima_list["x"],clean_x]), \
