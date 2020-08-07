@@ -4,7 +4,6 @@ import hgdl.misc as misc
 import hgdl.local as local
 import hgdl.glob as glob
 import dask.distributed
-from psutil import cpu_count
 from distributed import Client, get_client, secede, rejoin, protocol
 import dask.distributed as distributed
 

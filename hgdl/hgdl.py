@@ -5,15 +5,8 @@ import hgdl.misc as misc
 import hgdl.local as local
 import hgdl.glob as glob
 import hgdl.hgdl_functions as hgdl_functions
-from functools import partial
-from multiprocessing import Process, Lock
-from multiprocessing import Queue as mQueue
 import dask.distributed as distributed
-import asyncio
-from psutil import cpu_count
-import threading
 import dask.multiprocessing
-from multiprocessing.pool import ThreadPool
 from dask.distributed import as_completed
 ###authors: David Perryman, Marcus Noack
 ###institution: CAMERA @ Lawrence Berkeley National Laboratory
