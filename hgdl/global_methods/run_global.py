@@ -1,11 +1,11 @@
 from .genetic import genetic_step
 from .gaussian import gaussian_step
 
-def run_global(hgdl):
-    x, y = hgdl.results.get_all()
-    if hgdl.global_method == 'genetic':
-        return genetic_step(hgdl, x, y)
-    elif hgdl.global_method == 'gaussian':
-        return gaussian_step(hgdl, x, y)
+def run_global(info):
+    x, y = info.results.get_all()
+    if info.global_method == 'genetic':
+        return genetic_step(info, x, y)
+    elif info.global_method == 'gaussian':
+        return gaussian_step(info, x, y)
     else:
         print("global method not understood")
