@@ -1,12 +1,10 @@
  What I will do today:
-	* use marcus's threading stuff 
 	* debug why hgdl freaks out on bio
 
  
  Task breakdown:
  * work on hgdl itself:
  	-- most necessary --
-	* find out what's happening with eager return	
 	--------------------	
 	* unit testing
 	* documentation
@@ -17,7 +15,6 @@
  * work on the paper
 	* real work
  		* -- most necessary --
-		* plots for sklearn	
 		--------------------	
 		* implement hgdl on biosci dataset	
 	* writing
