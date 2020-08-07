@@ -72,22 +72,28 @@ class HGDL:
         self.client = dask_client
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         if len(x0) != self.number_of_walkers: exit("number of initial position != number of walkers")
+        self.x0 = x0
         self.args = args
         self.verbose = verbose
         ########################################
         #init optima list:
-        optima_list = {"x": np.empty((0,self.dim)), 
+        self.optima_list = {"x": np.empty((0,self.dim)), 
                 "func evals": np.empty((0)), 
                 "classifier": [], "eigen values": np.empty((0,self.dim)), 
                 "gradient norm":np.empty((0))}
         ####################################
-        self.main_future = self.client.submit(hgdl_functions.run_dNewton,obj_func,
-                grad_func,hess_func,
-                np.array(bounds),radius,local_max_iter,
-                x0,args)
+    ###########################################################################
+    ###########################################################################
+    ###########################################################################
+    ###########################################################################
+    def optimize(self):
+        self.main_future = self.client.submit(hgdl_functions.run_dNewton,self.obj_func,
+                self.grad_func,self.hess_func,
+                self.bounds,self.r,self.local_max_iter,
+                self.x0,self.args)
         x,f,grad_norm,eig,success = self.main_future.result()
         print("HGDL starting positions: ")
-        print(x0)
+        print(self.x0)
         print("")
         print("")
         print("")
@@ -96,23 +102,16 @@ class HGDL:
             print("no optima found")
             success[:] = True
         print("They are now stored in the optima_list")
-        optima_list = hgdl_functions.fill_in_optima_list(optima_list,1e-6,x,f,grad_norm,eig, success)
-        if verbose == True: print(optima_list)
+        self.optima_list = hgdl_functions.fill_in_optima_list(self.optima_list,1e-6,x,f,grad_norm,eig, success)
+        if self.verbose == True: print(optima_list)
         #################################
         self.transfer_data = distributed.Variable("transfer_data",self.client)
-        #self.break_out = distributed.Variable("break_out",self.client)
-        if verbose == True: print("Submitting main hgdl task")
-        self.main_future = self.client.submit(hgdl_functions.hgdl,self.transfer_data,optima_list,obj_func,
-                grad_func,hess_func,
-                np.array(bounds),maxEpochs,radius,local_max_iter,
-                global_max_iter,number_of_walkers,args, verbose)
-        ####no multithreading:
-        #hgdl_functions.hgdl(optima_list,obj_func, grad_func,hess_func,
-        #        np.array(bounds),maxEpochs,radius,local_max_iter,
-        #        global_max_iter,number_of_walkers,args, verbose)
-    ###########################################################################
-    ###########################################################################
-    ###########################################################################
+        if self.verbose == True: print("Submitting main hgdl task")
+
+        self.main_future = self.client.submit(hgdl_functions.hgdl,self.transfer_data,self.optima_list,self.obj_func,
+                self.grad_func,self.hess_func,
+                self.bounds,self.maxEpochs,self.r,self.local_max_iter,
+                self.global_max_iter,self.number_of_walkers,self.args, self.verbose)
     ###########################################################################
     def get_latest(self, n):
         data, frames = self.transfer_data.get()
@@ -126,8 +125,15 @@ class HGDL:
     def get_final(self,n):
         optima_list = self.main_future.result()
     ###########################################################################
-    def kill(self):
+    def cancel_tasks(self):
         print("Shutdown initialized ...")
+        print("This leaves the client alive")
+        res = self.get_latest(-1)
+        self.client.cancel(self.main_future)
+        return res
+    ###########################################################################
+    def kill(self):
+        print("Kill initialized ...")
         res = self.get_latest(-1)
         self.client.cancel(self.main_future)
         self.client.shutdown()
