@@ -67,7 +67,7 @@ class HGDL(object):
                 self.client = z
                 break
         else:
-            self.client = dask.distributed.Client()
+            self.client = dask.distributed.Client(processes=False)
         data = info(*args, **kwargs)
         self.epoch_futures = [self.client.submit(run_epoch, data)]
         for i in range(data.num_epochs):

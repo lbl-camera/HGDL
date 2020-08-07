@@ -27,6 +27,11 @@ def main():
         print('theta:', gp.kernel_.theta, np.exp(gp.kernel_.theta))
         print('likelihood:', gp.log_marginal_likelihood_value_)
 
+    key = str(np.random.randint(low=0,high=10000))
+    with open('data/GPs'+key+'.pkl','wb') as file:
+        import pickle
+        pickle.dump(GPs, file)
+
     thetas = np.array([gp.kernel_.theta for gp in GPs])
     print(thetas)
     np.save('data/hgdl_thetas', thetas)
