@@ -12,30 +12,61 @@ class info(object):
     def __init__(
             self, func, grad, bounds,
             hess=None, client=None, fix_rng=True,
-            r=.3, alpha=.1, num_epochs=5, bestX=5,
-            num_individuals=15, max_local=4, num_workers=None,
-            x0=None, global_method='genetic', local_method='scipy',
+            r=.3, alpha=.1, num_epochs=10, bestX=5,
+            num_individuals=25, max_local=5,
+            x0=None, global_method='genetic', local_method='my_newton',
             local_args=(), local_kwargs={}, global_args=(), global_kwargs={}):
         """
-        Mandatory Parameters:
-            * func - should return a scalar given a numpy array x
-            -- note: use functools.partial if you have optional params
-            * grad - gradient vector at x
-            * hess - hessian array at x
-            * bounds - numpy array of bounds in same format as scipy.optimize
-        Optional Parameters:
-            * r (0.3) - the radius of the deflation operator
-            * alpha (0.1) - the alpha term of the bump function
-            * maxEpochs (5) - the maximum number of epochs
-            * numIndividuals (15) - the number of individuals to run
-            * maxLocal (5) - the maximum number of local runs to do
-            * numWorkers (logical cpu cores -1) - how many processes to use
-        Returns:
-            a dict of the form
-            either {"success":False} if len(x) is 0
-            or {"success":True, "x",x, "y",y} with the bestX x's and their y's
+        HGDL
+            * Hybrid - uses both local and global optimization
+            * G - uses global optimizer
+            * D - uses deflation
+            * L - uses local extremum localMethod
+            Mandatory Parameters:
+                * func - should return a scalar given a numpy array x
+                -- note: use functools.partial if you have optional params
+                * grad - gradient vector at x
+                * bounds - numpy array of bounds in same format as scipy.optimize
+            Optional Parameters:
+                * Overall Parameters -----------------------------------
+                * hess (None) - hessian array at x - you may need this depending on the local method
+                * client - (None->HGDL initializes if None) dask.distributed.Client object
+                    -- this lets you interface with clusters via dask with Client(myCluster)
+                * num_epochs (10) - the number of epochs. 1 epoch is 1 global step + 1 local run
+                * fix_rng (True) - sets random numbers to be fixed (for reproducibility)
+                * bestX (5) - maximum number of minima and global results to put in get_final()
+                * num_individuals (25) - the number of individuals to run for both global and local methods
+                * x0 (None) starting points to probe
+                * global_method ('genetic') - these control what global and local methods
+                * local_method ('my_newton') -    are used by HGDL
+
+                * Global Method Parameters -----------------------------
+                * global_args ((,)) - arguments to global method
+                * global_kwargs({}) - kwargs for global method
+                    -- note: these let you pass custom info to your method of choice
+
+                * Deflation Parameters ---------------------------------
+                * alpha (0.1) - the alpha term of the bump function
+                * r (.3) - the radius for the bump function
+                    -- these define how deflation behaves
+
+                * Local Method Parameters ------------------------------
+                * local_args ((,)) - arguments to global method
+                * local_kwargs({}) - kwargs for global method
+                    -- note: these let you pass custom info to your method of choice
+                * max_local (5) - the maximum number of local runs to do
+
+            Returns:
+                an HGDL object that has the following functions:
+                get_best(): yields a dict of the form
+                    {"best_x":best_x_ndarray, "best_y":best_y_value}
+                get_final(): yields a dict of the form
+                    {"best_x":best_x_ndarray, "best_y":best_y_value,
+                    "minima_x":minima_x_ndarray, "minima_y":minima_y_values,
+                    "global_x":global_x_ndarray, "global_y":global_y_values,
+                    }
+
         """
-        # disable scipy minimize's ftol check 
         self.func = func
         self._grad = grad
         self._hess = hess
@@ -46,10 +77,9 @@ class info(object):
         self.r = r
         self.alpha = alpha
         self.num_epochs = num_epochs
-        self.bestX = 5
+        self.bestX = bestX
         self.max_local = max_local
         self.num_individuals = num_individuals
-        self.num_workers = num_workers
         self.global_method = global_method
         self.local_method = local_method
         self.local_args = local_args
@@ -58,10 +88,7 @@ class info(object):
         self.global_kwargs = global_kwargs
         self.k = len(bounds)
         self.results = Results(self)
-        self.use_dask_map = False
-        if num_workers is None:
-            from psutil import cpu_count
-            self.num_workers = cpu_count(logical=False)-1
+        self.use_dask_map = True
         if x0 is None:
             x0 = self.random_sample(self.num_individuals)
         self.x0 = x0

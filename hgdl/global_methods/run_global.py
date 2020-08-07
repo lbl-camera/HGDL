@@ -7,5 +7,7 @@ def run_global(info):
         return genetic_step(info, x, y)
     elif info.global_method == 'gaussian':
         return gaussian_step(info, x, y)
+    # remember you can use *info.global_args 
+    #   and **info.global_kwargs
     else:
         print("global method not understood")

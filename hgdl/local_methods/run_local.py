@@ -19,6 +19,8 @@ def already_found(x, other_x, r):
 
 
 def run_local(info):
+    if info.use_dask_map:
+        client = dask.distributed.get_client()
     for i in range(info.max_local):
         new_minima = np.empty((0, info.k))
         num_none = 0
@@ -42,7 +44,6 @@ def run_local(info):
         if not info.use_dask_map:
             iterable = (minimizer(z) for z in info.x0)
         else:
-            client = dask.distributed.get_client()
             futures = client.map(minimizer, info.x0)
             iterable = (a.result() for a in dask.distributed.as_completed(futures))
         for i, res in enumerate(iterable):
@@ -56,4 +57,6 @@ def run_local(info):
                 num_none += 1
             else:
                 new_minima = np.append(new_minima, res["x"].reshape(1,-1), 0)
-        return new_minima
+        if info.use_dask_map:
+            client.cancel(futures)
+    return new_minima
