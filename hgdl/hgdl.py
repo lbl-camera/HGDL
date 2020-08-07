@@ -22,17 +22,15 @@ from dask.distributed import as_completed
 """
 TODO:   *currently walkers that walk out in Newton are discarded. We should do a line search instead
         *the radius is still ad hoc, should be related to curvature
-        *work on the shut down
 """
 class HGDL:
     """
     doc string here
     """
-    def __init__(self,obj_func,grad_func,hess_func, bounds,dask_client = None, maxEpochs=10,
-            radius = 20.0,local_tol = 1e-4, global_tol = 1e-4,
+    def __init__(self,obj_func,grad_func,hess_func, bounds,dask_client = None, maxEpochs=100000,
+            radius = 20.0, global_tol = 1e-4,
             local_max_iter = 20, global_max_iter = 120,
-            number_of_walkers = 20,
-            number_of_workers = None, x0 = None, 
+            number_of_walkers = 20, x0 = None, 
             args = (), verbose = False):
         """
         intialization for the HGDL class
@@ -45,15 +43,15 @@ class HGDL:
             bounds
         optional input:
         ---------------
-            dask_client = give custom dask client or it will be intialized to Client()
-            maxEpochs = 10
+            dask_client = give custom dask client or it will be intialized to dask.distributed.Client()
+            maxEpochs = 100000
             radius = 20
-            local_tol  = 1e-4
             global_tol = 1e-4
             local_max_iter = 20
             global_max_iter = 20
             x0 = np.rand.random()
             args = (), a n-tuple of parameters, will be communicated to obj func, grad, hess
+            verbose = False
         """
         self.obj_func = obj_func
         self.grad_func= grad_func
@@ -62,7 +60,6 @@ class HGDL:
         self.client = dask_client
         self.r = radius
         self.dim = len(self.bounds)
-        self.local_tol = local_tol
         self.global_tol = global_tol
         self.local_max_iter = local_max_iter
         self.global_max_iter = global_max_iter
@@ -102,7 +99,7 @@ class HGDL:
             print("no optima found")
             success[:] = True
         print("They are now stored in the optima_list")
-        self.optima_list = hgdl_functions.fill_in_optima_list(self.optima_list,1e-6,x,f,grad_norm,eig, success)
+        self.optima_list = hgdl_functions.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
         if self.verbose == True: print(optima_list)
         #################################
         self.transfer_data = distributed.Variable("transfer_data",self.client)

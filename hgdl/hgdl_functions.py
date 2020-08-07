@@ -62,7 +62,7 @@ def run_local(func,grad,hess,bounds, radius,
         x,f,grad_norm,eig,success = run_dNewton(func, grad,hess,bounds,
                 radius,local_max_iter,x_init,args,x_defl)
         if verbose is True: print("    Deflated Newton finished in step: ",counter)
-        optima_list = fill_in_optima_list(optima_list, 1e-6,x,f,grad_norm,eig,success)
+        optima_list = fill_in_optima_list(optima_list,x,f,grad_norm,eig,success)
         x_defl = np.array(optima_list["x"])
         if len(np.where(success == False)[0]) > len(success)/2.0: break_condition = True
     return optima_list
@@ -81,55 +81,35 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
     dim = len(x_init[0])
     number_of_walkers = len(x_init)
     client = get_client()
-    if client is False:
-        #this is in case we don't want distributed computing with DASK
-        x = np.empty((number_of_walkers, dim))
-        f = np.empty((number_of_walkers))
-        grad_norm = np.empty((number_of_walkers))
-        eig = np.empty((number_of_walkers,dim))
-        success = np.empty((number_of_walkers))
-        for i in range(number_of_walkers):
-            #print("newton for ", i)
-            x[i],f[i],grad_norm[i],eig[i],success[i] =\
-            local.DNewton(func, grad,hess,\
-            x_init[i],x_defl,bounds,1e-6,local_max_iter,args)
-        return x, f, grad_norm, eig, success
-    else:
-        #this is in case there is a DASK client and we want distributed computing
-        tasks = []
-        for i in range(number_of_walkers):
-            tasks.append(client.submit(local.DNewton,func, grad,hess,\
-            x_init[i],x_defl,bounds,1e-6,local_max_iter,args))
-        tasks = finish_up_tasks(tasks)
-        #while any(f.status == 'pending' for f in tasks):
-        #    time.sleep(0.1)
-        #if any(f.status == 'cancelled' for f in tasks):
-        #    print("cancelled tasks")
-        #    tasks = []
-        #secede()
-        client.gather(tasks)
-        #rejoin()
-        number_of_walkers = len(tasks)
-        x = np.empty((number_of_walkers, dim))
-        f = np.empty((number_of_walkers))
-        grad_norm = np.empty((number_of_walkers))
-        eig = np.empty((number_of_walkers,dim))
-        success = np.empty((number_of_walkers))
-        #gather results and kick out optima that are too close:
-        for i in range(len(tasks)):
-            x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
-            for j in range(i):
-                #exchange for function def too_close():
-                if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius: success[i] = False; break
-            for j in range(len(x_defl)):
-                if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 1e-5 and success[i] == True:
-                    #print("CAUTION: Newton converged to deflated position")
-                    success[i] = False
-                    #print(x[i],x_defl[j])
-                    #input()
-        return x, f, grad_norm, eig, success
+    tasks = []
+    for i in range(number_of_walkers):
+        tasks.append(client.submit(local.DNewton,func, grad,hess,\
+        x_init[i],x_defl,bounds,1e-6,local_max_iter,args))
+    tasks = finish_up_tasks(tasks)
+    #secede()
+    client.gather(tasks)
+    #rejoin()
+    number_of_walkers = len(tasks)
+    x = np.empty((number_of_walkers, dim))
+    f = np.empty((number_of_walkers))
+    grad_norm = np.empty((number_of_walkers))
+    eig = np.empty((number_of_walkers,dim))
+    success = np.empty((number_of_walkers))
+    #gather results and kick out optima that are too close:
+    for i in range(len(tasks)):
+        x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
+        for j in range(i):
+            #exchange for function def too_close():
+            if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius: success[i] = False; break
+        for j in range(len(x_defl)):
+            if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 1e-5 and success[i] == True:
+                print("CAUTION: Newton converged to deflated position")
+                success[i] = False
+                #print(x[i],x_defl[j])
+                #input()
+    return x, f, grad_norm, eig, success
 ###########################################################################
-def fill_in_optima_list(optima_list,local_tol,x,f,grad_norm,eig, success):
+def fill_in_optima_list(optima_list,x,f,grad_norm,eig, success):
     clean_indices = np.where(success == True)
     clean_x = x[clean_indices]
     clean_f = f[clean_indices]
@@ -141,7 +121,7 @@ def fill_in_optima_list(optima_list,local_tol,x,f,grad_norm,eig, success):
     #print("optima list before stacking")
     #print(optima_list["x"])
     for i in range(len(x)):
-        if grad_norm[i] > local_tol: classifier.append("degenerate")
+        if grad_norm[i] > 1e-6: classifier.append("degenerate")
         elif len(np.where(eig[i] > 0.0)[0]) == len(eig[i]): classifier.append("minimum")
         elif len(np.where(eig[i] < 0.0)[0]) == len(eig[i]): classifier.append("maximum")
         elif len(np.where(eig[i] == 0.0)[0])  > 0: classifier.append("zero curvature")
