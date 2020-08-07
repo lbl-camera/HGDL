@@ -11,6 +11,14 @@ minimization scheme to find minima in a function.
 The algorithm uses global and local optimization, together with deflation to find the global
 minimum along with many local optima. Of course, as always, there is no guarantee the global minimum will be found. 
 
+## How to install
+cd path/to/hgdl/
+pip install .
+
+## How to use
+see the examples folder
+
+
 ```math
 \Large c = e^{\frac{\alpha}{r^2}}
 \Large b(x-x_0, r, \alpha) = c e^{\frac{-\alpha}{r^2-\sum_{i=0}^{d} (x_i-x_{0_i})^2}}
@@ -19,9 +27,8 @@ b(x-x_o, r, \alpha) \frac{-2\alpha(x_i - x_{0_i})}{(r^2 - \sum_{i=0}^{d} (x_i-x_
 \Large \text{deflation} = \frac{1}{1-b}
 \Large \frac{\partial}{\partial x_i} \text{deflation} = \frac{2}{(1-b)^2} \frac{\partial}{\partial x_i} b
 \Large \frac{\frac{\partial}{\partial x_i} \text{deflation}}{\text{deflation}} = \frac{2}{1-b} \frac{\partial}{\partial x_i} b = 2 \times \text{deflation} \times \frac{\partial}{\partial x_i} b
-
-
 ```
+
  * x is the probe point
  * $x_0$ is a single, technical minima
  * minima is a list of all technical minima
