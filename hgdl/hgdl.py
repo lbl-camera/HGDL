@@ -42,6 +42,8 @@ class HGDL:
             global_tol = 1e-4
             local_max_iter = 20
             global_max_iter = 20
+            number_of_walkers: make sure you have enough workers for
+                               your walkers (at least one walker, needs 2 workers)
             x0 = np.rand.random()
             args = (), a n-tuple of parameters, will be communicated to obj func, grad, hess
             verbose = False
@@ -98,12 +100,15 @@ class HGDL:
                 grad_func,hess_func,
                 np.asarray(bounds),maxEpochs,radius,local_max_iter,
                 global_max_iter,number_of_walkers,args,verbose)
-
+       
     ###########################################################################
     ###########################################################################
     ###########################################################################
     ###########################################################################
     def optimize(self):
+        #import pickle
+        #pickle.dumps(self.obj_func)
+        #exit()
         self.main_future = self.client.submit(hgdl_functions.run_dNewton,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.r,self.local_max_iter,
