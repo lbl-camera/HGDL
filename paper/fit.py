@@ -47,18 +47,10 @@ def fit(self, X, y):
     self.y_train_ = np.copy(y) if self.copy_X_train else y
     if self.optimizer is not None and self.kernel_.n_dims > 0:
         # this is the part that i wrote --------------------------------- 
-        if self.optimizer == "hgdl":
-            def obj(x):
-                return -1*self.log_marginal_likelihood(theta=x, clone_kernel=True)
-            def grad(x):
-                return -1*self.log_marginal_likelihood(theta=x, eval_gradient=True, clone_kernel=True)[1]
+        if self.optimizer == 'hgdl':
             from hgdl.hgdl import HGDL
-            res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, hess=None,
-                    bestX=-1, r=20, num_epochs=10, num_individuals=25, max_local=2, # limit processing
-                    local_method='scipy', local_kwargs={'method':'L-BFGS-B'})
+             
             res = res.get_final()
-            #self.log_marginal_likelihood_value_ = res['best_y']
-            #self.kernel_.theta = res['best_x']
             GPs = []
             for i in range(len(res['minima_y'])):
                 x, y = res['minima_x'][i], res['minima_y'][i]

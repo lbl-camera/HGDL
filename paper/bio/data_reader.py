@@ -47,7 +47,7 @@ class data_reader(object):
     def get_test(self):
         return self.X_test, self.y_test
 
-    def info(self,gp):
+    def R2(self,gp):
         for x, y, name in zip(
                 [self.X_train, self.X_test],
                 [self.y_train, self.y_test],
@@ -69,7 +69,88 @@ class data_reader(object):
             plt.show()
             plt.errorbar(useless, residual, yerr=y_std, fmt='.')
             plt.show()
-    
+
+            print('calculating percentage covered when 1,2,3,&4 sigma away')
+            for i in range(1,5):
+                within = np.logical_and(y-i*y_std<=y_pred, y_pred<=y+i*y_std)
+                print('sigma:',i,(np.sum(within)/len(within)).round(3))
+
+        press = np.sum(np.power(self.y_test-gp.predict(self.X_test),2))
+        ss_tr = np.sum(np.power(self.y_test-np.mean(self.y_train),2))
+        ss_ext = np.sum(np.power(self.y_test-np.mean(self.y_test),2))
+        tss = np.sum(np.power(self.y_train-np.mean(self.y_train),2))
+        f1 = 1. - press/ss_tr
+        f2 = 1. - press/ss_ext
+        f3 = 1. - press * self.X_train.shape[1] / (tss*self.X_test.shape[1])
+        for f in ['f1','f2','f3']:
+            print(f,':', eval(f).round(2))
+
+        pass
+
+
+    def Q2_cv(self,gp):
+        for x, y, name in zip(
+                [self.X_train, self.X_test],
+                [self.y_train, self.y_test],
+                ["train", "test"]):
+            print(name,'---------------------------------------')
+            y_pred, y_cov = gp.predict(x, return_cov=True)
+            y_std = np.sqrt(np.diag(y_cov))
+            residual = y-y_pred
+
+            # make histogram
+            plt.hist(residual, bins=30)
+            plt.title('residual: y-y_pred')
+            plt.show()
+
+            # make scatter plots
+            useless = np.arange(len(y))
+            plt.title('residual: y-y_pred')
+            plt.scatter(useless, residual)
+            plt.show()
+            plt.errorbar(useless, residual, yerr=y_std, fmt='.')
+            plt.show()
+
+            print('calculating percentage covered when 1,2,3,&4 sigma away')
+            for i in range(1,5):
+                within = np.logical_and(y-i*y_std<=y_pred, y_pred<=y+i*y_std)
+                print('sigma:',i,(np.sum(within)/len(within)).round(3))
+
+        press = np.sum(np.power(self.y_test-gp.predict(self.X_test),2))
+        ss_tr = np.sum(np.power(self.y_test-np.mean(self.y_train),2))
+        ss_ext = np.sum(np.power(self.y_test-np.mean(self.y_test),2))
+        tss = np.sum(np.power(self.y_train-np.mean(self.y_train),2))
+        f1 = 1. - press/ss_tr
+        f2 = 1. - press/ss_ext
+        f3 = 1. - press * self.X_train.shape[1] / (tss*self.X_test.shape[1])
+        for f in ['f1','f2','f3']:
+            print(f,':', eval(f).round(2))
+
+        pass
+
+    def Q2_ext(self,gp):
+        for x, y, name in zip(
+                [self.X_train, self.X_test],
+                [self.y_train, self.y_test],
+                ["train", "test"]):
+            print(name,'---------------------------------------')
+            y_pred, y_cov = gp.predict(x, return_cov=True)
+            y_std = np.sqrt(np.diag(y_cov))
+            residual = y-y_pred
+
+            # make histogram
+            plt.hist(residual, bins=30)
+            plt.title('residual: y-y_pred')
+            plt.show()
+
+            # make scatter plots
+            useless = np.arange(len(y))
+            plt.title('residual: y-y_pred')
+            plt.scatter(useless, residual)
+            plt.show()
+            plt.errorbar(useless, residual, yerr=y_std, fmt='.')
+            plt.show()
+
             print('calculating percentage covered when 1,2,3,&4 sigma away')
             for i in range(1,5):
                 within = np.logical_and(y-i*y_std<=y_pred, y_pred<=y+i*y_std)
