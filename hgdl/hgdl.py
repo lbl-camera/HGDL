@@ -10,17 +10,19 @@ import dask.multiprocessing
 from dask.distributed import as_completed
 ###authors: David Perryman, Marcus Noack
 ###institution: CAMERA @ Lawrence Berkeley National Laboratory
-
+import pickle
 
 """
 TODO:   *currently walkers that walk out in Newton are discarded. We should do a line search instead
         *the radius is still ad hoc, should be related to curvature
 """
+
+
 class HGDL:
     """
     doc string here
     """
-    def __init__(self,obj_func,grad_func,hess_func, bounds,dask_client = None, maxEpochs=100000,
+    def __init__(self,obj_func,grad_func,hess_func, bounds, maxEpochs=100000,
             radius = 20.0, global_tol = 1e-4,
             local_max_iter = 20, global_max_iter = 120,
             number_of_walkers = 20, x0 = None, 
@@ -52,7 +54,6 @@ class HGDL:
         self.grad_func= grad_func
         self.hess_func= hess_func
         self.bounds = np.asarray(bounds)
-        self.client = dask_client
         self.r = radius
         self.dim = len(self.bounds)
         self.global_tol = global_tol
@@ -60,8 +61,6 @@ class HGDL:
         self.global_max_iter = global_max_iter
         self.number_of_walkers = number_of_walkers
         self.maxEpochs = maxEpochs
-        if dask_client is None: dask_client = dask.distributed.Client()
-        self.client = dask_client
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         if len(x0) != self.number_of_walkers: exit("number of initial position != number of walkers")
         self.x0 = x0
@@ -73,43 +72,14 @@ class HGDL:
                 "func evals": np.empty((0)), 
                 "classifier": [], "eigen values": np.empty((0,self.dim)), 
                 "gradient norm":np.empty((0))}
-        ####################################
-
-        self.main_future = self.client.submit(hgdl_functions.run_dNewton,obj_func,
-                grad_func,hess_func,
-                np.asarray(bounds),radius,local_max_iter,
-                x0,args)
-        x,f,grad_norm,eig,success = self.main_future.result()
-        print("HGDL starting positions: ")
-        print(self.x0)
-        print("")
-        print("")
-        print("")
-        print("I found ",len(np.where(success == True)[0])," optima in my first run")
-        if len(np.where(success == True)[0]) == 0: 
-            print("no optima found")
-            success[:] = True
-        print("They are now stored in the optima_list")
-        self.optima_list = hgdl_functions.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
-        if self.verbose == True: print(optima_list)
-        #################################
-        self.transfer_data = distributed.Variable("transfer_data",self.client)
-        if self.verbose == True: print("Submitting main hgdl task")
-
-        self.main_future = self.client.submit(hgdl_functions.hgdl,self.transfer_data,self.optima_list,obj_func,
-                grad_func,hess_func,
-                np.asarray(bounds),maxEpochs,radius,local_max_iter,
-                global_max_iter,number_of_walkers,args,verbose)
-       
     ###########################################################################
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    def optimize(self):
-        #import pickle
-        #pickle.dumps(self.obj_func)
-        #exit()
-        self.main_future = self.client.submit(hgdl_functions.run_dNewton,self.obj_func,
+    def optimize(self, dask_client = None):
+        if dask_client is None: dask_client = dask.distributed.Client()
+        client = dask_client
+        self.main_future = client.submit(hgdl_functions.run_dNewton,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.r,self.local_max_iter,
                 self.x0,self.args)
@@ -120,20 +90,21 @@ class HGDL:
         print("")
         print("")
         print("I found ",len(np.where(success == True)[0])," optima in my first run")
-        if len(np.where(success == True)[0]) == 0: 
+        if len(np.where(success == True)[0]) == 0:
             print("no optima found")
             success[:] = True
         print("They are now stored in the optima_list")
         self.optima_list = hgdl_functions.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
         if self.verbose == True: print(optima_list)
         #################################
-        self.transfer_data = distributed.Variable("transfer_data",self.client)
+        self.transfer_data = distributed.Variable("transfer_data",client)
         if self.verbose == True: print("Submitting main hgdl task")
 
-        self.main_future = self.client.submit(hgdl_functions.hgdl,self.transfer_data,self.optima_list,self.obj_func,
+        self.main_future = client.submit(hgdl_functions.hgdl,self.transfer_data,self.optima_list,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.maxEpochs,self.r,self.local_max_iter,
                 self.global_max_iter,self.number_of_walkers,self.args, self.verbose)
+        self.client = client
     ###########################################################################
     def get_latest(self, n):
         data, frames = self.transfer_data.get()

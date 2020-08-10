@@ -77,6 +77,7 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
     return:
         optima_locations, func values, gradient norms, eigenvalues, success(bool)
     """
+    import hgdl.local as local
     dim = len(x_init[0])
     number_of_walkers = len(x_init)
     client = get_client()

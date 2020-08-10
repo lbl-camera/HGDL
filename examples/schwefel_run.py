@@ -8,9 +8,10 @@ def main():
     arr  = 5
     brr  = 6
     #dask_client = distributed.Client("10.0.0.184:8786")
-    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]], dask_client = None,
+    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]],
             args = (arr,brr), maxEpochs = 100, verbose = False)
-    #a.optimize()
+    #a.optimize(dask_client = distributed.Client())
+    a.optimize()
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")
