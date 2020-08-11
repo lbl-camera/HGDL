@@ -38,14 +38,13 @@ class HGDL:
             bounds
         optional input:
         ---------------
-            dask_client = give custom dask client or it will be intialized to dask.distributed.Client()
             maxEpochs = 100000
             radius = 20
             global_tol = 1e-4
             local_max_iter = 20
             global_max_iter = 20
             number_of_walkers: make sure you have enough workers for
-                               your walkers (at least one walker, needs 2 workers)
+                               your walkers ( walkers + 1 <= workers)
             x0 = np.rand.random()
             args = (), a n-tuple of parameters, will be communicated to obj func, grad, hess
             verbose = False
