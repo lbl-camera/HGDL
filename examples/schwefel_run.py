@@ -11,7 +11,7 @@ def main():
     a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]],
             args = (arr,brr), maxEpochs = 100, verbose = False)
     #a.optimize(dask_client = distributed.Client())
-    a.optimize()
+    a.optimize(dask_client = None)
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")

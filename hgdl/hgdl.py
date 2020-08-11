@@ -78,11 +78,17 @@ class HGDL:
     def optimize(self, dask_client = None):
         if dask_client is None: dask_client = dask.distributed.Client()
         client = dask_client
-        self.main_future = client.submit(hgdl_functions.run_dNewton,self.obj_func,
+        if dask_client is False:
+            x,f,grad_norm,eig,success = hgdl_functions.run_dNewton(self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.r,self.local_max_iter,
                 self.x0,self.args)
-        x,f,grad_norm,eig,success = self.main_future.result()
+        else:
+            self.main_future = client.submit(hgdl_functions.run_dNewton,self.obj_func,
+                self.grad_func,self.hess_func,
+                self.bounds,self.r,self.local_max_iter,
+                self.x0,self.args)
+            x,f,grad_norm,eig,success = self.main_future.result()
         print("HGDL starting positions: ")
         print(self.x0)
         print("")
@@ -96,14 +102,20 @@ class HGDL:
         self.optima_list = hgdl_functions.fill_in_optima_list(self.optima_list,x,f,grad_norm,eig, success)
         if self.verbose == True: print(optima_list)
         #################################
-        self.transfer_data = distributed.Variable("transfer_data",client)
         if self.verbose == True: print("Submitting main hgdl task")
-
-        self.main_future = client.submit(hgdl_functions.hgdl,self.transfer_data,self.optima_list,self.obj_func,
+        if dask_client is False:
+            self.transfer_data = False
+            self.optima_list = hgdl_functions.hgdl(self.transfer_data,self.optima_list,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.maxEpochs,self.r,self.local_max_iter,
                 self.global_max_iter,self.number_of_walkers,self.args, self.verbose)
-        self.client = client
+        else:
+            self.transfer_data = distributed.Variable("transfer_data",client)
+            self.main_future = client.submit(hgdl_functions.hgdl,self.transfer_data,self.optima_list,self.obj_func,
+                self.grad_func,self.hess_func,
+                self.bounds,self.maxEpochs,self.r,self.local_max_iter,
+                self.global_max_iter,self.number_of_walkers,self.args, self.verbose)
+            self.client = client
     ###########################################################################
     def get_latest(self, n):
         data, frames = self.transfer_data.get()

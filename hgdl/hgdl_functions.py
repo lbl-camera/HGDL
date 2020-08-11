@@ -18,8 +18,9 @@ def hgdl(transfer_data,init_optima_list,
                 radius,local_max_iter,global_max_iter,
                 number_of_walkers,args,verbose)
         if verbose is True: print("    Epoch ",i," finished")
-        a = distributed.protocol.serialize(optima_list)
-        transfer_data.set(a)
+        if transfer_data is not False:
+            a = distributed.protocol.serialize(optima_list)
+            transfer_data.set(a)
         init_optima_list = dict(optima_list)
     time.sleep(0.1)
     return optima_list
@@ -80,33 +81,58 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
     import hgdl.local as local
     dim = len(x_init[0])
     number_of_walkers = len(x_init)
-    client = get_client()
-    tasks = []
-    for i in range(number_of_walkers):
-        tasks.append(client.submit(local.DNewton,func, grad,hess,\
-        x_init[i],x_defl,bounds,1e-6,local_max_iter,args))
-    tasks = finish_up_tasks(tasks)
-    #secede()
-    client.gather(tasks)
-    #rejoin()
-    number_of_walkers = len(tasks)
-    x = np.empty((number_of_walkers, dim))
-    f = np.empty((number_of_walkers))
-    grad_norm = np.empty((number_of_walkers))
-    eig = np.empty((number_of_walkers,dim))
-    success = np.empty((number_of_walkers))
-    #gather results and kick out optima that are too close:
-    for i in range(len(tasks)):
-        x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
-        for j in range(i):
-            #exchange for function def too_close():
-            if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius: success[i] = False; break
-        for j in range(len(x_defl)):
-            if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 1e-5 and success[i] == True:
-                print("CAUTION: Newton converged to deflated position")
-                success[i] = False
-                #print(x[i],x_defl[j])
-                #input()
+    try: 
+        client = get_client()
+        client_available = True
+    except:
+        client_available = False
+    if client_available is True:
+        tasks = []
+        for i in range(number_of_walkers):
+            tasks.append(client.submit(local.DNewton,func, grad,hess,\
+            x_init[i],x_defl,bounds,1e-6,local_max_iter,args))
+        tasks = finish_up_tasks(tasks)
+        #secede()
+        client.gather(tasks)
+        #rejoin()
+        number_of_walkers = len(tasks)
+        x = np.empty((number_of_walkers, dim))
+        f = np.empty((number_of_walkers))
+        grad_norm = np.empty((number_of_walkers))
+        eig = np.empty((number_of_walkers,dim))
+        success = np.empty((number_of_walkers))
+        #gather results and kick out optima that are too close:
+        for i in range(len(tasks)):
+            x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
+            for j in range(i):
+                #exchange for function def too_close():
+                if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius: success[i] = False; break
+            for j in range(len(x_defl)):
+                if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 1e-5 and success[i] == True:
+                    print("CAUTION: Newton converged to deflated position")
+                    success[i] = False
+                    #print(x[i],x_defl[j])
+                    #input()
+    elif client_available is False:
+        x = np.empty((number_of_walkers, dim))
+        f = np.empty((number_of_walkers))
+        grad_norm = np.empty((number_of_walkers))
+        eig = np.empty((number_of_walkers,dim))
+        success = np.empty((number_of_walkers))
+        for i in range(number_of_walkers):
+            x[i],f[i],grad_norm[i],eig[i],success[i] = local.DNewton(func, grad,hess,\
+            x_init[i],x_defl,bounds,1e-6,local_max_iter,args)
+            for j in range(i):
+                #exchange for function def too_close():
+                if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius: success[i] = False; break
+            for j in range(len(x_defl)):
+                if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 1e-5 and success[i] == True:
+                    print("CAUTION: Newton converged to deflated position")
+                    success[i] = False
+                    #print(x[i],x_defl[j])
+                    #input()
+    else: exit("not clear is client is available")
+
     return x, f, grad_norm, eig, success
 ###########################################################################
 def fill_in_optima_list(optima_list,x,f,grad_norm,eig, success):
