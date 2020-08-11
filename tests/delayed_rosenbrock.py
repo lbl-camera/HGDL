@@ -4,13 +4,9 @@ def main():
     from hgdl.hgdl import HGDL
     from time import sleep, perf_counter
     b = np.array([[-2, 2],[-3,3.]])
-    def newRosen(x):
-        print('working on',x.round(3))
-        return rosen(x)
-
-    hgdl = HGDL(newRosen, rosen_der, b)
+    hgdl = HGDL(rosen, rosen_der, b, verbose=True)
     print('sleeping')
-    sleep(10)
+    sleep(100)
     print('waking up and getting result')
     res = hgdl.get_final()
     print(res)

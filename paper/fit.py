@@ -49,7 +49,14 @@ def fit(self, X, y):
         # this is the part that i wrote --------------------------------- 
         if self.optimizer == 'hgdl':
             from hgdl.hgdl import HGDL
-             
+            def obj(x):
+                return -1*self.log_marginal_likelihood(theta=x, clone_kernel=True)
+            def grad(x):
+                return -1*self.log_marginal_likelihood(theta=x, eval_gradient=True, clone_kernel=True)[1]
+            res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, hess=None,
+                    r=20, #num_epochs=10, num_individuals=25, max_local=2, # limit processing
+                    local_method='scipy', local_kwargs={'method':'L-BFGS-B'})
+
             res = res.get_final()
             GPs = []
             for i in range(len(res['minima_y'])):

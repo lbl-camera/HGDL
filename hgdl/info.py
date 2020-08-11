@@ -14,8 +14,9 @@ class info(object):
             hess=None, client=None, fix_rng=True,
             r=.3, alpha=.1, num_epochs=10, bestX=5,
             num_individuals=25, max_local=5,
-            x0=None, global_method='genetic', local_method='my_newton',
-            local_args=(), local_kwargs={}, global_args=(), global_kwargs={}):
+            x0=None, global_method='gaussian', local_method='scipy',
+            local_args=(), local_kwargs={}, global_args=(), global_kwargs={},
+            verbose=False):
         """
         HGDL
             * Hybrid - uses both local and global optimization
@@ -39,6 +40,7 @@ class info(object):
                 * x0 (None) starting points to probe
                 * global_method ('genetic') - these control what global and local methods
                 * local_method ('my_newton') -    are used by HGDL
+                * verbose (False) - what it says
 
                 * Global Method Parameters -----------------------------
                 * global_args ((,)) - arguments to global method
@@ -86,6 +88,7 @@ class info(object):
         self.local_kwargs = local_kwargs
         self.global_args = global_args
         self.global_kwargs = global_kwargs
+        self.verbose = verbose
         self.k = len(bounds)
         self.results = Results(self)
         self.use_dask_map = True

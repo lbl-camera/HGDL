@@ -30,8 +30,8 @@ class HGDL(object):
             * bestX (5) - maximum number of minima and global results to put in get_final()
             * num_individuals (25) - the number of individuals to run for both global and local methods
             * x0 (None) starting points to probe
-            * global_method ('genetic') - these control what global and local methods
-            * local_method ('my_newton') -    are used by HGDL
+            * global_method ('gaussian') - these control what global and local methods
+            * local_method ('scipy') -    are used by HGDL
 
             * Global Method Parameters -----------------------------
             * global_args ((,)) - arguments to global method
@@ -67,7 +67,8 @@ class HGDL(object):
                 self.client = z
                 break
         else:
-            self.client = dask.distributed.Client(processes=False)
+            self.client = dask.distributed.Client(
+                    dask.distributed.LocalCluster(processes=True, dashboard_address=None))
         data = info(*args, **kwargs)
         self.epoch_futures = [self.client.submit(run_epoch, data)]
         for i in range(data.num_epochs):
@@ -92,6 +93,7 @@ class HGDL(object):
 
 # run a single epoch
 def run_epoch(data):
+    if data.verbose: print('working on an epoch')
     data.update_global(run_global(data))
     data.update_minima(run_local(data))
     return data
