@@ -130,7 +130,7 @@ class HGDL:
         optima_list = self.main_future.result()
     ###########################################################################
     def cancel_tasks(self):
-        print("Shutdown initialized ...")
+        print("Tasks cancelled ...")
         print("This leaves the client alive")
         res = self.get_latest(-1)
         self.client.cancel(self.main_future)
