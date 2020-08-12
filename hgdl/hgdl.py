@@ -103,19 +103,23 @@ class HGDL:
         if self.verbose == True: print(optima_list)
         #################################
         if self.verbose == True: print("Submitting main hgdl task")
-        if dask_client is False:
+        if dask_client is False and self.maxEpoch != 0:
             self.transfer_data = False
             self.optima_list = hgdl_functions.hgdl(self.transfer_data,self.optima_list,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.maxEpochs,self.r,self.local_max_iter,
                 self.global_max_iter,self.number_of_walkers,self.args, self.verbose)
-        else:
+        elif dask_client is not False and self.maxEpochs != 0:
             self.transfer_data = distributed.Variable("transfer_data",client)
             self.main_future = client.submit(hgdl_functions.hgdl,self.transfer_data,self.optima_list,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.maxEpochs,self.r,self.local_max_iter,
                 self.global_max_iter,self.number_of_walkers,self.args, self.verbose)
             self.client = client
+        else:
+            client.cancel(self.main_future)
+            client.shutdown()
+
     ###########################################################################
     def get_latest(self, n):
         data, frames = self.transfer_data.get()

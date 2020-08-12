@@ -12,6 +12,9 @@ def main():
             args = (arr,brr), maxEpochs = 100, verbose = False)
     #a.optimize(dask_client = distributed.Client())
     a.optimize(dask_client = None)
+    #res = a.optima_list
+    #print(res)
+
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")
