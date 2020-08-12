@@ -85,7 +85,7 @@ class HGDL(object):
     def get_best(self):
         for future in self.epoch_futures[::-1]:
             if future.done():
-                finished = f.result()
+                finished = future.result()
                 break
         else:
             finished = self.epoch_futures[0].result()
