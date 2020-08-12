@@ -97,7 +97,6 @@ class info(object):
         self.x0 = x0
         self.results.update_global(x0)
         self.r2 = r**2
-
     @property
     def minima(self):
         return self.results.minima_x

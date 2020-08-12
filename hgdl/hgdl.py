@@ -77,19 +77,19 @@ class HGDL(object):
     # user access functions
     def get_final(self):
         # wait until everything is done 
-        result = self.epoch_futures[-1].result().results.roll_up()
+        result = self.epoch_futures[-1].result().results.best()
         self.client.cancel(self.epoch_futures)
         self.client.close()
         return result
 
-    def get_best(self):
+    def get_latest(self, n=None):
         for future in self.epoch_futures[::-1]:
             if future.done():
                 finished = future.result()
                 break
         else:
             finished = self.epoch_futures[0].result()
-        return finished.results.epoch_end()
+        return finished.results.best(n)
 
 # run a single epoch
 def run_epoch(data):

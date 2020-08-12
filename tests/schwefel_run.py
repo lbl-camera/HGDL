@@ -1,10 +1,14 @@
 import numpy as np
 from hgdl.hgdl import HGDL
-from hgdl.test_functions import *
+from schwefel_def  import *
 import time
 
 def main():
-    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian, bounds = [[-500,500],[-500,500]], maxEpochs = 100)
+    a = HGDL(schwefel, schwefel_gradient, hess=schwefel_hessian,
+            bounds = np.array([[-500,500],[-500,500]]),
+            local_method='my_newton', num_epochs = 100,
+            verbose=True
+            )
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")
