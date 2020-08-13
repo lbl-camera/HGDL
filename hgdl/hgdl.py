@@ -23,7 +23,7 @@ class HGDL:
     doc string here
     """
     def __init__(self,obj_func,grad_func,hess_func, bounds, maxEpochs=100000,
-            radius = 20.0, global_tol = 1e-4,
+            radius = 0.1, global_tol = 1e-4,
             local_max_iter = 20, global_max_iter = 120,
             number_of_walkers = 20, x0 = None, 
             args = (), verbose = False):
@@ -103,7 +103,7 @@ class HGDL:
         if self.verbose == True: print(optima_list)
         #################################
         if self.verbose == True: print("Submitting main hgdl task")
-        if dask_client is False and self.maxEpoch != 0:
+        if dask_client is False and self.maxEpochs != 0:
             self.transfer_data = False
             self.optima_list = hgdl_functions.hgdl(self.transfer_data,self.optima_list,self.obj_func,
                 self.grad_func,self.hess_func,

@@ -90,7 +90,7 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
         tasks = []
         for i in range(number_of_walkers):
             tasks.append(client.submit(local.DNewton,func, grad,hess,\
-            x_init[i],x_defl,bounds,1e-6,local_max_iter,args))
+            x_init[i],x_defl,bounds,radius,local_max_iter,args))
         tasks = finish_up_tasks(tasks)
         #secede()
         client.gather(tasks)
@@ -106,13 +106,12 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
             x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
             for j in range(i):
                 #exchange for function def too_close():
-                if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius: success[i] = False; break
+                if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius and success[j] == True: success[j] = False; break
             for j in range(len(x_defl)):
-                if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 1e-5 and success[i] == True:
-                    print("CAUTION: Newton converged to deflated position")
+                if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * radius and success[i] == True:
+                    print("CAUTION: Newton converged within deflated position")
                     success[i] = False
-                    #print(x[i],x_defl[j])
-                    #input()
+                    print(x[i],x_defl[j])
     elif client_available is False:
         x = np.empty((number_of_walkers, dim))
         f = np.empty((number_of_walkers))
@@ -121,17 +120,16 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
         success = np.empty((number_of_walkers))
         for i in range(number_of_walkers):
             x[i],f[i],grad_norm[i],eig[i],success[i] = local.DNewton(func, grad,hess,\
-            x_init[i],x_defl,bounds,1e-6,local_max_iter,args)
+            x_init[i],x_defl,bounds,radius,local_max_iter,args)
             for j in range(i):
                 #exchange for function def too_close():
-                if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius: success[i] = False; break
+                if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius and success[j] == True: success[j] = False; break
             for j in range(len(x_defl)):
-                if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 1e-5 and success[i] == True:
+                if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * radius and success[i] == True:
                     print("CAUTION: Newton converged to deflated position")
                     success[i] = False
-                    #print(x[i],x_defl[j])
-                    #input()
-    else: exit("not clear is client is available")
+                    print(x[i],x_defl[j])
+    else: exit("not clear if client is available")
 
     return x, f, grad_norm, eig, success
 ###########################################################################
