@@ -1,14 +1,9 @@
  What I will do today:
-	* debug why hgdl freaks out on bio
-
  
  Task breakdown:
  * work on hgdl itself:
  	-- most necessary --
 	--------------------	
-	* unit testing
-	* documentation
-	* example uses	
 	* get running on nersc
 	* get hgdl going on fvgp
  
@@ -16,14 +11,13 @@
 	* real work
  		* -- most necessary --
 		--------------------	
-		* implement hgdl on biosci dataset	
+		* get mat. sci dataset		
 	* writing
 		* -- most necessary --
 		* main figure for the paper	
 		--------------------	
 		* section on sklearn example
 		* put figures in overleaf
-		* get mat. sci dataset		
 
  * communicate with general public
 	* blog post with sklearn
