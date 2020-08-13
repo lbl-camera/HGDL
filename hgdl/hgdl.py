@@ -58,7 +58,6 @@ class HGDL(object):
                 "minima_x":minima_x_ndarray, "minima_y":minima_y_values,
                 "global_x":global_x_ndarray, "global_y":global_y_values,
                 }
-
     """
     def __init__(self, *args, **kwargs):
         # find if the user provided a client
@@ -77,19 +76,29 @@ class HGDL(object):
     # user access functions
     def get_final(self):
         # wait until everything is done 
-        result = self.epoch_futures[-1].result().results.best()
+        result = self.epoch_futures[-1].result().results.roll_up()
         self.client.cancel(self.epoch_futures)
         self.client.close()
         return result
 
-    def get_latest(self, n=None):
+    def get_best(self):
         for future in self.epoch_futures[::-1]:
             if future.done():
                 finished = future.result()
                 break
         else:
             finished = self.epoch_futures[0].result()
-        return finished.results.best(n)
+        return finished.results.epoch_end()
+
+    def get_latest(self, N):
+        for future in self.epoch_futures[::-1]:
+            if future.done():
+                finished = future.result()
+                break
+        else:
+            finished = self.epoch_futures[0].result()
+        return finished.results.latest(N)
+
 
 # run a single epoch
 def run_epoch(data):
