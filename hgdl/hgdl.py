@@ -99,6 +99,8 @@ class HGDL(object):
             finished = self.epoch_futures[0].result()
         return finished.results.latest(N)
 
+    def kill(self):
+        for future in self.epoch_futures: future.cancel()
 
 # run a single epoch
 def run_epoch(data):
