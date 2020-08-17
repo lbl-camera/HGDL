@@ -13,6 +13,7 @@ class generic(object):
 def main():
     print('running from class itself', generic.run(None))
     print('running from class instance', generic().run())
+    c=generic(); print('another one',c.run())
 
 if __name__ == "__main__":
     main()
