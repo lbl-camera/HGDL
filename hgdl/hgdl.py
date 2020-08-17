@@ -103,6 +103,10 @@ class HGDL:
         if self.verbose == True: print(optima_list)
         #################################
         if self.verbose == True: print("Submitting main hgdl task")
+        self.client = client
+        self.hgdl()
+
+        """
         if dask_client is False and self.maxEpochs != 0:
             self.transfer_data = False
             self.optima_list = hgdl_functions.hgdl(self.transfer_data,self.optima_list,self.obj_func,
@@ -119,6 +123,7 @@ class HGDL:
         else:
             client.cancel(self.main_future)
             client.shutdown()
+        """
 
     ###########################################################################
     def get_latest(self, n):
@@ -146,4 +151,21 @@ class HGDL:
         self.client.cancel(self.main_future)
         self.client.shutdown()
         return res
+
+    def hgdl(self):
+        init_optima_list = dict(self.optima_list)
+        self.main_future = []
+        #if self.verbose is True: print("    Starting ",maxEpochs," epochs.")
+        for i in range(self.maxEpochs):
+            print("Computing epoch ",i," of ",self.maxEpochs)
+            self.main_future.append(self.client.submit(hgdl_functions.run_hgdl_epoch,
+                    self.obj_func,self.grad_func,\
+                    self.hess_func,self.bounds,init_optima_list,
+                    self.r,self.local_max_iter,self.global_max_iter,
+                    self.number_of_walkers,self.args,self.verbose))
+            #if self.verbose is True: print("    Epoch ",i," finished")
+            init_optima_list = self.main_future[-1].result()
+        time.sleep(0.1)
+        return init_optima_list
+
 

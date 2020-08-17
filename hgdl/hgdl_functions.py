@@ -7,23 +7,23 @@ import dask.distributed
 from distributed import Client, get_client, secede, rejoin, protocol
 import dask.distributed as distributed
 
-def hgdl(transfer_data,init_optima_list, 
-        func, grad,hess, bounds,
-        maxEpochs,radius, local_max_iter,global_max_iter,
-        number_of_walkers, args, verbose):
-    if verbose is True: print("    Starting ",maxEpochs," epochs.")
-    for i in range(maxEpochs):
-        print("Computing epoch ",i," of ",maxEpochs)
-        optima_list = run_hgdl_epoch(func,grad,hess,bounds,init_optima_list,
-                radius,local_max_iter,global_max_iter,
-                number_of_walkers,args,verbose)
-        if verbose is True: print("    Epoch ",i," finished")
-        if transfer_data is not False:
-            a = distributed.protocol.serialize(optima_list)
-            transfer_data.set(a)
-        init_optima_list = dict(optima_list)
-    time.sleep(0.1)
-    return optima_list
+#def hgdl(transfer_data,init_optima_list, 
+#        func, grad,hess, bounds,
+#        maxEpochs,radius, local_max_iter,global_max_iter,
+#        number_of_walkers, args, verbose):
+#    if verbose is True: print("    Starting ",maxEpochs," epochs.")
+#    for i in range(maxEpochs):
+#        print("Computing epoch ",i," of ",maxEpochs)
+#        optima_list = run_hgdl_epoch(func,grad,hess,bounds,init_optima_list,
+#                radius,local_max_iter,global_max_iter,
+#                number_of_walkers,args,verbose)
+#        if verbose is True: print("    Epoch ",i," finished")
+#        if transfer_data is not False:
+#            a = distributed.protocol.serialize(optima_list)
+#            transfer_data.set(a)
+#        init_optima_list = dict(optima_list)
+#    time.sleep(0.1)
+#    return optima_list
 
 def run_hgdl_epoch(func,grad,hess,bounds,optima_list,radius,
         local_max_iter,global_max_iter,number_of_walkers,args,verbose):
