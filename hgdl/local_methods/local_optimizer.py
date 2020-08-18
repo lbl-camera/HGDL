@@ -10,7 +10,7 @@ def run_local(func,grad,hess,bounds, radius,
         local_max_iter,global_max_iter,x_init,optima,args,verbose):
     break_condition = False
     x_init = np.array(x_init)
-    x_defl,f_defl = optima.get_deflation_points(-1)
+    x_defl,f_defl = optima.get_deflation_points(len(optima.list))
     counter = 0
     while break_condition is False or counter >= global_max_iter:
         counter += 1
@@ -110,6 +110,5 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
                     print(grad_norm[i])
                     input()
     else: exit("not clear if client is available")
-
     return x, f, grad_norm, eig, success
 

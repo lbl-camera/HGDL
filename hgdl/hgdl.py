@@ -24,7 +24,10 @@ class HGDL:
     """
     doc string here
     """
-    def __init__(self,obj_func,grad_func,hess_func, bounds, maxEpochs=100000,
+    def __init__(self,obj_func,grad_func,hess_func, 
+            bounds, maxEpochs=100000,
+            local_optimizer = "newton",
+            global_optimizer = "genetic",
             radius = 0.1, global_tol = 1e-4,
             local_max_iter = 20, global_max_iter = 120,
             number_of_walkers = 20, x0 = None, 
@@ -62,6 +65,8 @@ class HGDL:
         self.global_max_iter = global_max_iter
         self.number_of_walkers = number_of_walkers
         self.maxEpochs = maxEpochs
+        self.local_optimizer = local_optimizer
+        self.global_optimizer = global_optimizer
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         if len(x0) != self.number_of_walkers: exit("number of initial position != number of walkers")
         self.x0 = x0
@@ -76,6 +81,9 @@ class HGDL:
     ###########################################################################
     def optimize(self, dask_client = None):
         """
+        optional input:
+        -----
+            dask_client = dask.distributed.Client()
         """
         if dask_client is None: dask_client = dask.distributed.Client()
         client = dask_client

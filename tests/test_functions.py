@@ -31,6 +31,17 @@ def schwefel_hessian(x,*args):
         hessian[i,i] = a[i]
     return hessian
 ###########################################################################
+def non_diff(x):
+    p = np.array([2,2])
+    if np.linalg.norm(np.subtract(p,x))<1.0: return -1.0
+    else: return 0.0
+###########################################################################
+def non_diff_grad(x):
+    return np.zeros((len(x)))
+###########################################################################
+def non_diff_hess(x):
+    return np.zeros((len(x),len(x)))
+###########################################################################
 def plot_schwefel(bounds = [[-500,500],[-500,500]], resolution = 100, points = None, deflation_points = None):
     import numpy as np
     import matplotlib.pyplot as plt
