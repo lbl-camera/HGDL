@@ -77,8 +77,8 @@ class HGDL(object):
     def get_final(self):
         # wait until everything is done 
         result = self.epoch_futures[-1].result().results.roll_up()
-        self.client.cancel(self.epoch_futures)
-        self.client.close()
+        #self.client.cancel(self.epoch_futures)
+        #self.client.close()
         return result
 
     def get_best(self):

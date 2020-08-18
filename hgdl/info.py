@@ -14,7 +14,7 @@ class info(object):
             hess=None, client=None, fix_rng=True,
             r=.3, alpha=.1, num_epochs=10, bestX=5,
             num_individuals=25, max_local=5,
-            x0=None, global_method='gaussian', local_method='scipy',
+            x0=None, global_method='genetic', local_method='scipy',
             local_args=(), local_kwargs={}, global_args=(), global_kwargs={},
             verbose=False):
         """
