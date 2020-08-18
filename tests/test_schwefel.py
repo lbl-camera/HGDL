@@ -8,7 +8,8 @@ def main():
     arr  = 5
     brr  = 6
     #dask_client = distributed.Client("10.0.0.184:8786")
-    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]],
+    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]], 
+            global_optimizer = "genetic",
             args = (arr,brr), radius = 5.0, maxEpochs = 1000, verbose = False)
     #a.optimize(dask_client = distributed.Client())
     a.optimize(dask_client = None)

@@ -3,16 +3,33 @@ import numpy as np
 import hgdl.misc as misc
 
 
-def run_global(x,y,bounds,number_of_offspring,verbose):
-    return genetic_step(x,y,bounds,number_of_offspring,verbose)
+def run_global(x,y,bounds,method,number_of_offspring,verbose):
+    if method == "genetic": return genetic_step(x,y,bounds,number_of_offspring,verbose)
+    elif method == "gauss": return global_step(x,y,bounds,number_of_offspring,verbose)
+    else: return method(x,y,bounds,n)
 
-def global_step(x,y,bounds,n,verbode):
-    c = 1.0
-    y  = y -  np.min(y)
-    y =  y/np.max(y)
-    cov = np.cov(x, aweights = 1.0 - (y**c))
+def global_step(x, y, bounds,n,verbose):
+    ####x is x where in bounds
+    x_new = []
+    y_new = []
+    #bounds = np.array(bounds)
+    for i in range(len(x)):
+        if misc.in_bounds(x[i],bounds): 
+            x_new.append(x[i])
+            y_new.append(y[i])
+    x = np.asarray(x_new)
+    y = np.asarray(y_new)
+    sorted_indices = np.argsort(y)
+    y = y[sorted_indices]
+    x = x[sorted_indices]
+    x = np.array(x[:-int(len(x)/2)])
+    y = np.array(y[:-int(len(x)/2)])
+    cov = np.cov(x.T)
     mean= np.mean(x , axis = 0)
     offspring = np.random.multivariate_normal(mean, cov, size = n)
+    for i in range(len(offspring)):
+        if not misc.in_bounds(offspring[i],bounds): 
+            offspring[i] = np.random.uniform(low = bounds[:,0],high = bounds[:,1], size = len(offspring[0]))
     return offspring
 ###########################################################################
 def genetic_step(X, y, bounds, numChoose, verbose):

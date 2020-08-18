@@ -7,7 +7,9 @@ import dask.distributed as distributed
 from hgdl.local_methods.dNewton import DNewton
 
 def run_local(func,grad,hess,bounds, radius,
-        local_max_iter,global_max_iter,x_init,optima,args,verbose):
+        local_max_iter,global_max_iter,
+        local_method,
+        x_init,optima,args,verbose):
     break_condition = False
     x_init = np.array(x_init)
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
@@ -15,34 +17,16 @@ def run_local(func,grad,hess,bounds, radius,
     while break_condition is False or counter >= global_max_iter:
         counter += 1
         if verbose is True: print("    local replacemet step: ",counter)
-        #walk walkers with DNewton
-        #print("x_defl")
-        #print(x_defl)
-        x,f,grad_norm,eig,success = run_dNewton(func, grad,hess,bounds,
-                radius,local_max_iter,x_init,args,x_defl)
+        x,f,grad_norm,eig,success = run_local_optimizer(func, grad,hess,bounds,
+                radius,local_max_iter,local_method, x_init, args, x_defl)
         if verbose is True: print("    deflated Newton finished in step: ",counter)
-        #print("result")
-        #print(x)
-        #print("optima list before fill in:")
-        #print(optima.list)
         optima.fill_in_optima_list(x,f,grad_norm,eig,success)
-        #print("optima list after fill in:")
-        #print(optima.list)
         x_defl,f_defl = optima.get_deflation_points(len(optima.list))
-        #print("therefore the new x_defl is")
-        #print(x_defl)
-        #print("============")
-        #for i in range(len(optima.list["x"])):
-        #    for j in range(len(optima.list["x"])):
-        #        if i == j: continue
-        #        if np.linalg.norm(optima.list["x"][i] - optima.list["x"][j]) < 1e-6:
-        #            print(i,j,optima.list["x"][i],optima.list["x"][j])
-        #            exit("doublicates in list")
-
         if len(np.where(success == False)[0]) > len(success)/2.0: break_condition = True
         return optima
     ###########################################################################
-def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl = []):
+def run_local_optimizer(func,grad,hess,bounds,radius,
+        local_max_iter,local_method,x_init,args,x_defl = []):
     """
     this function runs a deflated Newton for
     all the walkers.
@@ -56,6 +40,12 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
     import hgdl.local_methods.local_optimizer as local
     dim = len(x_init[0])
     number_of_walkers = len(x_init)
+    ################################
+    if local_method == "newton": local_opt = DNewton
+    else: 
+        exit("user defined local method not implemented yet")
+        local_opt = local_method
+    ################################
     try: 
         client = get_client()
         client_available = True
@@ -64,7 +54,7 @@ def run_dNewton(func,grad,hess,bounds,radius,local_max_iter,x_init,args,x_defl =
     if client_available is True:
         tasks = []
         for i in range(number_of_walkers):
-            tasks.append(client.submit(DNewton,func, grad,hess,\
+            tasks.append(client.submit(local_opt,func, grad,hess,\
             x_init[i],x_defl,bounds,radius,local_max_iter,args))
         tasks = misc.finish_up_tasks(tasks)
         client.gather(tasks)
