@@ -27,7 +27,8 @@ def DNewton(func, grad, hess, x0,x_defl,bounds,radius,max_iter = 20, args = ()):
         try:
             gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
         except Exception as error: 
-            print("solve in dNewton crashed because: ",str(error)," starting least squares")
+            #print("solve in dNewton crashed because: ",str(error)," starting least squares")
+            #print(hessian)
             gamma,a,b,c = np.linalg.lstsq(hessian + (np.outer(gradient,dg)/d),-gradient)
         x += gamma
         #print("current position: ",x,"epsilon: ",e, gamma, "d*grad: ",d,gradient, "hess ",hessian)

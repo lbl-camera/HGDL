@@ -122,7 +122,7 @@ class HGDL:
             hgdl(self.transfer_data,self.optima,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.maxEpochs,self.r,self.local_max_iter,
-                self.global_max_iter,self.local_method,self.global_method,
+                self.global_max_iter,self.local_optimizer,self.global_optimizer,
                 self.number_of_walkers,self.args, self.verbose)
         elif dask_client is not False and self.maxEpochs != 0:
             self.transfer_data = distributed.Variable("transfer_data",client)
@@ -145,7 +145,10 @@ class HGDL:
         -----
             n: number of results requested
         """
-        data, frames = self.transfer_data.get()
+        try:
+            data, frames = self.transfer_data.get()
+        except:
+            return self.optima.list
         self.optima = distributed.protocol.deserialize(data,frames)
         optima_list = self.optima.list
         n = min(n,len(optima_list["x"]))
