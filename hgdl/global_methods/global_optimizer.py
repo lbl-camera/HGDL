@@ -2,13 +2,17 @@
 import numpy as np
 import hgdl.misc as misc
 
-def global_step(x,y):
+
+def run_global(x,y,bounds,number_of_offspring,verbose):
+    return genetic_step(x,y,bounds,number_of_offspring,verbose)
+
+def global_step(x,y,bounds,n,verbode):
     c = 1.0
     y  = y -  np.min(y)
     y =  y/np.max(y)
     cov = np.cov(x, aweights = 1.0 - (y**c))
     mean= np.mean(x , axis = 0)
-    offspring = np.random.multivariate_normal(mean, cov, size = len(x))
+    offspring = np.random.multivariate_normal(mean, cov, size = n)
     return offspring
 ###########################################################################
 def genetic_step(X, y, bounds, numChoose, verbose):

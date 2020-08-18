@@ -1,5 +1,5 @@
 import numpy as np
-
+import time
 
 def out_of_bounds(x,bounds):
     for i in range(len(x)):
@@ -18,3 +18,13 @@ def random_sample(N,k,bounds):
 
 def random_population(bounds, n):
     return np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = (n,len(bounds)))
+
+def finish_up_tasks(tasks):
+    for f in tasks:
+        if f.status == 'cancelled':
+            tasks.remove(f)
+    while any(f.status == 'pending' for f in tasks):
+        #print("finishing up last tasks...")
+        time.sleep(0.1)
+    return tasks
+

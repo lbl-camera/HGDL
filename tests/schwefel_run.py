@@ -9,9 +9,10 @@ def main():
     brr  = 6
     #dask_client = distributed.Client("10.0.0.184:8786")
     a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]],
-            args = (arr,brr), radius = 5.0, maxEpochs = 100, verbose = False)
+            args = (arr,brr), radius = 5.0, maxEpochs = 1000, verbose = False)
     #a.optimize(dask_client = distributed.Client())
     a.optimize(dask_client = None)
+    #a.optimize(dask_client = False)
     #res = a.optima_list
     #print(res)
 
