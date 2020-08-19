@@ -119,14 +119,18 @@ class HGDL:
         if self.verbose == True: print("Submitting main hgdl task")
         if dask_client is False and self.maxEpochs != 0:
             self.transfer_data = False
-            hgdl(self.transfer_data,self.optima,self.obj_func,
+            self.break_condition = False
+            hgdl(self.transfer_data,self.break_condition,
+                self.optima,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.maxEpochs,self.r,self.local_max_iter,
                 self.global_max_iter,self.local_optimizer,self.global_optimizer,
                 self.number_of_walkers,self.args, self.verbose)
         elif dask_client is not False and self.maxEpochs != 0:
+            self.break_condition = distributed.Variable("break_condition",client)
             self.transfer_data = distributed.Variable("transfer_data",client)
-            self.main_future = client.submit(hgdl,self.transfer_data,self.optima,self.obj_func,
+            self.break_condition.set(False)
+            self.main_future = client.submit(hgdl,self.transfer_data,self.break_condition,self.optima,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.maxEpochs,self.r,self.local_max_iter,
                 self.global_max_iter,self.local_optimizer,self.global_optimizer,
@@ -135,7 +139,6 @@ class HGDL:
         else:
             client.cancel(self.main_future)
             client.shutdown()
-
     ###########################################################################
     def get_latest(self, n):
         """
@@ -184,7 +187,9 @@ class HGDL:
         """
         res = self.get_latest(-1)
         self.client.cancel(self.main_future)
-        print("All HGDL tasks cancelled.")
+        self.break_condition.set(True)
+
+        print("Status of HGDL task: ", self.main_future.status)
         print("This leaves the client alive.")
         return res
     ###########################################################################
@@ -206,11 +211,13 @@ class HGDL:
 ###########################################################################
 ###########################################################################
 ###########################################################################
-def hgdl(transfer_data,optima,obj_func,grad_func,hess_func,
+def hgdl(transfer_data,break_condition,optima,obj_func,grad_func,hess_func,
                 bounds,maxEpochs,r,local_max_iter,
                 global_max_iter,local_method,global_method,number_of_walkers,args, verbose):
     if verbose is True: print("    Starting ",maxEpochs," epochs.")
     for i in range(maxEpochs):
+        bc = break_condition.get()
+        if bc is True: break
         print("Computing epoch ",i," of ",maxEpochs)
         optima = run_hgdl_epoch(
             obj_func,grad_func,hess_func,bounds,optima,

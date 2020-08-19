@@ -23,6 +23,7 @@ def main():
     time.sleep(10)
     print("main thread asks for 10 best solutions:")
     print(a.get_latest(10))
+    a.cancel_tasks()
     print("main sleeps for another 10 seconds")
     time.sleep(10)
     print("main thread kills optimization")
