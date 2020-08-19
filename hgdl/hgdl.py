@@ -104,7 +104,7 @@ class HGDL:
                 self.x0,self.args)
             x,f,grad_norm,eig,success = self.main_future.result()
         print("HGDL engine started: ")
-        #print(self.x0)
+        print(self.x0)
         #print("")
         #print("")
         print("")
@@ -112,7 +112,8 @@ class HGDL:
         if len(np.where(success == True)[0]) == 0:
             print("no optima found")
             success[:] = True
-        print("They are now stored in the optima_list")
+        else: self.optima.list["success"] = True
+        print("They are stored in the optima_list")
         self.optima.fill_in_optima_list(x,f,grad_norm,eig, success)
         if self.verbose == True: print(optima_list)
         #################################
@@ -159,7 +160,8 @@ class HGDL:
                 "func evals": optima_list["func evals"][0:n],
                 "classifier": optima_list["classifier"][0:n],
                 "eigen values": optima_list["eigen values"][0:n],
-                "gradient norm":optima_list["gradient norm"][0:n]}
+                "gradient norm":optima_list["gradient norm"][0:n],
+                "success":optima_list["success"]}
     ###########################################################################
     def get_final(self,n):
         """
@@ -176,7 +178,8 @@ class HGDL:
                 "func evals": optima_list["func evals"][0:n],
                 "classifier": optima_list["classifier"][0:n],
                 "eigen values": optima_list["eigen values"][0:n],
-                "gradient norm":optima_list["gradient norm"][0:n]}
+                "gradient norm":optima_list["gradient norm"][0:n],
+                "success":optima_list["success"]}
     ###########################################################################
     def cancel_tasks(self):
         """
@@ -250,6 +253,7 @@ def run_hgdl_epoch(func,grad,hess,bounds,optima_obj,radius,
     optima = run_local(func,grad,hess,bounds,radius,
             local_max_iter, global_max_iter,local_method,
             x0,optima_obj,args,verbose)
+    optima.list["success"] = True
     if verbose is True: print("    local step finished")
     return optima
 

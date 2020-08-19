@@ -100,5 +100,9 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
                     print(grad_norm[i])
                     input()
     else: exit("not clear if client is available")
+    #print("++++++++++++++++++++++++++++++=")
+    #print(x)
+    #print(success)
+    #print("++++++++++++++++++++++++++++++=")
     return x, f, grad_norm, eig, success
 

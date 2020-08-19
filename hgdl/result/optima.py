@@ -22,9 +22,10 @@ class optima:
         """
         self.dim = dim
         self.list = {"x": np.empty((0,self.dim)), 
-                            "func evals": np.empty((0)), 
-                            "classifier": [], "eigen values": np.empty((0,self.dim)), 
-                            "gradient norm":np.empty((0))}
+                     "func evals": np.empty((0)), 
+                     "classifier": [], "eigen values": np.empty((0,self.dim)), 
+                     "gradient norm":np.empty((0)),
+                     "success": False}
     ####################################################
     def fill_in_optima_list(self,x,f,grad_norm,eig, success):
         #print("before")
