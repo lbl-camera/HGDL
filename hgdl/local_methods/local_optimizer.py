@@ -106,3 +106,5 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
     #print("++++++++++++++++++++++++++++++=")
     return x, f, grad_norm, eig, success
 
+
+

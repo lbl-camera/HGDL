@@ -30,9 +30,39 @@ def DNewton(func, grad, hess, x0,x_defl,bounds,radius,max_iter = 20, args = ()):
         x += gamma
         if counter >= max_iter or misc.out_of_bounds(x,bounds):
             #print("DNewton from point:", x0," not converged  ",x," ", counter, misc.out_of_bounds(x,bounds))
-            return x,func(x, *args),e,np.linalg.eig(hess(x, *args))[0],False
+            return x0,func(x0, *args),e,np.linalg.eig(hess(x0, *args))[0],False
 
         #print("current position: ",x,"epsilon: ",e, gamma, "d*grad: ",d,gradient, "hess ",hessian)
     #print("DNewton from point:", x0," converged to ",x, " with ",e," after waiting: ",w)
     #input()
     return x,func(x, *args),e,np.linalg.eig(hessian)[0], success
+
+
+def gradient_descent(ObjectiveFunction, GradientFunction,bounds,x0, radius, *args):
+    dim = len(bounds)
+    epsilon = np.inf
+    step_counter = 0
+    beta = 0.8
+    x = np.array(x0)
+    success = True
+    while epsilon > 1e-6:
+        step_counter += 1
+        d = defl.deflation_function(x,x_defl,radius)
+        gradient = GradientFunction(x, *args) * d
+        counter = 0
+        step = 1.0
+        while OutOfBounds(x + (step * gradient), ParameterLimits) or \
+              ObjectiveFunction(x - (step * gradient), *args) > \
+              ObjectiveFunction(x, *args) - \
+              ((step / 2.0) * np.linalg.norm(gradient) ** 2):
+            step = step * beta
+            counter += 1
+            if counter > 100:
+                break
+        x = x + (step * gradient)
+        epsilon = np.linalg.norm(step * gradient)
+        if step_counter > 100:
+            success = False
+            break
+    return x, ObjectiveFunction(x, *args), True
+
