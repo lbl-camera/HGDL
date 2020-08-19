@@ -1,6 +1,6 @@
 wheel
-numpy
 versioneer
+numpy
 scipy
 matplotlib
 dask
