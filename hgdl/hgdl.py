@@ -103,10 +103,10 @@ class HGDL:
                 self.bounds,self.r,self.local_max_iter,self.local_optimizer,
                 self.x0,self.args)
             x,f,grad_norm,eig,success = self.main_future.result()
-        print("HGDL starting positions: ")
-        print(self.x0)
-        print("")
-        print("")
+        print("HGDL engine started: ")
+        #print(self.x0)
+        #print("")
+        #print("")
         print("")
         print("I found ",len(np.where(success == True)[0])," optima in my first run")
         if len(np.where(success == True)[0]) == 0:
