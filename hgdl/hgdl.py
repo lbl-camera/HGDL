@@ -217,7 +217,7 @@ def hgdl(transfer_data,break_condition,optima,obj_func,grad_func,hess_func,
     if verbose is True: print("    Starting ",maxEpochs," epochs.")
     for i in range(maxEpochs):
         bc = break_condition.get()
-        if bc is True: break
+        if bc is True: print("Epoch ",i," was cancelled");break
         print("Computing epoch ",i," of ",maxEpochs)
         optima = run_hgdl_epoch(
             obj_func,grad_func,hess_func,bounds,optima,
