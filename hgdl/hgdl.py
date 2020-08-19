@@ -182,11 +182,10 @@ class HGDL:
         -------
             latest results
         """
-
-        print("Tasks cancelled ...")
-        print("This leaves the client alive")
         res = self.get_latest(-1)
         self.client.cancel(self.main_future)
+        print("All HGDL tasks cancelled.")
+        print("This leaves the client alive.")
         return res
     ###########################################################################
     def kill(self):
