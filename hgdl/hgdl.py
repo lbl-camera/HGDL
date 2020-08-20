@@ -84,7 +84,7 @@ class HGDL:
         optional input:
         -----
             dask_client = dask.distributed.Client()
-            x0 = randon.ran()   starting positions
+            x0 = randon.rand()   starting positions
         """
         ######figure out starting positions#######
         if x0 is None: self.x0 = misc.random_population(self.bounds,self.number_of_walkers)
@@ -225,7 +225,6 @@ class HGDL:
         res = self.get_latest(n)
         try:
             self.break_condition.set(True)
-            print("waiting in kill() ",self.main_future.status)
             while self.main_future.status == "pending":
                 #print("waiting in kill() ",self.main_future.status)
                 time.sleep(0.1)
