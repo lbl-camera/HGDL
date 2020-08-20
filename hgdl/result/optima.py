@@ -51,7 +51,8 @@ class optima:
                         "func evals":   np.append(self.list["func evals"],clean_f), \
                         "classifier":   self.list["classifier"] + classifier, \
                         "eigen values": np.vstack([self.list["eigen values"],clean_eig]),\
-                        "gradient norm":np.append(self.list["gradient norm"],clean_grad_norm)}
+                        "gradient norm":np.append(self.list["gradient norm"],clean_grad_norm),\
+                        "success": self.list["success"]}
 
         sort_indices = np.argsort(optima_list["func evals"])
         optima_list["x"] = optima_list["x"][sort_indices]
@@ -60,9 +61,6 @@ class optima:
         optima_list["eigen values"] = optima_list["eigen values"][sort_indices]
         optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices]
         self.list = dict(optima_list)
-        #print("after")
-        #print(self.list)
-        #input()
         return optima_list
     ####################################################
     def get_minima(self,n):

@@ -116,15 +116,14 @@ class HGDL:
         ##########################################
         print("HGDL engine started: ")
         print(self.x0)
-        #print("")
-        #print("")
         print("")
         print("I found ",len(np.where(success == True)[0])," optima in my first run")
         if len(np.where(success == True)[0]) == 0:
-            print("no optima found")
+            print("no optima found in first round")
             success[:] = True
-        else: self.optima.list["success"] = True
-        print("They are stored in the optima_list")
+        else: 
+            self.optima.list["success"] = True
+        print("Points stored in the optima list")
         self.optima.fill_in_optima_list(x,f,grad_norm,eig, success)
         if self.verbose == True: print(optima_list)
         #################################
@@ -142,6 +141,8 @@ class HGDL:
         elif dask_client is not False and self.maxEpochs != 0:
             self.break_condition = distributed.Variable("break_condition",client)
             self.transfer_data = distributed.Variable("transfer_data",client)
+            a = distributed.protocol.serialize(self.optima)
+            self.transfer_data.set(a)
             self.break_condition.set(False)
             self.main_future = client.submit(hgdl,self.transfer_data,self.break_condition,self.optima,self.obj_func,
                 self.grad_func,self.hess_func,
@@ -224,15 +225,20 @@ class HGDL:
         res = self.get_latest(n)
         try:
             self.break_condition.set(True)
+            print("waiting in kill() ",self.main_future.status)
             while self.main_future.status == "pending":
                 #print("waiting in kill() ",self.main_future.status)
                 time.sleep(0.1)
+            self.client.gather(self.main_future)
             self.client.cancel(self.main_future)
+            del self.main_future
             self.client.shutdown()
+            self.client.close()
             print("kill successful")
         except Exception as err:
+            print(err)
             print("kill failed")
-            print(str(err))
+        time.sleep(0.1)
         return res
 
 ###########################################################################
