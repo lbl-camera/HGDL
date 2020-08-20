@@ -30,7 +30,7 @@ class HGDL:
             global_optimizer = "genetic",
             radius = 0.1, global_tol = 1e-4,
             local_max_iter = 20, global_max_iter = 120,
-            number_of_walkers = 20, x0 = None, 
+            number_of_walkers = 20,
             args = (), verbose = False):
         """
         intialization for the HGDL class
@@ -54,7 +54,6 @@ class HGDL:
             global_max_iter = 20
             number_of_walkers: make sure you have enough workers for
                                your walkers ( walkers + 1 <= workers)
-            x0 = np.rand.random()
             args = (), a n-tuple of parameters, will be communicated to obj_func, grad, hess
             verbose = False
         """
@@ -71,9 +70,6 @@ class HGDL:
         self.maxEpochs = maxEpochs
         self.local_optimizer = local_optimizer
         self.global_optimizer = global_optimizer
-        if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
-        if len(x0) != self.number_of_walkers: exit("number of initial position != number of walkers")
-        self.x0 = x0
         self.args = args
         self.verbose = verbose
         ########################################
@@ -83,14 +79,28 @@ class HGDL:
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    def optimize(self, dask_client = None):
+    def optimize(self, dask_client = None, x0 = None):
         """
         optional input:
         -----
             dask_client = dask.distributed.Client()
+            x0 = randon.ran()   starting positions
         """
+        ######figure out starting positions#######
+        if x0 is None: self.x0 = misc.random_population(self.bounds,self.number_of_walkers)
+        elif len(x0) < self.number_of_workers: 
+            self.x0 = np.empty((self.number_of_walkers,len(x0[0])))
+            self.x0[0:len(x0)] = x0
+            self.x0[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0) + 1)
+        elif len(x0) > self.number_of_workers:
+            self.x0 = x0[0:self.number_of_workers]
+        else: self.x0 = x0
+        ##########################################
+        #####figure out dask client###############
         if dask_client is None: dask_client = dask.distributed.Client()
         client = dask_client
+        ##########################################
+        #####run first local######################
         if dask_client is False:
             ###this should be run local_optimizer
             x,f,grad_norm,eig,success = run_local_optimizer(self.obj_func,
@@ -103,6 +113,7 @@ class HGDL:
                 self.bounds,self.r,self.local_max_iter,self.local_optimizer,
                 self.x0,self.args)
             x,f,grad_norm,eig,success = self.main_future.result()
+        ##########################################
         print("HGDL engine started: ")
         print(self.x0)
         #print("")
@@ -117,6 +128,7 @@ class HGDL:
         self.optima.fill_in_optima_list(x,f,grad_norm,eig, success)
         if self.verbose == True: print(optima_list)
         #################################
+        ####run epochs###################
         if self.verbose == True: print("Submitting main hgdl task")
         if dask_client is False and self.maxEpochs != 0:
             self.transfer_data = False
@@ -151,9 +163,9 @@ class HGDL:
         """
         try:
             data, frames = self.transfer_data.get()
+            self.optima = distributed.protocol.deserialize(data,frames)
         except:
-            return self.optima.list
-        self.optima = distributed.protocol.deserialize(data,frames)
+            self.optima = self.optima
         optima_list = self.optima.list
         n = min(n,len(optima_list["x"]))
         return {"x": optima_list["x"][0:n], \
@@ -171,7 +183,10 @@ class HGDL:
         -----
             n: number of results requested
         """
-        self.optima = self.main_future.result()
+        try:
+            self.optima = self.main_future.result()
+        except:
+            pass
         optima_list = self.optima.list
         n = min(n,len(optima_list["x"]))
         return {"x": optima_list["x"][0:n], \
@@ -189,14 +204,16 @@ class HGDL:
             latest results
         """
         res = self.get_latest(-1)
-        self.client.cancel(self.main_future)
         self.break_condition.set(True)
-
+        while self.main_future.status != "finished":
+            #print("waiting in cancel_tasks() ",self.main_future.status)
+            time.sleep(0.1)
+        self.client.cancel(self.main_future)
         print("Status of HGDL task: ", self.main_future.status)
         print("This leaves the client alive.")
         return res
     ###########################################################################
-    def kill(self):
+    def kill(self, n= -1):
         """
         kill tasks and shutdown client
         return:
@@ -204,9 +221,18 @@ class HGDL:
             latest results
         """
         print("Kill initialized ...")
-        res = self.get_latest(-1)
-        self.client.cancel(self.main_future)
-        self.client.shutdown()
+        res = self.get_latest(n)
+        try:
+            self.break_condition.set(True)
+            while self.main_future.status == "pending":
+                #print("waiting in kill() ",self.main_future.status)
+                time.sleep(0.1)
+            self.client.cancel(self.main_future)
+            self.client.shutdown()
+            print("kill successful")
+        except Exception as err:
+            print("kill failed")
+            print(str(err))
         return res
 
 ###########################################################################
@@ -219,7 +245,8 @@ def hgdl(transfer_data,break_condition,optima,obj_func,grad_func,hess_func,
                 global_max_iter,local_method,global_method,number_of_walkers,args, verbose):
     if verbose is True: print("    Starting ",maxEpochs," epochs.")
     for i in range(maxEpochs):
-        bc = break_condition.get()
+        if break_condition is not False: bc = break_condition.get()
+        else: bc = False
         if bc is True: print("Epoch ",i," was cancelled");break
         print("Computing epoch ",i," of ",maxEpochs)
         optima = run_hgdl_epoch(

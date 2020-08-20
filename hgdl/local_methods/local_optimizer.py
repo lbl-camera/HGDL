@@ -98,7 +98,6 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
                     success[i] = False
                     print(x[i],x_defl[j])
                     print(grad_norm[i])
-                    input()
     else: exit("not clear if client is available")
     #print("++++++++++++++++++++++++++++++=")
     #print(x)
