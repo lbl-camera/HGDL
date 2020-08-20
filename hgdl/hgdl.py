@@ -88,12 +88,12 @@ class HGDL:
         """
         ######figure out starting positions#######
         if x0 is None: self.x0 = misc.random_population(self.bounds,self.number_of_walkers)
-        elif len(x0) < self.number_of_workers: 
+        elif len(x0) < self.number_of_walkers: 
             self.x0 = np.empty((self.number_of_walkers,len(x0[0])))
             self.x0[0:len(x0)] = x0
-            self.x0[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0) + 1)
-        elif len(x0) > self.number_of_workers:
-            self.x0 = x0[0:self.number_of_workers]
+            self.x0[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0))
+        elif len(x0) > self.number_of_walkers:
+            self.x0 = x0[0:self.number_of_walkers]
         else: self.x0 = x0
         ##########################################
         #####figure out dask client###############
