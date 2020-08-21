@@ -15,8 +15,7 @@ import pickle
 
 
 """
-TODO:   *currently walkers that walk out in Newton are discarded. We should do a line search instead
-        *the radius is still ad hoc, should be related to curvature
+TODO:   *the radius is still ad hoc, should be related to curvature and unique to deflation point
 """
 
 
@@ -72,11 +71,7 @@ class HGDL:
         self.global_optimizer = global_optimizer
         self.args = args
         self.verbose = verbose
-        ########################################
-        #init optima list:
         self.optima = optima(self.dim)
-    ###########################################################################
-    ###########################################################################
     ###########################################################################
     ###########################################################################
     def optimize(self, dask_client = None, x0 = None):
@@ -86,73 +81,29 @@ class HGDL:
             dask_client = dask.distributed.Client()
             x0 = randon.rand()   starting positions
         """
-        ######figure out starting positions#######
-        if x0 is None: self.x0 = misc.random_population(self.bounds,self.number_of_walkers)
-        elif len(x0) < self.number_of_walkers: 
-            self.x0 = np.empty((self.number_of_walkers,len(x0[0])))
-            self.x0[0:len(x0)] = x0
-            self.x0[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0))
-        elif len(x0) > self.number_of_walkers:
-            self.x0 = x0[0:self.number_of_walkers]
-        else: self.x0 = x0
-        ##########################################
-        #####figure out dask client###############
-        if dask_client is None: dask_client = dask.distributed.Client()
-        client = dask_client
-        ##########################################
+        ######initialize starting positions#######
+        self._prepare_starting_positions(x0)
+        #####initializedask client###############
+        client = self._prepare_dask_client(dask_client)
         #####run first local######################
-        if dask_client is False:
-            ###this should be run local_optimizer
-            x,f,grad_norm,eig,success = run_local_optimizer(self.obj_func,
-                self.grad_func,self.hess_func,
-                self.bounds,self.r,self.local_max_iter,self.local_optimizer,
-                self.x0,self.args)
-        else:
-            self.main_future = client.submit(run_local_optimizer,self.obj_func,
-                self.grad_func,self.hess_func,
-                self.bounds,self.r,self.local_max_iter,self.local_optimizer,
-                self.x0,self.args)
-            x,f,grad_norm,eig,success = self.main_future.result()
+        x,f,grad_norm,eig,success = self._run_first_local_optimization(client)
         ##########################################
         print("HGDL engine started: ")
         print(self.x0)
         print("")
         print("I found ",len(np.where(success == True)[0])," optima in my first run")
-        if len(np.where(success == True)[0]) == 0:
+        if len(np.where(success == True)[0]) == 0: 
             print("no optima found in first round")
             success[:] = True
-        else: 
+        else:
             self.optima.list["success"] = True
         print("Points stored in the optima list")
         self.optima.fill_in_optima_list(x,f,grad_norm,eig, success)
         if self.verbose == True: print(optima_list)
         #################################
         ####run epochs###################
-        if self.verbose == True: print("Submitting main hgdl task")
-        if dask_client is False and self.maxEpochs != 0:
-            self.transfer_data = False
-            self.break_condition = False
-            hgdl(self.transfer_data,self.break_condition,
-                self.optima,self.obj_func,
-                self.grad_func,self.hess_func,
-                self.bounds,self.maxEpochs,self.r,self.local_max_iter,
-                self.global_max_iter,self.local_optimizer,self.global_optimizer,
-                self.number_of_walkers,self.args, self.verbose)
-        elif dask_client is not False and self.maxEpochs != 0:
-            self.break_condition = distributed.Variable("break_condition",client)
-            self.transfer_data = distributed.Variable("transfer_data",client)
-            a = distributed.protocol.serialize(self.optima)
-            self.transfer_data.set(a)
-            self.break_condition.set(False)
-            self.main_future = client.submit(hgdl,self.transfer_data,self.break_condition,self.optima,self.obj_func,
-                self.grad_func,self.hess_func,
-                self.bounds,self.maxEpochs,self.r,self.local_max_iter,
-                self.global_max_iter,self.local_optimizer,self.global_optimizer,
-                self.number_of_walkers,self.args, self.verbose)
-            self.client = client
-        else:
-            client.cancel(self.main_future)
-            client.shutdown()
+        #################################
+        self._run_epochs(client)
     ###########################################################################
     def get_latest(self, n):
         """
@@ -207,7 +158,6 @@ class HGDL:
         res = self.get_latest(-1)
         self.break_condition.set(True)
         while self.main_future.status != "finished":
-            #print("waiting in cancel_tasks() ",self.main_future.status)
             time.sleep(0.1)
         self.client.cancel(self.main_future)
         print("Status of HGDL task: ", self.main_future.status)
@@ -226,7 +176,6 @@ class HGDL:
         try:
             self.break_condition.set(True)
             while self.main_future.status == "pending":
-                #print("waiting in kill() ",self.main_future.status)
                 time.sleep(0.1)
             self.client.gather(self.main_future)
             self.client.cancel(self.main_future)
@@ -239,10 +188,67 @@ class HGDL:
             print("kill failed")
         time.sleep(0.1)
         return res
+    ###########################################################################
+    def _prepare_starting_positions(self,x0):
+        if x0 is None: self.x0 = misc.random_population(self.bounds,self.number_of_walkers)
+        elif len(x0) < self.number_of_walkers: 
+            self.x0 = np.empty((self.number_of_walkers,len(x0[0])))
+            self.x0[0:len(x0)] = x0
+            self.x0[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0))
+        elif len(x0) > self.number_of_walkers:
+            self.x0 = x0[0:self.number_of_walkers]
+        else: self.x0 = x0
+    ###########################################################################
+    def _prepare_dask_client(self,dask_client):
+        if dask_client is None: dask_client = dask.distributed.Client()
+        client = dask_client
+        return client
+    ###########################################################################
+    def _run_first_local_optimization(self,client):
+        if client is False:
+            x,f,grad_norm,eig,success = run_local_optimizer(self.obj_func,
+                self.grad_func,self.hess_func,
+                self.bounds,self.r,self.local_max_iter,self.local_optimizer,
+                self.x0,self.args)
+        else:
+            self.main_future = client.submit(run_local_optimizer,self.obj_func,
+                self.grad_func,self.hess_func,
+                self.bounds,self.r,self.local_max_iter,self.local_optimizer,
+                self.x0,self.args)
+            x,f,grad_norm,eig,success = self.main_future.result()
+        return x,f,grad_norm,eig,success
+    ###########################################################################
+    def _run_epochs(self,client):
+        dask_client = client
+        if self.verbose == True: print("Submitting main hgdl task")
+        if dask_client is False and self.maxEpochs != 0:
+            self.transfer_data = False
+            self.break_condition = False
+            hgdl(self.transfer_data,self.break_condition,
+                self.optima,self.obj_func,
+                self.grad_func,self.hess_func,
+                self.bounds,self.maxEpochs,self.r,self.local_max_iter,
+                self.global_max_iter,self.local_optimizer,self.global_optimizer,
+                self.number_of_walkers,self.args, self.verbose)
+        elif dask_client is not False and self.maxEpochs != 0:
+            self.break_condition = distributed.Variable("break_condition",client)
+            self.transfer_data = distributed.Variable("transfer_data",client)
+            a = distributed.protocol.serialize(self.optima)
+            self.transfer_data.set(a)
+            self.break_condition.set(False)
+            self.main_future = client.submit(hgdl,self.transfer_data,self.break_condition,self.optima,self.obj_func,
+                self.grad_func,self.hess_func,
+                self.bounds,self.maxEpochs,self.r,self.local_max_iter,
+                self.global_max_iter,self.local_optimizer,self.global_optimizer,
+                self.number_of_walkers,self.args, self.verbose)
+            self.client = client
+        else:
+            client.cancel(self.main_future)
+            client.shutdown()
 
 ###########################################################################
 ###########################################################################
-###########################################################################
+##################hgdl functions###########################################
 ###########################################################################
 ###########################################################################
 def hgdl(transfer_data,break_condition,optima,obj_func,grad_func,hess_func,
