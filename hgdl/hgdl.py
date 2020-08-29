@@ -221,7 +221,7 @@ class HGDL:
     def _run_epochs(self,client):
         dask_client = client
         if self.verbose == True: print("Submitting main hgdl task")
-        if dask_client is False and self.maxEpochs != 0:
+        if dask_client is False:
             self.transfer_data = False
             self.break_condition = False
             hgdl(self.transfer_data,self.break_condition,
@@ -230,7 +230,7 @@ class HGDL:
                 self.bounds,self.maxEpochs,self.r,self.local_max_iter,
                 self.global_max_iter,self.local_optimizer,self.global_optimizer,
                 self.number_of_walkers,self.args, self.verbose)
-        elif dask_client is not False and self.maxEpochs != 0:
+        else:
             self.break_condition = distributed.Variable("break_condition",client)
             self.transfer_data = distributed.Variable("transfer_data",client)
             a = distributed.protocol.serialize(self.optima)
@@ -242,9 +242,9 @@ class HGDL:
                 self.global_max_iter,self.local_optimizer,self.global_optimizer,
                 self.number_of_walkers,self.args, self.verbose)
             self.client = client
-        else:
-            client.cancel(self.main_future)
-            client.shutdown()
+        #else:
+        #    client.cancel(self.main_future)
+        #    client.shutdown()
 
 ###########################################################################
 ###########################################################################
