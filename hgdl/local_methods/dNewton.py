@@ -52,7 +52,7 @@ def gradient_descent(ObjectiveFunction, GradientFunction,bounds,x_defl,x0, radiu
         x = x - (step * gradient)
         #print(step_counter,x,gradient)
         epsilon = np.linalg.norm(gradient)
-        if step_counter > 100:
+        if step_counter > 20:
             success = False
             break
     return x, ObjectiveFunction(x, *args), True
