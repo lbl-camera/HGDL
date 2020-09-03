@@ -28,7 +28,7 @@ class HGDL:
             local_optimizer = "newton",
             global_optimizer = "genetic",
             radius = 0.1, global_tol = 1e-4,
-            local_max_iter = 20, global_max_iter = 120,
+            local_max_iter = 20, global_max_iter = 0,
             number_of_walkers = 20,
             args = (), verbose = False):
         """
