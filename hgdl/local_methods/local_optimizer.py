@@ -43,7 +43,7 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
     ################################
     if local_method == "newton": local_opt = DNewton
     else: 
-        exit("user defined local method not implemented yet")
+        raise ValueError("user defined local method not implemented yet")
         local_opt = local_method
     ################################
     try: 
@@ -98,7 +98,7 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
                     success[i] = False
                     print(x[i],x_defl[j])
                     print(grad_norm[i])
-    else: exit("not clear if client is available")
+    else: raise ValueError("not clear if client is available")
     #print("++++++++++++++++++++++++++++++=")
     #print(x)
     #print(success)
