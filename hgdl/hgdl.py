@@ -89,7 +89,7 @@ class HGDL:
         x,f,grad_norm,eig,success = self._run_first_local_optimization(client)
         ##########################################
         print("HGDL engine started: ")
-        print(self.x0)
+        #print(self.x0)
         print("")
         print("I found ",len(np.where(success == True)[0])," optima in my first run")
         if len(np.where(success == True)[0]) == 0: 
@@ -209,12 +209,12 @@ class HGDL:
             x,f,grad_norm,eig,success = run_local_optimizer(self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.r,self.local_max_iter,self.local_optimizer,
-                self.x0,self.args)
+                self.x0[0:1],self.args)
         else:
             self.main_future = client.submit(run_local_optimizer,self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.r,self.local_max_iter,self.local_optimizer,
-                self.x0,self.args)
+                self.x0[0:1],self.args)
             x,f,grad_norm,eig,success = self.main_future.result()
         return x,f,grad_norm,eig,success
     ###########################################################################
