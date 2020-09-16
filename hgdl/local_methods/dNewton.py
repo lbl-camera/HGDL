@@ -33,7 +33,7 @@ def gradient_descent(ObjectiveFunction, GradientFunction,bounds,x_defl,x0, radiu
     bounds = np.array(bounds)
     epsilon = np.inf
     step_counter = 0
-    beta = 0.8
+    beta = 0.5
     x = np.array(x0)
     success = True
     while epsilon > 1e-6:
@@ -48,9 +48,8 @@ def gradient_descent(ObjectiveFunction, GradientFunction,bounds,x_defl,x0, radiu
             step = step * beta
             counter += 1
             if counter > 10:
-                break
+                return x, ObjectiveFunction(x, *args), False
         x = x - (step * gradient)
-        #print(step_counter,x,gradient)
         epsilon = np.linalg.norm(gradient)
         if step_counter > 20:
             success = False

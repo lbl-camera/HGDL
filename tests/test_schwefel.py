@@ -13,7 +13,7 @@ def main():
             args = (arr,brr), radius = 5.0, maxEpochs = 1000, verbose = False)
     #a.optimize(dask_client = distributed.Client())
     x0 = np.random.uniform(size = (20,2))
-    a.optimize(dask_client = None, x0 = x0)
+    a.optimize(dask_client = True, x0 = x0)
     #a.optimize(dask_client = False)
     #res = a.optima_list
     #print(res)

@@ -74,12 +74,12 @@ class HGDL:
         self.optima = optima(self.dim)
     ###########################################################################
     ###########################################################################
-    def optimize(self, dask_client = None, x0 = None):
+    def optimize(self, dask_client = True, x0 = None):
         """
         optional input:
         -----
-            dask_client = dask.distributed.Client()
-            x0 = randon.rand()   starting positions
+            dask_client = True = dask.distributed.Client()
+            x0 = None = randon.rand()   starting positions
         """
         ######initialize starting positions#######
         self._prepare_starting_positions(x0)
@@ -200,7 +200,7 @@ class HGDL:
         else: self.x0 = x0
     ###########################################################################
     def _prepare_dask_client(self,dask_client):
-        if dask_client is None: dask_client = dask.distributed.Client()
+        if dask_client is True: dask_client = dask.distributed.Client()
         client = dask_client
         return client
     ###########################################################################
@@ -242,10 +242,6 @@ class HGDL:
                 self.global_max_iter,self.local_optimizer,self.global_optimizer,
                 self.number_of_walkers,self.args, self.verbose)
             self.client = client
-        #else:
-        #    client.cancel(self.main_future)
-        #    client.shutdown()
-
 ###########################################################################
 ###########################################################################
 ##################hgdl functions###########################################

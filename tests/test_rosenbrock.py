@@ -10,10 +10,10 @@ def main():
             'working on the epochs should happend even during sleeping\n'
             )
     #hgdl = HGDL(rosen, rosen_der, b, verbose=True)
-    a = HGDL(rosen, rosen_der, rosen_hess,[[-2,2],[-2,2]], radius = 0.1, maxEpochs = 1000, verbose = False)
+    a = HGDL(rosen, rosen_der, rosen_hess,[[-2,2],[-2,2]], radius = 0.1, maxEpochs = 10, verbose = False)
     #a.optimize(dask_client = distributed.Client())
-    a.optimize(dask_client = None)
-    #a.optimize(dask_client = False)
+    #a.optimize(dask_client = True)
+    a.optimize(dask_client = False)
     #res = a.optima_list
     #print(res)
 

@@ -10,7 +10,7 @@ def main():
              non_diff_hess,[[-5,5],[-5,5]],
             radius = 0.1, maxEpochs = 5, verbose = False)
     #a.optimize(dask_client = distributed.Client())
-    #a.optimize(dask_client = None)
+    #a.optimize(dask_client = True)
     a.optimize(dask_client = False)
     res = a.optima.list
     print(res)
