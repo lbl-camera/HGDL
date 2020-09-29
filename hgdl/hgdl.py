@@ -21,9 +21,13 @@ TODO:   *the radius is still ad hoc, should be related to curvature and unique t
 
 class HGDL:
     """
-    doc string here
+    This is the HGDL class, a class to do asynchronous HPC-driven optimization
+    type help(name you gave at import)
+    e.g.:
+    from hgdl.hgdl import HGDL
+    help(HGDL)
     """
-    def __init__(self,obj_func,grad_func,hess_func, 
+    def __init__(self,obj_func,grad_func,hess_func,
             bounds, maxEpochs=100000,
             local_optimizer = "newton",
             global_optimizer = "genetic",

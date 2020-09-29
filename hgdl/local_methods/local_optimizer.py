@@ -14,7 +14,7 @@ def run_local(func,grad,hess,bounds, radius,
     x_init = np.array(x_init)
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
     counter = 0
-    while break_condition is False or counter >= global_max_iter:
+    while break_condition is False and counter <= global_max_iter:
         counter += 1
         if verbose is True: print("    local replacemet step: ",counter)
         x,f,grad_norm,eig,success = run_local_optimizer(func, grad,hess,bounds,
@@ -23,7 +23,7 @@ def run_local(func,grad,hess,bounds, radius,
         optima.fill_in_optima_list(x,f,grad_norm,eig,success)
         x_defl,f_defl = optima.get_deflation_points(len(optima.list))
         if len(np.where(success == False)[0]) > len(success)/2.0: break_condition = True
-        return optima
+    return optima
     ###########################################################################
 def run_local_optimizer(func,grad,hess,bounds,radius,
         local_max_iter,local_method,x_init,args,x_defl = []):
