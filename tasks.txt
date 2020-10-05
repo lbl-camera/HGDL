@@ -1,6 +1,11 @@
  What I will do today:
  
  Task breakdown:
+ * use nograd in global
+ * put if None in global
+ * remember all points from local method
+ * put callable in global 
+
  * work on hgdl itself:
  	-- most necessary --
 	--------------------	
