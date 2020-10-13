@@ -57,13 +57,17 @@ def run_local(info):
             futures = (f for f in dask.distributed.as_completed(client.map(minimizer, info.x0)))
             iterable = (f.result() for f in futures if f.status!='cancelled')
         for i, res in enumerate(iterable):
+            print(res)
             if num_none / info.num_individuals > .4:
                 break
             if not res["success"]:
+                print('no success')
                 num_none += 1
             elif not info.in_bounds(res["x"]):
+                print('not in bounds')
                 num_none += 1
             elif already_found(res["x"], new_minima, info.r**2):
+                print('already found')
                 num_none += 1
             else:
                 new_minima = np.append(new_minima, res["x"].reshape(1,-1), 0)

@@ -120,5 +120,8 @@ plt.xlabel("Length-scale")
 plt.ylabel("Noise-level")
 plt.title("Log-marginal-likelihood")
 plt.tight_layout()
+with open ("data/sklearn_GPs.pkl", 'wb') as file:
+    import pickle
+    pickle.dump(GPs, file)
 
 plt.savefig('plots/sklearn_lml')

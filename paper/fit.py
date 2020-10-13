@@ -70,7 +70,7 @@ def fit(self, X, y, **kwargs):
                 gp.random_state = self.random_state
                 GPs.append(gp)
             for i in range(len(GPs)):
-               GPs[i] = update(GPs[i], self.X_train_, self.y_train_)
+                GPs[i] = update(GPs[i], self.X_train_, self.y_train_)
             return GPs
         # end of the part that i wrote --------------------------------- 
         else:
