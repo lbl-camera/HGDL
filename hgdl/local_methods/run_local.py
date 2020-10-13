@@ -17,6 +17,8 @@ def already_found(x, other_x, r):
         return True
     return False
 
+def fail(x):
+    return {"success":False}
 
 def run_local(info):
     if info.use_dask_map:
@@ -39,13 +41,21 @@ def run_local(info):
                 func=info.func, jac=info.grad,
                 hess=hess, bounds=info.bounds,
                 *info.local_args, **info.local_kwargs)
+        elif callable(info.local_method):
+            minimizer = partial(info.local_method,
+                    func=info.func, jac=info.grad,
+                    hess=hess, bounds=info.bounds,
+                    *info.local_args, **info.local_kwargs)
+        elif info.local_method == None:
+            minimizer = fail
+
         else:
             raise NotImplementedError("local method not understood")
         if not info.use_dask_map:
             iterable = (minimizer(z) for z in info.x0)
         else:
-            futures = client.map(minimizer, info.x0)
-            iterable = (a.result() for a in dask.distributed.as_completed(futures))
+            futures = (f for f in dask.distributed.as_completed(client.map(minimizer, info.x0)))
+            iterable = (f.result() for f in futures if f.status!='cancelled')
         for i, res in enumerate(iterable):
             if num_none / info.num_individuals > .4:
                 break

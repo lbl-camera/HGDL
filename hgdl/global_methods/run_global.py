@@ -12,6 +12,8 @@ def run_global(info):
     elif callable(info.global_method):
         return info.global_method(
                 x, y, *info.global_args, **info.global_kwargs)
+    elif info.global_method == None:
+        return []
     # elif info.global_method == 'my_custom_name':
     #   return my_global_method(x, y, *info.global_args, **info.global_kwargs)
     else:
