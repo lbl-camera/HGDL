@@ -65,6 +65,12 @@ def run_local(info):
                 num_none += 1
             elif already_found(res["x"], new_minima, info.r**2):
                 num_none += 1
+            # temporary measure bc scipy keeps fucking up my deflation
+            #  because their approximate newton method does some line search 
+            #  shenanigans to ignore my high gradient region when it sees a
+            #  good minimum -- damn good work by scipy except for this one esoteric use case
+            elif already_found(res["x"], info.minima, info.r**2):
+                num_none += 1
             else:
                 new_minima = np.append(new_minima, res["x"].reshape(1,-1), 0)
         if info.use_dask_map:

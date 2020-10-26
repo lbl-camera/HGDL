@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.gaussian_process import GaussianProcessRegressor
 
 def fit(self, X, y, **kwargs):
+    # SAME AS SKLEARN DOCUMENTATION ----------------------- 
     if self.kernel is None:  # Use an RBF kernel as default
         self.kernel_ = C(1.0, constant_value_bounds="fixed") \
             * RBF(1.0, length_scale_bounds="fixed")
@@ -47,18 +48,17 @@ def fit(self, X, y, **kwargs):
     self.X_train_ = np.copy(X) if self.copy_X_train else X
     self.y_train_ = np.copy(y) if self.copy_X_train else y
     if self.optimizer is not None and self.kernel_.n_dims > 0:
-        # this is the part that i wrote --------------------------------- 
+        # DIFFERENT FROM SKLEARN DOCUMENTATION ----------------------- 
         if self.optimizer == 'hgdl':
             from hgdl.hgdl import HGDL
             def obj(x):
                 return -1*self.log_marginal_likelihood(theta=x, clone_kernel=True)
             def grad(x):
                 return -1*self.log_marginal_likelihood(theta=x, eval_gradient=True, clone_kernel=True)[1]
-            res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, hess=None,
-                    local_method='scipy', local_kwargs={'method':'L-BFGS-B'},
-                    **kwargs)
+            res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, **kwargs)
 
             res = res.get_final()
+            print(res)
             GPs = []
             for i in range(len(res['minima_y'])):
                 x, y = res['minima_x'][i], res['minima_y'][i]
@@ -73,6 +73,7 @@ def fit(self, X, y, **kwargs):
                 GPs[i] = update(GPs[i], self.X_train_, self.y_train_)
             return GPs
         # end of the part that i wrote --------------------------------- 
+        # --------------------------------------------------------------
         else:
             # Choose hyperparameters based on maximizing the log-marginal
             # likelihood (potentially starting from several initial values)

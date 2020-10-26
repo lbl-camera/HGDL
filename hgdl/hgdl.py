@@ -67,7 +67,7 @@ class HGDL(object):
                 break
         else:
             self.client = dask.distributed.Client(
-                    dask.distributed.LocalCluster(processes=True, dashboard_address=None))
+                    dask.distributed.LocalCluster(dashboard_address=None))
         data = info(*args, **kwargs)
         self.epoch_futures = [self.client.submit(run_epoch, data)]
         for i in range(data.num_epochs):
@@ -77,6 +77,9 @@ class HGDL(object):
     def get_final(self):
         # wait until everything is done 
         result = self.epoch_futures[-1].result().results.roll_up()
+        self.cancel()
+        self.kill()
+        self.close()
         return result
 
     def close(self):
