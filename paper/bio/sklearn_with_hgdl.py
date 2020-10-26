@@ -21,7 +21,11 @@ def main():
     GPs = GaussianProcessRegressor(kernel=kernel,
                                   alpha=1e-5,
                                   optimizer='hgdl',
-                                  random_state=42).fit(x,y)
+                                  random_state=42,
+                                  ).fit(
+                                          x,y,
+                                  num_individuals=5
+                                          )
     for i, gp in enumerate(GPs):
         print('gp - HGDL (',i+1,'): ', gp, '\nkernel:', gp.kernel_)
         print('theta:', gp.kernel_.theta, np.exp(gp.kernel_.theta))
@@ -36,6 +40,7 @@ def main():
     print(thetas)
     np.save('data/hgdl_thetas', thetas)
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
+
+
