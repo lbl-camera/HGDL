@@ -86,6 +86,7 @@ class HGDL:
             x0 = None = randon.rand()   starting positions
         """
         ######initialize starting positions#######
+        if dask_client is None: raise Exception("dask_client is None, can only be True/False or a distributed.Client(...)")
         self._prepare_starting_positions(x0)
         #####initializedask client###############
         client = self._prepare_dask_client(dask_client)
