@@ -54,8 +54,12 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
     if client_available is True:
         tasks = []
         for i in range(number_of_walkers):
+            #big_future = client.scatter(local_opt,func, grad,hess,\
+            #x_init[i],x_defl,bounds)
             tasks.append(client.submit(local_opt,func, grad,hess,\
             x_init[i],x_defl,bounds,radius,local_max_iter,args))
+            #tasks.append(client.submit(local_opt,func))
+
         tasks = misc.finish_up_tasks(tasks)
         client.gather(tasks)
         number_of_walkers = len(tasks)
