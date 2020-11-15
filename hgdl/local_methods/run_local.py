@@ -22,7 +22,7 @@ def fail(x):
 
 def run_local(info):
     if info.use_dask_map:
-        client = dask.distributed.get_client()
+        client = dask.distributed.Client(scheduler_file=info.scheduler_file)
     for i in range(info.max_local):
         new_minima = np.empty((0, info.k))
         num_none = 0
@@ -51,11 +51,15 @@ def run_local(info):
 
         else:
             raise NotImplementedError("local method not understood")
-        if not info.use_dask_map:
-            iterable = (minimizer(z) for z in info.x0)
-        else:
-            futures = (f for f in dask.distributed.as_completed(client.map(minimizer, info.x0)))
+        if info.use_dask_map:
+            client.scatter(minimizer)
+            client.scatter(info.x0)
+            futures = (f for f in dask.distributed.as_completed(
+                client.map(minimizer, info.x0, batch_size=4)))
             iterable = (f.result() for f in futures if f.status!='cancelled')
+        else:
+            iterable = (minimizer(z) for z in info.x0)
+
         for i, res in enumerate(iterable):
             if num_none / info.num_individuals > .4:
                 break

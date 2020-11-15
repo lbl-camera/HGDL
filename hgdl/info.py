@@ -97,6 +97,15 @@ class info(object):
         self.x0 = x0
         self.results.update_global(x0)
         self.r2 = r**2
+        # find if the user provided a client
+        if client is None:
+            client = Client()
+        elif not client.scheduler_file:
+            self.scheduler_file = 'scheduler.json'
+        else:
+            self.scheduler_file = client.scheduler_file
+        client.scheduler_file = None
+        client.write_scheduler_file(self.scheduler_file)
 
     @property
     def minima(self):

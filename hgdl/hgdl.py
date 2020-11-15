@@ -60,15 +60,9 @@ class HGDL(object):
                 }
     """
     def __init__(self, *args, **kwargs):
-        # find if the user provided a client
-        for z in [*args, kwargs.values]:
-            if type(z) == dask.distributed.Client:
-                self.client = z
-                break
-        else:
-            self.client = dask.distributed.Client(
-                    dask.distributed.LocalCluster(dashboard_address=None))
         data = info(*args, **kwargs)
+        self.client = dask.distributed.Client(scheduler_file=data.scheduler_file)
+        self.client.scatter(data)
         self.epoch_futures = [self.client.submit(run_epoch, data)]
         for i in range(data.num_epochs):
             self.epoch_futures.append(self.client.submit(run_epoch, self.epoch_futures[-1]))
