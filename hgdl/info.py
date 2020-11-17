@@ -99,10 +99,10 @@ class info(object):
         self.r2 = r**2
         # find if the user provided a client
         if client is None:
+            from dask.distributed import Client
             client = Client()
-        elif not client.scheduler_file:
             self.scheduler_file = 'scheduler.json'
-        else:
+        elif client.scheduler_file:
             self.scheduler_file = client.scheduler_file
         client.scheduler_file = None
         client.write_scheduler_file(self.scheduler_file)
