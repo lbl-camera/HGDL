@@ -6,27 +6,28 @@ from distributed import Client, get_client, secede, rejoin, protocol
 import dask.distributed as distributed
 from hgdl.local_methods.dNewton import DNewton
 
-def run_local(func,grad,hess,bounds, radius,
-        local_max_iter,global_max_iter,
-        local_method,
-        x_init,optima,args,verbose):
-    break_condition = False
-    x_init = np.array(x_init)
+def run_local(d):
+    #break_condition = False
+    x_init = np.array(d["x0"])
+    optima = d["optima"]
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
-    counter = 0
-    while break_condition is False and counter <= global_max_iter:
-        counter += 1
-        if verbose is True: print("    local replacemet step: ",counter)
-        x,f,grad_norm,eig,success = run_local_optimizer(func, grad,hess,bounds,
-                radius,local_max_iter,local_method, x_init, args, x_defl)
-        if verbose is True: print("    deflated Newton finished in step: ",counter)
-        optima.fill_in_optima_list(x,f,grad_norm,eig,success)
-        x_defl,f_defl = optima.get_deflation_points(len(optima.list))
-        if len(np.where(success == False)[0]) > len(success)/2.0: break_condition = True
+    x,f,grad_norm,eig,success = run_local_optimizer(d,x_defl)
+    optima.fill_in_optima_list(x,f,grad_norm,eig,success)
     return optima
     ###########################################################################
-def run_local_optimizer(func,grad,hess,bounds,radius,
-        local_max_iter,local_method,x_init,args,x_defl = []):
+#def run_local_optimizer(func,grad,hess,bounds,radius,
+#        local_max_iter,local_method,x_init,args,x_defl = []):
+def run_local_optimizer(d,x_defl = []):
+    func = d["func"]
+    grad = d["grad"]
+    hess = d["hess"]
+    bounds = d["bounds"]
+    radius = d["radius"]
+    local_max_iter = d["local max iter"]
+    local_method = d["local optimizer"]
+    x_init = d["x0"]
+    args = d["args"]
+    print(x_init)
     """
     this function runs a deflated Newton for
     all the walkers.
@@ -37,15 +38,11 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
     return:
         optima_locations, func values, gradient norms, eigenvalues, success(bool)
     """
+
     import hgdl.local_methods.local_optimizer as local
     dim = len(x_init[0])
     number_of_walkers = len(x_init)
-    ################################
-    if local_method == "newton": local_opt = DNewton
-    else: 
-        raise ValueError("user defined local method not implemented yet")
-        local_opt = local_method
-    ################################
+    local_opt = DNewton
     try: 
         client = get_client()
         client_available = True
@@ -53,13 +50,21 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
         client_available = False
     if client_available is True:
         tasks = []
+        worker_info = client.scheduler_info()["workers"]
+        me = distributed.get_worker().address
+        del worker_info[me]
+        number_of_workers = len(worker_info)
+        worker_set = list(worker_info.keys())
         for i in range(number_of_walkers):
-            #big_future = client.scatter(local_opt,func, grad,hess,\
-            #x_init[i],x_defl,bounds)
-            tasks.append(client.submit(local_opt,func, grad,hess,\
-            x_init[i],x_defl,bounds,radius,local_max_iter,args))
-            #tasks.append(client.submit(local_opt,func))
-
+            worker_index = (int(i - ((i // number_of_workers)*number_of_workers)))
+            worker = worker_set[worker_index]
+            #print("worker: ", worker, " at index: ", worker_index)
+            data = {"func":func,"grad":grad,"hess":hess,"x0":x_init[i],
+                    "x_defl":x_defl,"bounds":bounds,"radius":radius,
+                    "local max iter":local_max_iter,"args":args,"result":None}
+            big_future = client.scatter(data, workers = worker)
+            tasks.append(client.submit(local_opt,big_future,workers = worker))
+        del big_future
         tasks = misc.finish_up_tasks(tasks)
         client.gather(tasks)
         number_of_walkers = len(tasks)
@@ -89,8 +94,10 @@ def run_local_optimizer(func,grad,hess,bounds,radius,
         eig = np.empty((number_of_walkers,dim))
         success = np.empty((number_of_walkers))
         for i in range(number_of_walkers):
-            x[i],f[i],grad_norm[i],eig[i],success[i] = DNewton(func, grad,hess,\
-            x_init[i],x_defl,bounds,radius,local_max_iter,args)
+            data = {"func":func,"grad":grad,"hess":hess,"x0":x_init[i],
+                    "x_defl":x_defl,"bounds":bounds,"radius":radius,
+                    "local max iter":local_max_iter,"args":args}
+            x[i],f[i],grad_norm[i],eig[i],success[i] = DNewton(data)
             for j in range(i):
                 #exchange for function def too_close():
                 if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * radius and success[j] == True:

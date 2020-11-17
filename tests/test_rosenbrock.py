@@ -12,8 +12,8 @@ def main():
     #hgdl = HGDL(rosen, rosen_der, b, verbose=True)
     a = HGDL(rosen, rosen_der, rosen_hess,[[-2,2],[-2,2]], radius = 0.1, maxEpochs = 10, verbose = False)
     #a.optimize(dask_client = distributed.Client())
-    #a.optimize(dask_client = True)
-    a.optimize(dask_client = False)
+    a.optimize(dask_client = True)
+    #a.optimize(dask_client = False)
     #res = a.optima_list
     #print(res)
 

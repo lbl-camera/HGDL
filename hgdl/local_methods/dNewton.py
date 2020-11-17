@@ -1,13 +1,26 @@
 import numpy as np
 import hgdl.misc as misc
 import hgdl.deflation.bump_function as defl
+import dask.distributed as distributed
 
-def DNewton(func, grad, hess, x0,x_defl,bounds,radius,max_iter = 20, args = ()):
+def DNewton(data):
     e = np.inf
     success = True
     counter = 0
     tol = 1e-6
+    func = data["func"]
+    grad = data["grad"]
+    hess = data["hess"]
+    x0 = data["x0"]
+    x_defl = data["x_defl"]
+    bounds = data["bounds"]
+    radius = data["radius"]
+    max_iter = data["local max iter"]
+    args = data["args"]
     x = np.array(x0)
+
+    #me = distributed.get_worker()
+    #print("                me and my data: ",me,x0)
     while e > tol:
         counter += 1
         d = defl.deflation_function(x,x_defl,radius)
@@ -24,6 +37,7 @@ def DNewton(func, grad, hess, x0,x_defl,bounds,radius,max_iter = 20, args = ()):
             x,f, s = gradient_descent(func,grad,bounds,x_defl,x-gamma,radius,args)
             return x,f,e,np.linalg.eig(hess(x, *args))[0],s
             #return x0,func(x0, *args),e,np.linalg.eig(hess(x0, *args))[0],False
+    data["result"] = (x,func(x, *args),e,np.linalg.eig(hessian)[0], success)
     return x,func(x, *args),e,np.linalg.eig(hessian)[0], success
 
 

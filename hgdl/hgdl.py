@@ -5,10 +5,10 @@ import hgdl.misc as misc
 from hgdl.local_methods.local_optimizer import run_local_optimizer
 from hgdl.global_methods.global_optimizer import run_global
 from hgdl.local_methods.local_optimizer import run_local
-from hgdl.result.optima  import optima
 import dask.distributed as distributed
 import dask.multiprocessing
 from dask.distributed import as_completed
+from hgdl.result.optima  import optima
 ###authors: David Perryman, Marcus Noack
 ###institution: CAMERA @ Lawrence Berkeley National Laboratory
 import pickle
@@ -90,6 +90,9 @@ class HGDL:
         self._prepare_starting_positions(x0)
         #####initializedask client###############
         client = self._prepare_dask_client(dask_client)
+        worker_info = client.scheduler_info()["workers"]
+        self.me = list(worker_info.keys())[0]
+        print("global me: ",self.me)
         #####run first local######################
         x,f,grad_norm,eig,success = self._run_first_local_optimization(client)
         ##########################################
@@ -214,12 +217,15 @@ class HGDL:
             x,f,grad_norm,eig,success = run_local_optimizer(self.obj_func,
                 self.grad_func,self.hess_func,
                 self.bounds,self.r,self.local_max_iter,self.local_optimizer,
-                self.x0[0:1],self.args)
+                self.x0[0:4],self.args)
         else:
-            self.main_future = client.submit(run_local_optimizer,self.obj_func,
-                self.grad_func,self.hess_func,
-                self.bounds,self.r,self.local_max_iter,self.local_optimizer,
-                self.x0[0:1],self.args)
+            d = {"func": self.obj_func,
+                 "grad": self.grad_func,"hess":self.hess_func,
+                 "bounds":self.bounds, "radius":self.r,"local max iter":self.local_max_iter,
+                 "local optimizer":self.local_optimizer,
+                 "x0":self.x0[0:4],"args":self.args}
+            bf = client.scatter(d,workers = self.me)
+            self.main_future = client.submit(run_local_optimizer,bf, workers = self.me)
             x,f,grad_norm,eig,success = self.main_future.result()
         return x,f,grad_norm,eig,success
     ###########################################################################
@@ -241,59 +247,60 @@ class HGDL:
             a = distributed.protocol.serialize(self.optima)
             self.transfer_data.set(a)
             self.break_condition.set(False)
-            self.main_future = client.submit(hgdl,self.transfer_data,self.break_condition,self.optima,self.obj_func,
-                self.grad_func,self.hess_func,
-                self.bounds,self.maxEpochs,self.r,self.local_max_iter,
-                self.global_max_iter,self.local_optimizer,self.global_optimizer,
-                self.number_of_walkers,self.args, self.verbose)
+            print("starting")
+            d = {"transfer data":self.transfer_data,
+                 "break condition":self.break_condition,
+                 "optima":self.optima, "func":self.obj_func,
+                 "grad":self.grad_func,"hess":self.hess_func,
+                 "bounds":self.bounds,"max epochs":self.maxEpochs,
+                 "radius":self.r,"local max iter":self.local_max_iter,
+                 "global max iter":self.global_max_iter,
+                 "local optimizer":self.local_optimizer,
+                 "global optimizer":self.global_optimizer,
+                 "number of walkers":self.number_of_walkers,"args":self.args, 
+                 "verbose":self.verbose}
+            bf = client.scatter(d,workers = self.me)
+            self.main_future = client.submit(hgdl, bf,workers = self.me)
             self.client = client
 ###########################################################################
 ###########################################################################
 ##################hgdl functions###########################################
 ###########################################################################
 ###########################################################################
-def hgdl(transfer_data,break_condition,optima,obj_func,grad_func,hess_func,
-                bounds,maxEpochs,r,local_max_iter,
-                global_max_iter,local_method,global_method,number_of_walkers,args, verbose):
-    if verbose is True: print("    Starting ",maxEpochs," epochs.")
-    for i in range(maxEpochs):
-        if break_condition is not False: bc = break_condition.get()
+def hgdl(d):
+    if d["verbose"] is True: print("    Starting ",maxEpochs," epochs.")
+    for i in range(d["max epochs"]):
+        if d["break condition"] is not False: bc = d["break condition"].get()
         else: bc = False
         if bc is True: print("Epoch ",i," was cancelled");break
-        print("Computing epoch ",i," of ",maxEpochs)
-        optima = run_hgdl_epoch(
-            obj_func,grad_func,hess_func,bounds,optima,
-            r,local_max_iter,global_max_iter,local_method,global_method,
-            number_of_walkers,args,verbose)
-        if transfer_data is not False:
+        print("Computing epoch ",i," of ",d["max epochs"])
+        optima = run_hgdl_epoch(d)
+        if d["transfer data"] is not False:
             a = distributed.protocol.serialize(optima)
-            transfer_data.set(a)
-        if verbose is True: print("    Epoch ",i," finished")
+            d["transfer data"].set(a)
+        if d["verbose"] is True: print("    Epoch ",i," finished")
     return optima
 ###########################################################################
-def run_hgdl_epoch(func,grad,hess,bounds,optima_obj,radius,
-        local_max_iter,global_max_iter,local_method,
-        global_method,number_of_walkers,args,verbose):
+def run_hgdl_epoch(d):
     """
     an epoch is one local run and one global run,
     where one local run are several convergence runs of all workers from
     the x_init point
     """
-    optima_list  = optima_obj.list
+    optima_list  = d["optima"].list
     n = len(optima_list["x"])
-    nn = min(n,number_of_walkers)
-    if verbose is True: print("    global step started")
+    nn = min(n,d["number of walkers"])
+    if d["verbose"] is True: print("    global step started")
     x0 = run_global(\
             np.array(optima_list["x"][0:nn,:]),
             np.array(optima_list["func evals"][0:nn]),
-            bounds, global_method,number_of_walkers,verbose)
-    if verbose is True: print("    global step finished")
-    if verbose is True: print("    local step started")
-    optima = run_local(func,grad,hess,bounds,radius,
-            local_max_iter, global_max_iter,local_method,
-            x0,optima_obj,args,verbose)
+            d["bounds"], d["global optimizer"],d["number of walkers"],d["verbose"])
+    #if verbose is True: print("    global step finished")
+    #if verbose is True: print("    local step started")
+    d["x0"] = x0
+    optima = run_local(d)
     optima.list["success"] = True
-    if verbose is True: print("    local step finished")
+    #if verbose is True: print("    local step finished")
     return optima
 
 
