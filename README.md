@@ -18,6 +18,14 @@ pip install .
 ## How to use
 see the examples folder
 
+## Running the Paper problems 
+There are some extra requirements that I didn't put in bc they are only required for the paper
+pip install scipy sklearn mpi4py
+
+## Running on NERSC
+pip install dask\_mpi mpi4py
+dask-scheduler --scheduler-file scheduler.json
+srun dask-worker --scheduler-file scheduler.json --no-scheduler 
 
 ```math
 \Large c = e^{\frac{\alpha}{r^2}}
