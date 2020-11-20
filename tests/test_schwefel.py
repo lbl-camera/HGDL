@@ -1,5 +1,5 @@
 import numpy as np
-from hgdl.hgdl import HGDL
+from hgdl.hgdl import HGDL as hgdl
 from test_functions import *
 import time
 import dask.distributed as distributed
@@ -8,12 +8,12 @@ def main():
     arr  = 5
     brr  = 6
     #dask_client = distributed.Client("10.0.0.184:8786")
-    a = HGDL(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]], 
+    a = hgdl(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]],
             global_optimizer = "genetic",
             args = (arr,brr), radius = 5.0, maxEpochs = 1000, verbose = False)
     #a.optimize(dask_client = distributed.Client())
     x0 = np.random.uniform(size = (20,2))
-    a.optimize(dask_client = True, x0 = x0)
+    a.optimize(x0 = x0)
     #a.optimize(dask_client = False)
     #res = a.optima_list
     #print(res)

@@ -4,23 +4,20 @@ import hgdl.deflation.bump_function as defl
 import dask.distributed as distributed
 
 def DNewton(data):
+    d = data["d"]
+    x = np.array(data["x0"])
     e = np.inf
     success = True
     counter = 0
     tol = 1e-6
-    func = data["func"]
-    grad = data["grad"]
-    hess = data["hess"]
-    x0 = data["x0"]
+    func = d.func
+    grad = d.grad
+    hess = d.hess
     x_defl = data["x_defl"]
-    bounds = data["bounds"]
-    radius = data["radius"]
-    max_iter = data["local max iter"]
-    args = data["args"]
-    x = np.array(x0)
-
-    #me = distributed.get_worker()
-    #print("                me and my data: ",me,x0)
+    bounds = d.bounds
+    radius = d.radius
+    max_iter = d.local_max_iter
+    args = d.args
     while e > tol:
         counter += 1
         d = defl.deflation_function(x,x_defl,radius)
