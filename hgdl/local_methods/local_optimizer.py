@@ -7,11 +7,9 @@ import dask.distributed as distributed
 from hgdl.local_methods.dNewton import DNewton
 
 def run_local(d,optima,x0):
-    #break_condition = False
     x_init = np.array(x0)
-    optima = optima
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
-    x,f,grad_norm,eig,success = run_local_optimizer(d,x_defl)
+    x,f,grad_norm,eig,success = run_local_optimizer(d,x0,x_defl)
     optima.fill_in_optima_list(x,f,grad_norm,eig,success)
     return optima
     ###########################################################################
@@ -32,9 +30,8 @@ def run_local_optimizer(d,x0,x_defl = []):
     number_of_walkers = d.number_of_walkers
     number_of_workers = len(d.workers["walkers"])
     local_opt = DNewton
-    ############delete this:
-    x0 = np.random.rand(number_of_walkers,2)
-    #####################################
+    if len(x0) < number_of_walkers: 
+        x0 = np.row_stack([x0,misc.random_population(d.bounds,number_of_walkers - len(x0))])
     try: 
         client = get_client()
         client_available = True
@@ -42,18 +39,14 @@ def run_local_optimizer(d,x0,x_defl = []):
         client_available = False
     if client_available is True:
         tasks = []
-        #print("this is me: ", d.workers["host"])
-        #print("this is my client:", client)
-        #data = []
-        #big_future = []
         for i in range(min(len(x0),number_of_walkers)):
             worker = d.workers["walkers"][(int(i - ((i // number_of_workers)*number_of_workers)))]
             #print("worker: ", worker)
             data = {"d":d,"x0":x0[i],"x_defl":x_defl}
-            #big_future.append(client.scatter(data[-1], workers = worker))
-            #tasks.append(client.submit(local_opt,big_future[-1],workers = worker))
+            #big_future = client.scatter(data, workers = worker)
+            #tasks.append(client.submit(local_opt,big_future,workers = worker))
             tasks.append(client.submit(local_opt,data,workers = worker))
-        #del big_future[:]
+        #del big_future
         tasks = misc.finish_up_tasks(tasks)
         client.gather(tasks)
         number_of_walkers = len(tasks)
@@ -65,7 +58,7 @@ def run_local_optimizer(d,x0,x_defl = []):
         #gather results and kick out optima that are too close:
         for i in range(len(tasks)):
             x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
-            print("x: ",x[i],f[i])
+            #print("x: ",x[i],f[i])
             for j in range(i):
                 #exchange for function def too_close():
                 if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * d.radius and success[j] == True:
@@ -77,7 +70,6 @@ def run_local_optimizer(d,x0,x_defl = []):
                     success[i] = False
                     print(x[i],x_defl[j])
                     print(grad_norm[i])
-        del tasks[:]
     elif client_available is False:
         x = np.empty((number_of_walkers, dim))
         f = np.empty((number_of_walkers))

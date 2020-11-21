@@ -31,6 +31,7 @@ def DNewton(data):
             gamma,a,b,c = np.linalg.lstsq(hessian + (np.outer(gradient,dg)/d),-gradient)
         x += gamma
         if counter >= max_iter or misc.out_of_bounds(x,bounds):
+            print("Newton out of bounds, starting gradient descent...")
             x,f, s = gradient_descent(func,grad,bounds,x_defl,x-gamma,radius,args)
             return x,f,e,np.linalg.eig(hess(x, *args))[0],s
             #return x0,func(x0, *args),e,np.linalg.eig(hess(x0, *args))[0],False
