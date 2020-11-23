@@ -1,6 +1,11 @@
 # fit function for overwriting sklearn
 
 from sklearn.base import clone
+from sklearn.gaussian_process.kernels import ConstantKernel as C
+from sklearn.gaussian_process.kernels import RBF 
+from sklearn.base import BaseEstimator, RegressorMixin, MultiOutputMixin
+from sklearn.utils.validation import check_array
+
 from sklearn.utils import check_random_state
 from scipy.linalg import cholesky, cho_solve, solve_triangular
 from operator import itemgetter
@@ -16,14 +21,14 @@ def fit(self, X, y, **kwargs):
         self.kernel_ = clone(self.kernel)
 
     self._rng = check_random_state(self.random_state)
-
+    """
     if self.kernel_.requires_vector_input:
         X, y = self._validate_data(X, y, multi_output=True, y_numeric=True,
                                    ensure_2d=True, dtype="numeric")
     else:
         X, y = self._validate_data(X, y, multi_output=True, y_numeric=True,
                                    ensure_2d=False, dtype=None)
-
+    """
     # Normalize target value
     if self.normalize_y:
         self._y_train_mean = np.mean(y, axis=0)
@@ -145,14 +150,14 @@ def update(self, X, y):
         self.kernel_ = clone(self.kernel)
 
     self._rng = check_random_state(self.random_state)
-
+    """
     if self.kernel_.requires_vector_input:
         X, y = self._validate_data(X, y, multi_output=True, y_numeric=True,
                                    ensure_2d=True, dtype="numeric")
     else:
         X, y = self._validate_data(X, y, multi_output=True, y_numeric=True,
                                    ensure_2d=False, dtype=None)
-
+    """
     # Normalize target value
     if self.normalize_y:
         self._y_train_mean = np.mean(y, axis=0)

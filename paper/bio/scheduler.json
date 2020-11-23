@@ -1,0 +1,250 @@
+{
+  "type": "Scheduler",
+  "id": "Scheduler-abb11659-3f3b-4b36-b90e-947795c31bea",
+  "address": "tcp://127.0.0.1:35035",
+  "services": {
+    "dashboard": 8787
+  },
+  "workers": {
+    "tcp://127.0.0.1:33713": {
+      "type": "Worker",
+      "id": 2,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/hgdl/paper/bio/dask-worker-space/worker-30x9ctf0",
+      "name": 2,
+      "nthreads": 4,
+      "memory_limit": 16884463616,
+      "last_seen": 1606172223.7435029,
+      "services": {},
+      "metrics": {
+        "cpu": 0.0,
+        "memory": 59518976,
+        "time": 1606172223.7294314,
+        "read_bytes": 0.0,
+        "write_bytes": 0.0,
+        "num_fds": 20,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:34311"
+    },
+    "tcp://127.0.0.1:34603": {
+      "type": "Worker",
+      "id": 5,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/hgdl/paper/bio/dask-worker-space/worker-rbwxdvcn",
+      "name": 5,
+      "nthreads": 4,
+      "memory_limit": 16884463616,
+      "last_seen": 1606172223.714034,
+      "services": {},
+      "metrics": {
+        "cpu": 0.0,
+        "memory": 58994688,
+        "time": 1606172223.6963844,
+        "read_bytes": 232371.41274238226,
+        "write_bytes": 0.0,
+        "num_fds": 20,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:42167"
+    },
+    "tcp://127.0.0.1:36489": {
+      "type": "Worker",
+      "id": 6,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/hgdl/paper/bio/dask-worker-space/worker-hzq0l4s7",
+      "name": 6,
+      "nthreads": 4,
+      "memory_limit": 16884463616,
+      "last_seen": 1606172223.7231505,
+      "services": {},
+      "metrics": {
+        "cpu": 0.0,
+        "memory": 59035648,
+        "time": 1606172223.7071977,
+        "read_bytes": 781603.7789815818,
+        "write_bytes": 781603.7789815818,
+        "num_fds": 20,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:34273"
+    },
+    "tcp://127.0.0.1:36793": {
+      "type": "Worker",
+      "id": 4,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/hgdl/paper/bio/dask-worker-space/worker-lbzeu0tr",
+      "name": 4,
+      "nthreads": 4,
+      "memory_limit": 16884463616,
+      "last_seen": 1606172223.676954,
+      "services": {},
+      "metrics": {
+        "cpu": 0.0,
+        "memory": 59076608,
+        "time": 1606172223.657439,
+        "read_bytes": 0.0,
+        "write_bytes": 0.0,
+        "num_fds": 20,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:39697"
+    },
+    "tcp://127.0.0.1:37353": {
+      "type": "Worker",
+      "id": 7,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/hgdl/paper/bio/dask-worker-space/worker-8fv2b4vv",
+      "name": 7,
+      "nthreads": 4,
+      "memory_limit": 16884463616,
+      "last_seen": 1606172223.7182252,
+      "services": {},
+      "metrics": {
+        "cpu": 0.0,
+        "memory": 59146240,
+        "time": 1606172223.7012837,
+        "read_bytes": 0.0,
+        "write_bytes": 0.0,
+        "num_fds": 20,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:46457"
+    },
+    "tcp://127.0.0.1:39667": {
+      "type": "Worker",
+      "id": 0,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/hgdl/paper/bio/dask-worker-space/worker-joxzmdx_",
+      "name": 0,
+      "nthreads": 4,
+      "memory_limit": 16884463616,
+      "last_seen": 1606172223.6820655,
+      "services": {},
+      "metrics": {
+        "cpu": 0.0,
+        "memory": 59047936,
+        "time": 1606172223.663635,
+        "read_bytes": 707274.7921568628,
+        "write_bytes": 707274.7921568628,
+        "num_fds": 20,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:33451"
+    },
+    "tcp://127.0.0.1:39919": {
+      "type": "Worker",
+      "id": 1,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/hgdl/paper/bio/dask-worker-space/worker-puvjdjc9",
+      "name": 1,
+      "nthreads": 4,
+      "memory_limit": 16884463616,
+      "last_seen": 1606172223.7057407,
+      "services": {},
+      "metrics": {
+        "cpu": 0.0,
+        "memory": 59285504,
+        "time": 1606172223.684203,
+        "read_bytes": 928402.1213483146,
+        "write_bytes": 928402.1213483146,
+        "num_fds": 20,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:36159"
+    },
+    "tcp://127.0.0.1:45693": {
+      "type": "Worker",
+      "id": 3,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/hgdl/paper/bio/dask-worker-space/worker-s2nd28tz",
+      "name": 3,
+      "nthreads": 4,
+      "memory_limit": 16884463616,
+      "last_seen": 1606172223.7080207,
+      "services": {},
+      "metrics": {
+        "cpu": 0.0,
+        "memory": 59080704,
+        "time": 1606172223.6859794,
+        "read_bytes": 755281.4332723949,
+        "write_bytes": 755281.4332723949,
+        "num_fds": 20,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:37955"
+    }
+  }
+}
