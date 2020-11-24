@@ -13,7 +13,7 @@ class info(object):
             self, func, grad, bounds,
             hess=None, client=None, fix_rng=True,
             r=.3, alpha=.1, num_epochs=10, bestX=5,
-            num_individuals=25, max_local=5,
+            num_individuals=25, max_local=5, batch_size=8,
             x0=None, global_method='genetic', local_method='scipy',
             local_args=(), local_kwargs={}, global_args=(), global_kwargs={},
             verbose=False):
@@ -82,6 +82,7 @@ class info(object):
         self.bestX = bestX
         self.max_local = max_local
         self.num_individuals = num_individuals
+        self.batch_size = batch_size 
         self.global_method = global_method
         self.local_method = local_method
         self.local_args = local_args

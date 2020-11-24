@@ -58,7 +58,7 @@ def run_local(info):
                 client.map(
                     minimizer,
                     info.x0,
-                    batch_size=8)))
+                    batch_size=info.batch_size)))
             iterable = (f.result() for f in futures if f.status!='cancelled')
         else:
             iterable = (minimizer(z) for z in info.x0)
