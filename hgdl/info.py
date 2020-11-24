@@ -104,6 +104,9 @@ class info(object):
             self.scheduler_file = 'scheduler.json'
         elif client.scheduler_file:
             self.scheduler_file = client.scheduler_file
+        else:
+            self.scheduler_file = 'scheduler.json'
+
         client.scheduler_file = None
         client.write_scheduler_file(self.scheduler_file)
 

@@ -52,10 +52,13 @@ def run_local(info):
         else:
             raise NotImplementedError("local method not understood")
         if info.use_dask_map:
-            client.scatter(minimizer)
-            client.scatter(info.x0)
+            #client.scatter(minimizer, broadcast=True)
+            #client.scatter(info.x0)
             futures = (f for f in dask.distributed.as_completed(
-                client.map(minimizer, info.x0, batch_size=4)))
+                client.map(
+                    minimizer,
+                    info.x0,
+                    batch_size=8)))
             iterable = (f.result() for f in futures if f.status!='cancelled')
         else:
             iterable = (minimizer(z) for z in info.x0)
