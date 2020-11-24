@@ -74,7 +74,7 @@ class HGDL:
     ###########################################################################
     ###########################################################################
     def optimize(self, dask_client = True, 
-            x0 = None, number_of_walkers = None, 
+            x0 = None, number_of_walkers = None,
             number_of_starting_positions = None):
         """
         optional input:
