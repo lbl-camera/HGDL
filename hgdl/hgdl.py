@@ -42,7 +42,7 @@ class HGDL:
             func:  the objective function
             grad:  the objective function gradient
             hess:  the objective function hessian
-            bounds
+            bounds:the bounds of the optimization
         optional input:
         ---------------
             maxEpochs = 100000
@@ -51,9 +51,6 @@ class HGDL:
             radius = 20
             global_tol = 1e-4
             local_max_iter = 20
-            number_of_walkers: make sure you have enough workers for
-                               your walkers ( walkers + 1 <= workers)
-                               otherwise ignore for the right assignment
             args = (), a n-tuple of parameters, will be communicated to func, grad, hess
             verbose = False
         """
@@ -81,6 +78,11 @@ class HGDL:
         -----
             dask_client = True = dask.distributed.Client()
             x0 = None = random.rand()   starting positions
+            number_of_walkers: make sure you have enough workers for
+                               your walkers ( walkers + 1 <= workers)
+                               otherwise ignore for the correct assignment
+            number_of_starting_positions: number of walkers for first epoch if different
+
         """
         #####initializedask client###############
         if dask_client is None: 
