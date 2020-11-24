@@ -63,7 +63,7 @@ class HGDL(object):
         data = info(*args, **kwargs)
         self.client = dask.distributed.Client(scheduler_file=data.scheduler_file)
         self.epoch_futures = [self.client.submit(run_epoch, data)]
-        for i in range(data.num_epochs):
+        for i in range(1,data.num_epochs):
             self.epoch_futures.append(self.client.submit(run_epoch, self.epoch_futures[-1]))
 
     # user access functions
