@@ -1,4 +1,11 @@
  What I will do today:
+ * clean up
+ * get conda install down s.t. it runs on all
+ * get dask dashboards clearly working
+ * test some scatters/mpirun
+ * do bio dataset 
+ * do elevation dataset
+ * write on paper
  
  Task breakdown:
  * use nograd in global
