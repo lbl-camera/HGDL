@@ -100,7 +100,7 @@ class info(object):
         # find if the user provided a client
         if client is None:
             from dask.distributed import Client
-            client = Client()
+            client = Client(scheduler_port=0, worker_dashboard_address=':0')
             self.scheduler_file = 'scheduler.json'
         elif client.scheduler_file:
             self.scheduler_file = client.scheduler_file
