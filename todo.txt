@@ -1,0 +1,7 @@
+################
+####TODO########
+################
+
+
+* work on making the dNewton faster and more stable to walking outside bounds
+* radius should be per optimum and depend on Hessian
