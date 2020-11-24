@@ -268,6 +268,7 @@ def hgdl(data):
         if bc is True: print("Epoch ",i," was cancelled");break
         print("Computing epoch ",i," of ",d.maxEpochs)
         optima = run_hgdl_epoch(d,optima)
+        print("Optima found: ", len(optima.list["x"]))
         if transfer_data is not False:
             a = distributed.protocol.serialize(optima)
             transfer_data.set(a)

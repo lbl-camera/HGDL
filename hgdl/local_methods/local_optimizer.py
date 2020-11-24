@@ -39,16 +39,12 @@ def run_local_optimizer(d,x0,x_defl = []):
         client_available = False
     if client_available is True:
         tasks = []
+        bf = client.scatter(d)
         for i in range(min(len(x0),number_of_walkers)):
             worker = d.workers["walkers"][(int(i - ((i // number_of_workers)*number_of_workers)))]
-            #print("worker: ", worker)
-            data = {"d":d,"x0":x0[i],"x_defl":x_defl}
-            #big_future = client.scatter(data, workers = worker)
-            #tasks.append(client.submit(local_opt,big_future,workers = worker))
+            data = {"d":bf,"x0":x0[i],"x_defl":x_defl}
             tasks.append(client.submit(local_opt,data,workers = worker))
-        #del big_future
-        tasks = misc.finish_up_tasks(tasks)
-        client.gather(tasks)
+        results = client.gather(tasks)
         number_of_walkers = len(tasks)
         x = np.empty((number_of_walkers, dim))
         f = np.empty((number_of_walkers))
@@ -57,7 +53,7 @@ def run_local_optimizer(d,x0,x_defl = []):
         success = np.empty((number_of_walkers))
         #gather results and kick out optima that are too close:
         for i in range(len(tasks)):
-            x[i],f[i],grad_norm[i],eig[i],success[i] = tasks[i].result()
+            x[i],f[i],grad_norm[i],eig[i],success[i] = results[i]
             #print("x: ",x[i],f[i])
             for j in range(i):
                 #exchange for function def too_close():
@@ -91,7 +87,7 @@ def run_local_optimizer(d,x0,x_defl = []):
                     print(x[i],x_defl[j])
                     print(grad_norm[i])
     else: raise ValueError("not clear if client is available")
-    print("++++++++++++++++++++++++++++++=")
+    #print("++++++++++++++++++++++++++++++=")
     #print(x)
     #print(success)
     #print("++++++++++++++++++++++++++++++=")
