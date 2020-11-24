@@ -12,7 +12,16 @@ The algorithm uses global and local optimization, together with deflation to fin
 minimum along with many local optima. Of course, as always, there is no guarantee the global minimum will be found. 
 
 ## How to install
+### Pip:
 cd path/to/hgdl/
+pip install .
+
+### Conda
+conda create --name hgdlEnv
+conda activate hgdlEnv
+git clone git@bitbucket.org:berkeleylab/hgdl.git
+cd hgdl
+conda install -y -c conda-forge --file conda\_reqs.txt
 pip install .
 
 ## How to use
