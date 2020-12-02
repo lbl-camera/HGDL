@@ -63,11 +63,21 @@ def fit(self, X, y, **kwargs):
             #res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, x0=np.array([[-11.51292546,4.69457218,-0.45065571]]), **kwargs)
             res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds,  **kwargs)
 
-            res = res.get_final()
-            print(res)
+            #res = res.get_final()
+            res = res.get_latest(-1)
+            print('after get latest', res)
             GPs = []
             for i in range(len(res['minima_y'])):
                 x, y = res['minima_x'][i], res['minima_y'][i]
+                kernel = clone(self.kernel_)
+                kernel.theta = x
+                gp = GaussianProcessRegressor(alpha=self.alpha, kernel=kernel)
+                gp.kernel_ = kernel
+                gp.log_marginal_likelihood_value_ = -y
+                gp.random_state = self.random_state
+                GPs.append(gp)
+            for i in range(len(res['global_y'])):
+                x, y = res['global_x'][i], res['global_y'][i]
                 kernel = clone(self.kernel_)
                 kernel.theta = x
                 gp = GaussianProcessRegressor(alpha=self.alpha, kernel=kernel)
