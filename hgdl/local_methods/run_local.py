@@ -22,7 +22,7 @@ def fail(x):
 
 def run_local(info):
     if info.use_dask_map:
-        client = dask.distributed.Client(scheduler_file=info.scheduler_file)
+        client = dask.distributed.get_client(address=info.scheduler_address)
     for i in range(info.max_local):
         new_minima = np.empty((0, info.k))
         num_none = 0

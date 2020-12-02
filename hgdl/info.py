@@ -91,6 +91,11 @@ class info(object):
         self.global_kwargs = global_kwargs
         self.verbose = verbose
         self.k = len(bounds)
+        if client is None:
+            from dask.distributed import Client
+            client = Client(scheduler_port=0, worker_dashboard_address=':0')
+        self.scheduler_address = client.scheduler_info()['address'] 
+       
         self.results = Results(self)
         self.use_dask_map = True
         if x0 is None:
@@ -99,10 +104,9 @@ class info(object):
         self.results.update_global(x0)
         self.r2 = r**2
         # find if the user provided a client
-        if client is None:
-            from dask.distributed import Client
-            client = Client(scheduler_port=0, worker_dashboard_address=':0')
+        """ 
             self.scheduler_file = 'scheduler.json'
+        
         elif client.scheduler_file:
             self.scheduler_file = client.scheduler_file
         else:
@@ -110,7 +114,7 @@ class info(object):
 
         client.scheduler_file = None
         client.write_scheduler_file(self.scheduler_file)
-
+        """
     @property
     def minima(self):
         return self.results.minima_x

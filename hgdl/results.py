@@ -1,20 +1,24 @@
 import numpy as np
+from dask.distributed import get_client
 
 class Results(object):
     def __init__(self, info):
         self.func = info.func
         self.bestX = info.bestX
         self.N = info.num_individuals
+        self.scheduler_address = info.scheduler_address 
         self.minima_x = np.empty((0, info.k), np.float64)
         self.minima_y = np.empty(0, np.float64)
         self.global_x = np.empty((0, info.k), np.float64)
         self.global_y = np.empty(0, np.float64)
     def update_minima(self, new_minima):
-        minima_y = np.array([self.func(x) for x in new_minima])
+        client = get_client(address=self.scheduler_address) 
+        minima_y = np.array([f.result() for f in client.map(self.func, new_minima)])
         self.minima_x = np.append(self.minima_x, new_minima, 0)
         self.minima_y = np.append(self.minima_y, minima_y)
     def update_global(self, new_global):
-        global_y = np.array([self.func(x) for x in new_global])
+        client = get_client(address=self.scheduler_address) 
+        global_y = np.array([f.result() for f in client.map(self.func, new_global)])
         self.global_x = np.append(self.global_x, new_global, 0)
         self.global_y = np.append(self.global_y, global_y)
     def get_all(self):

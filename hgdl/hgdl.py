@@ -6,6 +6,7 @@ from .global_methods.run_global import run_global
 from .local_methods.run_local import run_local
 from .info import info
 import dask.distributed
+from dask.distributed import get_client
 
 class HGDL(object):
     """
@@ -61,7 +62,7 @@ class HGDL(object):
     """
     def __init__(self, *args, **kwargs):
         data = info(*args, **kwargs)
-        self.client = dask.distributed.Client(scheduler_file=data.scheduler_file)
+        self.client = get_client(address=data.scheduler_address) #dask.distributed.Client(scheduler_file=data.scheduler_file)
         self.epoch_futures = [self.client.submit(run_epoch, data)]
         for i in range(1,data.num_epochs):
             self.epoch_futures.append(self.client.submit(run_epoch, self.epoch_futures[-1]))
