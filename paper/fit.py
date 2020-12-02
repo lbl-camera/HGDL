@@ -64,7 +64,7 @@ def fit(self, X, y, **kwargs):
             res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds,  **kwargs)
 
             #res = res.get_final()
-            res = res.get_latest(-1)
+            res = res.get_final()
             print('after get latest', res)
             GPs = []
             for i in range(len(res['minima_y'])):
@@ -85,8 +85,8 @@ def fit(self, X, y, **kwargs):
                 gp.log_marginal_likelihood_value_ = -y
                 gp.random_state = self.random_state
                 GPs.append(gp)
-            for i in range(len(GPs)):
-                GPs[i] = update(GPs[i], self.X_train_, self.y_train_)
+            #for i in range(len(GPs)):
+            #    GPs[i] = update(GPs[i], self.X_train_, self.y_train_)
             return GPs
         # end of the part that i wrote --------------------------------- 
         # --------------------------------------------------------------
@@ -191,10 +191,11 @@ def update(self, X, y):
 
     self.X_train_ = np.copy(X) if self.copy_X_train else X
     self.y_train_ = np.copy(y) if self.copy_X_train else y
-    self.log_marginal_likelihood_value_ = \
-        self.log_marginal_likelihood(self.kernel_.theta,
-                                        clone_kernel=False)
+    #self.log_marginal_likelihood_value_ = \
+    #    self.log_marginal_likelihood(self.kernel_.theta,
+    #                                    clone_kernel=False)
 
+    """
     # Precompute quantities required for predictions which are independent
     # of actual query points
     K = self.kernel_(self.X_train_)
@@ -211,6 +212,7 @@ def update(self, X, y):
                     % self.kernel_,) + exc.args
         raise
     self.alpha_ = cho_solve((self.L_, True), self.y_train_)  # Line 3
+    """
     return self
 
 
