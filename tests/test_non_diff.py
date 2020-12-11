@@ -8,7 +8,7 @@ def main():
     #dask_client = distributed.Client("10.0.0.184:8786")
     a = HGDL(non_diff, non_diff_grad, 
              non_diff_hess,[[-5,5],[-5,5]],
-            radius = 0.1, maxEpochs = 5, verbose = False)
+            radius = 0.1, num_epochs = 5, verbose = False)
     #a.optimize(dask_client = distributed.Client())
     #a.optimize(dask_client = True)
     a.optimize(dask_client = False)

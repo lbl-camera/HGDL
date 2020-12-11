@@ -16,7 +16,7 @@ class meta_data:
         self.global_tol = obj.global_tol
         self.local_max_iter = obj.local_max_iter
         self.number_of_walkers = obj.number_of_walkers
-        self.maxEpochs = obj.maxEpochs
+        self.num_epochs = obj.num_epochs
         self.global_optimizer = obj.global_optimizer
         self.args = obj.args
         self.verbose = obj.verbose

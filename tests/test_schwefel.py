@@ -10,7 +10,7 @@ def main():
     #dask_client = distributed.Client("10.0.0.184:8786")
     a = hgdl(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]],
             global_optimizer = "genetic",
-            args = (arr,brr), radius = 5.0, maxEpochs = 1000, verbose = False)
+            args = (arr,brr), radius = 5.0, num_epochs = 1000, verbose = False)
     #a.optimize(dask_client = distributed.Client())
     x0 = np.random.uniform(size = (20,2))
     a.optimize(x0 = x0)

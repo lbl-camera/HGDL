@@ -1,6 +1,6 @@
 import numpy as np
 import hgdl.misc as misc
-import hgdl.deflation.bump_function as defl
+import hgdl.local_methods.bump_function as defl
 import dask.distributed as distributed
 
 def DNewton(data):
