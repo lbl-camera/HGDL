@@ -91,22 +91,6 @@ class HGDL(object):
             finished = self.epoch_futures[0].result()
         return finished.results.epoch_end()
 
-<<<<<<< HEAD
-    # work functions
-    async def rest_of_epochs(self):
-        for i in range(1,self.max_epochs):
-            print(i)
-            self.best = await self.epoch()
-        self.best = self.results.roll_up()
-    # a single epoch
-    async def epoch(self):
-        self.x0 = run_global(self)
-        self.results.update_global(self.x0)
-        run_local(self)
-        self.best = self.results.epoch_end()
-        # raise flag saying that you made an epoch 
-        self.event.set()
-=======
     def get_latest(self, N):
         for future in self.epoch_futures[::-1]:
             if future.done():
@@ -115,8 +99,6 @@ class HGDL(object):
         else:
             finished = self.epoch_futures[0].result()
         return finished.results.latest(N)
->>>>>>> elliott
-
     def kill(self):
         for future in self.epoch_futures: future.cancel()
 
