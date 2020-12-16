@@ -106,7 +106,9 @@ class HGDL(object):
 def run_epoch(data):
     if data.verbose: print('working on an epoch')
     client = get_client(address=data.scheduler_address)
-    data.update_global(run_global(client.scatter(data,broadcast=True)))
-    data.update_minima(run_local(client.scatter(data,broadcast=True)))
+    #data.update_global(run_global(client.scatter(data,broadcast=True)))
+    data.update_global(run_global(data))
+    #data.update_minima(run_local(client.scatter(data,broadcast=True)))
+    data.update_minima(run_local(data))
     return data
 
