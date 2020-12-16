@@ -1,22 +1,3 @@
-=====
-hgdl
-=====
-
-.. image:: https://img.shields.io/travis//hgdl.svg
-        :target: https://travis-ci.org//hgdl
-
-.. image:: https://img.shields.io/pypi/v/hgdl.svg
-        :target: https://pypi.python.org/pypi/hgdl
-
-
-Hybrid GLobal Deflated Local Optimization
-
-* Free software: GPL license
-* Documentation: (COMING SOON!) https://.github.io/hgdl.
-
-Features of hgdl
---------
-
 HGDL
 ====
 
@@ -105,5 +86,4 @@ worldwide license in the Software to reproduce, distribute copies to the
 public, prepare derivative works, and perform publicly and display
 publicly, and to permit others to do so.
 
--
-
+--------------
