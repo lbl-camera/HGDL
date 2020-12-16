@@ -1,5 +1,5 @@
 =====
-hgdl
+HGDL (Hybrid Global Deflated Local) Optimizer
 =====
 
 .. image:: https://img.shields.io/travis//hgdl.svg
@@ -8,40 +8,39 @@ hgdl
 .. image:: https://img.shields.io/pypi/v/hgdl.svg
         :target: https://pypi.python.org/pypi/hgdl
 
-
-Hybrid GLobal Deflated Local Optimization
-
 * Free software: GPL license
 * Documentation: (COMING SOON!) https://.github.io/hgdl.
 
-Features of hgdl
---------
-
-HGDL
-====
-
-This is the README file for the Hybrid Global Deflated Local (HGDL)
-optimization algorithm
 
 What is this?
 -------------
+An optimization method implemented in Python that scales to HPC.
 
-This is a minimization procedure written in python that uses a \* Hybrid
-- both global and local minimizers \* Global - a range of global
-optimizers, such as genetic alg. \* Deflated - found minima are avoided
-by the local minimizer \* Local - local minimization method, such as
-Newton’s method minimization scheme to find minima in a function. The
-algorithm uses global and local optimization, together with deflation to
-find the global minimum along with many local optima. Of course, as
-always, there is no guarantee the global minimum will be found.
+Algorithm:
+-------------
+The HGDL in HGDL Optimizer stands for Hybrid Global Deflated Local Optimizer. This means:
+ * Hybrid - that the algorithm uses both global and local optimizers together
+ * Global - a class of optimization methods that does not use the function derivative
+ * Deflated Local - 
+  - Local - a class of optimization methods that use the function derivative 
+  - Deflated means that the gradient is modified so that previously found minima are avoided
 
-How to install
+Any global or local method can be plugged into HGDL, and several general use ones are provided, making HGDL very flexible.
+
+How to Use:
 --------------
 
-Pip:
-~~~~
+Install:
+~~
 
-cd path/to/hgdl/ pip install .
+Clone the git repo:
+.. literalinclude:: clone_repo.sh
+
+There are 2 ways to install. Pip and Conda.
+Pip:
+.. literalinclude:: pip_install.sh
+Conda:
+.. literalinclude:: conda_install.sh
 
 Conda
 ~~~~~
