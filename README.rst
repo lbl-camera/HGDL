@@ -22,8 +22,8 @@ The HGDL in HGDL Optimizer stands for Hybrid Global Deflated Local Optimizer. Th
  * Hybrid - that the algorithm uses both global and local optimizers together
  * Global - a class of optimization methods that does not use the function derivative
  * Deflated Local:
-   - Local - a class of optimization methods that use the function derivative 
-   - Deflated means that the gradient is modified so that previously found minima are avoided
+  - Local - a class of optimization methods that use the function derivative 
+  - Deflated means that the gradient is modified so that previously found minima are avoided
 
 Any global or local method can be plugged into HGDL, and several general use ones are provided, making HGDL very flexible.
 
