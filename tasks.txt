@@ -1,0 +1,38 @@
+ What I will do today:
+ * clean up
+ * get conda install down s.t. it runs on all
+ * get dask dashboards clearly working
+ * test some scatters/mpirun
+ * do bio dataset 
+ * do elevation dataset
+ * write on paper
+ 
+ Task breakdown:
+ * use nograd in global
+ * put if None in global
+ * remember all points from local method
+ * put callable in global 
+
+ * work on hgdl itself:
+ 	-- most necessary --
+	--------------------	
+	* get running on nersc
+	* get hgdl going on fvgp
+ 
+ * work on the paper
+	* real work
+ 		* -- most necessary --
+		--------------------	
+		* get mat. sci dataset		
+	* writing
+		* -- most necessary --
+		* main figure for the paper	
+		--------------------	
+		* section on sklearn example
+		* put figures in overleaf
+
+ * communicate with general public
+	* blog post with sklearn
+ 
+
+

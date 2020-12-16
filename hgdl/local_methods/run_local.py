@@ -1,7 +1,6 @@
 # to do: args for local/global method 
 import numpy as np
 from functools import partial
-from .bump import deflation, deflation_der
 from .newton import newton
 from .scipy_minimize import scipy_minimize
 import dask
@@ -18,57 +17,69 @@ def already_found(x, other_x, r):
         return True
     return False
 
-def deflated_jac(x, grad, minima, r2, alpha):
-    j = grad(x)
-    defl = deflation(x, minima, r2, alpha)
-    return j*defl
+def fail(x):
+    return {"success":False}
 
-def deflated_hess(x, grad, hess, minima, r2, alpha):
-    h = hess(x)
-    j = grad(x)
-    defl = deflation(x, minima, r2, alpha)
-    defl_der = deflation_der(x, minima, r2, alpha)
-    return h*defl + np.outer(defl_der, j)
-
-
-def run_local(hgdl):
-    bound_check = partial(in_bounds, bounds=hgdl.bounds)
-    for i in range(hgdl.max_local):
-        new_minima = np.empty((0, hgdl.k))
+def run_local(info):
+    if info.use_dask_map:
+        client = dask.distributed.get_client(address=info.scheduler_address)
+    for i in range(info.max_local):
+        new_minima = np.empty((0, info.k))
         num_none = 0
-        grad = partial(deflated_jac, grad=hgdl.grad, minima=hgdl.results.minima_x, r2=hgdl.r**2, alpha=hgdl.alpha)
-        if hgdl.hess is not None:
-            hess = partial(deflated_hess, grad=hgdl.grad, hess=hgdl.hess, minima=hgdl.results.minima_x, r2=hgdl.r**2, alpha=hgdl.alpha)
+        if info._hess is not None:
+            hess = info.hess
         else:
-            hess = hgdl.hess
+            hess = info._hess
 
         # my newton doesn't support using func for func+grad
-        if hgdl.local_method == 'my_newton':
+        if info.local_method == 'my_newton':
             minimizer = partial(newton,
-                    func=hgdl.func, jac=grad,
-                    hess=hess, in_bounds=bound_check)
-        elif hgdl.local_method == "scipy":
+                    func=info.func, jac=info.grad,
+                    hess=hess, in_bounds=info.in_bounds)
+        elif info.local_method == "scipy":
             minimizer = partial(scipy_minimize,
-                func=hgdl.func, jac=grad,
-                hess=hess, bounds=hgdl.bounds,
-                *hgdl.local_args, **hgdl.local_kwargs)
+                func=info.func, jac=info.grad,
+                hess=hess, bounds=info.bounds,
+                *info.local_args, **info.local_kwargs)
+        elif callable(info.local_method):
+            minimizer = partial(info.local_method,
+                    func=info.func, jac=info.grad,
+                    hess=hess, bounds=info.bounds,
+                    *info.local_args, **info.local_kwargs)
+        elif info.local_method == None:
+            minimizer = fail
+
         else:
             raise NotImplementedError("local method not understood")
-
-        if not hgdl.use_dask_map:
-            iterable = (minimizer(z) for z in hgdl.x0)
+        if info.use_dask_map:
+            #client.scatter(minimizer, broadcast=True)
+            #client.scatter(info.x0)
+            futures = (f for f in dask.distributed.as_completed(
+                client.map(
+                    minimizer,
+                    info.x0,
+                    batch_size=info.batch_size)))
+            iterable = (f.result() for f in futures if f.status!='cancelled')
         else:
-            futures = hgdl.client.map(minimizer, hgdl.x0)
-            iterable = (a.result() for a in dask.distributed.as_completed(futures))
-        for res in iterable:
-            if num_none / hgdl.num_individuals > .4:
+            iterable = (minimizer(z) for z in info.x0)
+
+        for i, res in enumerate(iterable):
+            if num_none / info.num_individuals > .4:
                 break
             if not res["success"]:
                 num_none += 1
-            elif not hgdl.in_bounds(res["x"]):
+            elif not info.in_bounds(res["x"]):
                 num_none += 1
-            elif already_found(res["x"], new_minima, hgdl.r**2):
+            elif already_found(res["x"], new_minima, info.r**2):
+                num_none += 1
+            # temporary measure bc scipy keeps fucking up my deflation
+            #  because their approximate newton method does some line search 
+            #  shenanigans to ignore my high gradient region when it sees a
+            #  good minimum -- damn good work by scipy except for this one use case
+            elif already_found(res["x"], info.minima, info.r**2):
                 num_none += 1
             else:
                 new_minima = np.append(new_minima, res["x"].reshape(1,-1), 0)
-        hgdl.results.update_minima(new_minima)
+        if info.use_dask_map:
+            client.cancel(futures)
+    return new_minima

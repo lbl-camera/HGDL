@@ -6,6 +6,8 @@ def newton(x, func, jac, hess, in_bounds):
             j, h = jac(x), hess(x)
         except ZeroDivisionError:
             return {"success":False}
+        except NotImplementedError:
+            return {"success":False}
         except:
             raise
         if np.isclose(np.linalg.norm(j),0.):
