@@ -75,7 +75,7 @@ def run_local(info):
             # temporary measure bc scipy keeps fucking up my deflation
             #  because their approximate newton method does some line search 
             #  shenanigans to ignore my high gradient region when it sees a
-            #  good minimum -- damn good work by scipy except for this one esoteric use case
+            #  good minimum -- damn good work by scipy except for this one use case
             elif already_found(res["x"], info.minima, info.r**2):
                 num_none += 1
             else:

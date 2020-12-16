@@ -62,7 +62,7 @@ class HGDL(object):
     """
     def __init__(self, *args, **kwargs):
         data = info(*args, **kwargs)
-        self.client = get_client(address=data.scheduler_address) #dask.distributed.Client(scheduler_file=data.scheduler_file)
+        self.client = get_client(address=data.scheduler_address)
         self.epoch_futures = [self.client.submit(run_epoch, data)]
         for i in range(1,data.num_epochs):
             self.epoch_futures.append(self.client.submit(run_epoch, self.epoch_futures[-1]))
@@ -106,7 +106,8 @@ class HGDL(object):
 # run a single epoch
 def run_epoch(data):
     if data.verbose: print('working on an epoch')
-    data.update_global(run_global(data))
-    data.update_minima(run_local(data))
+    client = get_client(address=data.scheduler_address)
+    data.update_global(run_global(client.scatter(data,broadcast=True)))
+    data.update_minima(run_local(client.scatter(data,broadcast=True)))
     return data
 

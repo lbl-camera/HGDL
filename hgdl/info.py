@@ -82,7 +82,7 @@ class info(object):
         self.bestX = bestX
         self.max_local = max_local
         self.num_individuals = num_individuals
-        self.batch_size = batch_size 
+        self.batch_size = batch_size
         self.global_method = global_method
         self.local_method = local_method
         self.local_args = local_args
@@ -94,8 +94,8 @@ class info(object):
         if client is None:
             from dask.distributed import Client
             client = Client(scheduler_port=0, worker_dashboard_address=':0')
-        self.scheduler_address = client.scheduler_info()['address'] 
-       
+        self.scheduler_address = client.scheduler_info()['address']
+        if self.verbose: print('dashboard:',client.dashboard_link)
         self.results = Results(self)
         self.use_dask_map = True
         if x0 is None:
@@ -104,17 +104,6 @@ class info(object):
         self.results.update_global(x0)
         self.r2 = r**2
         # find if the user provided a client
-        """ 
-            self.scheduler_file = 'scheduler.json'
-        
-        elif client.scheduler_file:
-            self.scheduler_file = client.scheduler_file
-        else:
-            self.scheduler_file = 'scheduler.json'
-
-        client.scheduler_file = None
-        client.write_scheduler_file(self.scheduler_file)
-        """
     @property
     def minima(self):
         return self.results.minima_x
