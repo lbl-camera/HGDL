@@ -39,13 +39,18 @@ There are 2 ways to install. Pip and Conda.
 Pip:
 
 ``cd hgdl``
+
 ``pip install .``
 
 Conda:
 ``conda create –name hgdlEnv``
+
 ``conda activate hgdlEnv``
+
 ``cd hgdl``
+
 ``conda install -y -c conda-forge wheel numpy scipy matplotlib dask pytorch distributed numba dask-mpi distributed scikit-learn jupyter jupyterlab future mpi4py``
+
 ``pip install .``
 
 Running on a laptop:
@@ -62,12 +67,12 @@ Running on a HPC:
 This works on the LBL NERSC computer and UTK ISAAC HPC cluster, so it should work on your cluster, so long as you have mpirun as a command.
 
 Command line:
-mpirun --np NUM_NODES dask-mpi --no-nanny --scheduler-file scheduler.json &
+``mpirun --np NUM_NODES dask-mpi --no-nanny --scheduler-file scheduler.json &``
 
 In code:
-from dask.distributed import Client 
-client = Client(scheduler_file='scheduler.json')
-hgdl_result = HGDL(..., client=client, ...)
+``from dask.distributed import Client`` 
+``client = Client(scheduler_file='scheduler.json')``
+``hgdl_result = HGDL(..., client=client, ...)``
 
 Copyright
 =========
