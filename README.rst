@@ -25,6 +25,7 @@ The HGDL in HGDL Optimizer stands for Hybrid Global Deflated Local Optimizer. Th
 
 Any global or local method can be plugged into HGDL, and several general use ones are provided, making HGDL very flexible.
 
+----------
 How to Use:
 --------------
 
@@ -73,6 +74,7 @@ In code:
 ``from dask.distributed import Client`` 
 ``client = Client(scheduler_file='scheduler.json')``
 ``hgdl_result = HGDL(..., client=client, ...)``
+
 
 Copyright
 =========
