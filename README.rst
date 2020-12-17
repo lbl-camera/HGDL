@@ -35,8 +35,8 @@ Install:
 
 Clone the git repo:
 .. code-block:: python
-        pygments_style = 'sphinx'
-        git clone https://bitbucket.org/berkeleylab/hgdl.git
+pygments_style = 'sphinx'
+git clone https://bitbucket.org/berkeleylab/hgdl.git
 
 There are 2 ways to install. Pip and Conda.
 Pip:
