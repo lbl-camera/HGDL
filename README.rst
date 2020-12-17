@@ -32,20 +32,27 @@ Install:
 ~~~~~~~
 
 Clone the git repo:
+
 ``git clone https://bitbucket.org/berkeleylab/hgdl.git``
 
 There are 2 ways to install. Pip and Conda.
 Pip:
+
 ``cd hgdl``
-``pip install .. literalinclude:: clone_repo.sh``
+
+``pip install .``
 
 Conda:
 ``conda create –name hgdlEnv``
+
 ``conda activate hgdlEnv``
+
 ``cd hgdl``
-``conda install -y -c conda-forge wheel numpy scipy matplotlib \
-	dask pytorch distributed numba dask-mpi distributed \
+
+``conda install -y -c conda-forge wheel numpy scipy matplotlib
+	dask pytorch distributed numba dask-mpi distributed
 	scikit-learn jupyter jupyterlab future mpi4py``
+
 ``pip install .``
 
 Running on a laptop:
