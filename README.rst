@@ -34,25 +34,29 @@ Install:
 ~~
 
 Clone the git repo:
-.. literalinclude:: clone_repo.sh
+.. code-block:: python
+        pygments_style = 'sphinx'
+        git clone https://bitbucket.org/berkeleylab/hgdl.git
 
 There are 2 ways to install. Pip and Conda.
 Pip:
-.. literalinclude:: pip_install.sh
+
+cd hgdl
+pip install .. literalinclude:: clone_repo.sh
+
 Conda:
-.. literalinclude:: conda_install.sh
+conda create –name hgdlEnv
+conda activate hgdlEnv
+cd hgdl 
+conda install -y -c conda-forge wheel numpy scipy matplotlib \
+	dask pytorch distributed numba dask-mpi distributed \
+	scikit-learn jupyter jupyterlab future
+pip install .
 
-Conda
-~~~~~
+Running on a laptop:
+--------------------------
+In your code, do this:
 
-conda create –name hgdlEnv conda activate hgdlEnv git clone
-git@bitbucket.org:berkeleylab/hgdl.git cd hgdl conda install -y -c
-conda-forge –file conda_reqs.txt pip install .
-
-How to use
-----------
-
-see the examples folder
 
 Running the Paper problems
 --------------------------
