@@ -39,7 +39,6 @@ Clone the git repo:
 
 There are 2 ways to install. Pip and Conda.
 Pip:
-
 cd hgdl
 pip install .. literalinclude:: clone_repo.sh
 
@@ -49,42 +48,29 @@ conda activate hgdlEnv
 cd hgdl 
 conda install -y -c conda-forge wheel numpy scipy matplotlib \
 	dask pytorch distributed numba dask-mpi distributed \
-	scikit-learn jupyter jupyterlab future
+	scikit-learn jupyter jupyterlab future mpi4py
 pip install .
 
 Running on a laptop:
 --------------------------
 In your code, do this:
 
+from dask.distributed import Client
+hgdl_result = HGDL(..., client=Client(), ...)
 
-Running the Paper problems
+This will create a dask distributed client on your laptop that HGDL will use for parallelism
+
+Running on a HPC:
 --------------------------
+This works on the LBL NERSC computer and UTK ISAAC HPC cluster, so it should work on your cluster, so long as you have mpirun as a command.
 
-There are some extra requirements that I didn’t put in bc they are only
-required for the paper pip install scipy sklearn mpi4py
+Command line:
+mpirun --np NUM_NODES dask-mpi --no-nanny --scheduler-file scheduler.json &
 
-Running on NERSC
-----------------
-
-pip install dask_mpi mpi4py dask-scheduler –scheduler-file
-scheduler.json srun dask-worker –scheduler-file scheduler.json
-–no-scheduler
-
-.. code:: math
-
-   \Large c = e^{\frac{\alpha}{r^2}}
-   \Large b(x-x_0, r, \alpha) = c e^{\frac{-\alpha}{r^2-\sum_{i=0}^{d} (x_i-x_{0_i})^2}}
-   \Large \frac{\partial b} {\partial x_i} = 
-   b(x-x_o, r, \alpha) \frac{-2\alpha(x_i - x_{0_i})}{(r^2 - \sum_{i=0}^{d} (x_i-x_{0_i})^2)^2}
-   \Large \text{deflation} = \frac{1}{1-b}
-   \Large \frac{\partial}{\partial x_i} \text{deflation} = \frac{2}{(1-b)^2} \frac{\partial}{\partial x_i} b
-   \Large \frac{\frac{\partial}{\partial x_i} \text{deflation}}{\text{deflation}} = \frac{2}{1-b} \frac{\partial}{\partial x_i} b = 2 \times \text{deflation} \times \frac{\partial}{\partial x_i} b
-
--  x is the probe point
--  :math:`x_0` is a single, technical minima
--  minima is a list of all technical minima
--  r is the radius of deflation
--  alpha is a parameter describing the shape of the bump function.
+In code:
+from dask.distributed import Client 
+client = Client(scheduler_file='scheduler.json')
+hgdl_result = HGDL(..., client=client, ...)
 
 Copyright
 =========
