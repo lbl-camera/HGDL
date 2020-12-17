@@ -14,10 +14,8 @@ HGDL (Hybrid Global Deflated Local) Optimizer
 
 What is this?
 -------------
-An optimization method implemented in Python that scales to HPC.
-
 Algorithm:
--------------
+~~~~~~~~~~
 The HGDL in HGDL Optimizer stands for Hybrid Global Deflated Local Optimizer. This means:
  * Hybrid - that the algorithm uses both global and local optimizers together
  * Global - a class of optimization methods that does not use the function derivative
@@ -31,28 +29,27 @@ How to Use:
 --------------
 
 Install:
-~~
+~~~~~~~
 
 Clone the git repo:
-.. code-block:: python
-   git clone https://bitbucket.org/berkeleylab/hgdl.git
+``git clone https://bitbucket.org/berkeleylab/hgdl.git``
 
 There are 2 ways to install. Pip and Conda.
 Pip:
-cd hgdl
-pip install .. literalinclude:: clone_repo.sh
+``cd hgdl``
+``pip install .. literalinclude:: clone_repo.sh``
 
 Conda:
-conda create –name hgdlEnv
-conda activate hgdlEnv
-cd hgdl 
-conda install -y -c conda-forge wheel numpy scipy matplotlib \
+``conda create –name hgdlEnv``
+``conda activate hgdlEnv``
+``cd hgdl``
+``conda install -y -c conda-forge wheel numpy scipy matplotlib \
 	dask pytorch distributed numba dask-mpi distributed \
-	scikit-learn jupyter jupyterlab future mpi4py
-pip install .
+	scikit-learn jupyter jupyterlab future mpi4py``
+``pip install .``
 
 Running on a laptop:
---------------------------
+~~~~~~~~~~~~~~~~~~~
 In your code, do this:
 
 from dask.distributed import Client
@@ -61,7 +58,7 @@ hgdl_result = HGDL(..., client=Client(), ...)
 This will create a dask distributed client on your laptop that HGDL will use for parallelism
 
 Running on a HPC:
---------------------------
+~~~~~~~~~~~~~~~~~
 This works on the LBL NERSC computer and UTK ISAAC HPC cluster, so it should work on your cluster, so long as you have mpirun as a command.
 
 Command line:
