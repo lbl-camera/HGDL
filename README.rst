@@ -57,8 +57,9 @@ Running on a laptop:
 ~~~~~~~~~~~~~~~~~~~
 In your code, do this:
 
-from dask.distributed import Client
-hgdl_result = HGDL(..., client=Client(), ...)
+``from dask.distributed import Client``
+
+``hgdl_result = HGDL(..., client=Client(), ...)``
 
 This will create a dask distributed client on your laptop that HGDL will use for parallelism
 
@@ -67,11 +68,15 @@ Running on a HPC:
 This works on the LBL NERSC computer and UTK ISAAC HPC cluster, so it should work on your cluster, so long as you have mpirun as a command.
 
 Command line:
+
 ``mpirun --np NUM_NODES dask-mpi --no-nanny --scheduler-file scheduler.json &``
 
 In code:
+
 ``from dask.distributed import Client`` 
+
 ``client = Client(scheduler_file='scheduler.json')``
+
 ``hgdl_result = HGDL(..., client=client, ...)``
 
 
