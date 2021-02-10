@@ -3,6 +3,13 @@ from .gaussian import gaussian_step
 
 def run_global(info):
     x, y = info.results.get_all()
+    # check for nan vals, i think they're sneaking in
+    print('isnan before check?', np.isnan(x).any(), np.isnan(y).any())
+    mask = np.logical_or(np.isnan(x).any(axis=1), np.isnan(y))
+    x, y = x[~mask], y[~mask]
+    # check again
+    print('isnan after check?', np.isnan(x).any(), np.isnan(y).any())
+
     if info.global_method == 'genetic':
         return genetic_step(info, x, y)
     elif info.global_method == 'gaussian':
