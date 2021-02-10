@@ -1,0 +1,138 @@
+{
+  "type": "Scheduler",
+  "id": "Scheduler-12f9e9cd-201a-47da-8b21-257a6ed75be4",
+  "address": "tcp://127.0.0.1:45737",
+  "services": {
+    "dashboard": 8787
+  },
+  "workers": {
+    "tcp://127.0.0.1:34727": {
+      "type": "Worker",
+      "id": 1,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/Documents/hgdl/paper/nat_geo/dask-worker-space/dask-worker-space/worker-mrln957h",
+      "name": 1,
+      "nthreads": 3,
+      "memory_limit": 4143087616,
+      "last_seen": 1612193701.0453415,
+      "services": {
+        "dashboard": 41663
+      },
+      "metrics": {
+        "cpu": 4.0,
+        "memory": 67100672,
+        "time": 1612193701.0404985,
+        "read_bytes": 7964.668421574686,
+        "write_bytes": 8512.714415424878,
+        "num_fds": 23,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:34823"
+    },
+    "tcp://127.0.0.1:38513": {
+      "type": "Worker",
+      "id": 2,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/Documents/hgdl/paper/nat_geo/dask-worker-space/dask-worker-space/worker-kcua9zvu",
+      "name": 2,
+      "nthreads": 3,
+      "memory_limit": 4143087616,
+      "last_seen": 1612193701.0518858,
+      "services": {
+        "dashboard": 34369
+      },
+      "metrics": {
+        "cpu": 2.0,
+        "memory": 66785280,
+        "time": 1612193701.0489838,
+        "read_bytes": 6288.745162148804,
+        "write_bytes": 6834.899258639699,
+        "num_fds": 23,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:37765"
+    },
+    "tcp://127.0.0.1:41475": {
+      "type": "Worker",
+      "id": 0,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/Documents/hgdl/paper/nat_geo/dask-worker-space/dask-worker-space/worker-4cretv4x",
+      "name": 0,
+      "nthreads": 3,
+      "memory_limit": 4143087616,
+      "last_seen": 1612193701.039393,
+      "services": {
+        "dashboard": 37015
+      },
+      "metrics": {
+        "cpu": 4.0,
+        "memory": 66949120,
+        "time": 1612193700.5400372,
+        "read_bytes": 6195.716009287814,
+        "write_bytes": 5890.12460070592,
+        "num_fds": 23,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:35505"
+    },
+    "tcp://127.0.0.1:45777": {
+      "type": "Worker",
+      "id": 3,
+      "host": "127.0.0.1",
+      "resources": {},
+      "local_directory": "/home/elliott/Documents/hgdl/paper/nat_geo/dask-worker-space/dask-worker-space/worker-s4u762rq",
+      "name": 3,
+      "nthreads": 3,
+      "memory_limit": 4143087616,
+      "last_seen": 1612193701.0342467,
+      "services": {
+        "dashboard": 40169
+      },
+      "metrics": {
+        "cpu": 2.0,
+        "memory": 66977792,
+        "time": 1612193701.0302763,
+        "read_bytes": 6940.703097478606,
+        "write_bytes": 7487.497993599693,
+        "num_fds": 23,
+        "executing": 0,
+        "in_memory": 0,
+        "ready": 0,
+        "in_flight": 0,
+        "bandwidth": {
+          "total": 100000000,
+          "workers": {},
+          "types": {}
+        }
+      },
+      "nanny": "tcp://127.0.0.1:40461"
+    }
+  }
+}
