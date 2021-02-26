@@ -34,7 +34,6 @@ def DNewton(data):
             print("Newton out of bounds, starting gradient descent...")
             x,f, s = gradient_descent(func,grad,bounds,x_defl,x-gamma,radius,args)
             return x,f,e,np.linalg.eig(hess(x, *args))[0],s
-            #return x0,func(x0, *args),e,np.linalg.eig(hess(x0, *args))[0],False
     data["result"] = (x,func(x, *args),e,np.linalg.eig(hessian)[0], success)
     return x,func(x, *args),e,np.linalg.eig(hessian)[0], success
 

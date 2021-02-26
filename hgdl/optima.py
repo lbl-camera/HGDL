@@ -28,12 +28,15 @@ class optima:
                      "success": False}
     ####################################################
     def fill_in_optima_list(self,x,f,grad_norm,eig, success):
-        #print("before")
-        #print(self.list)
-        #print(x)
-        #print(f)
-        #print(grad_norm)
-        clean_indices = np.where(success == True)
+        clean_indices = np.where(np.asarray(success) == True)[0]
+        if len(clean_indices) == 0:
+            return {"x": self.list["x"], \
+                    "func evals": self.list["func evals"], \
+                    "classifier": self.list["classifier"], \
+                    "eigen values": self.list["eigen values"],\
+                    "gradient norm": self.list["gradient norm"],\
+                    "success": False}
+
         clean_x = x[clean_indices]
         clean_f = f[clean_indices]
         clean_grad_norm = grad_norm[clean_indices]
@@ -52,7 +55,7 @@ class optima:
                         "classifier":   self.list["classifier"] + classifier, \
                         "eigen values": np.vstack([self.list["eigen values"],clean_eig]),\
                         "gradient norm":np.append(self.list["gradient norm"],clean_grad_norm),\
-                        "success": self.list["success"]}
+                        "success": True}
 
         sort_indices = np.argsort(optima_list["func evals"])
         optima_list["x"] = optima_list["x"][sort_indices]
@@ -84,7 +87,6 @@ class optima:
     def get_deflation_points(self,n):
         try:
             index = [i for i, x in enumerate(self.list["classifier"]) if x == "maximum" or x == "minimum" or x == "saddle point"]
-            #index = index[0:n]
             return self.list["x"][index], self.list["func evals"][index]
         except:
             print("no deflation points available in the optima_list")
