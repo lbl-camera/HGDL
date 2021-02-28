@@ -12,19 +12,23 @@ def main():
     GaussianProcessRegressor.fit = fit
     from data_reader import data_reader
     data = data_reader(42)
-    x, y = data.get_training()
+    (x, y), _ = data.get_data(2./3)
 
     print('HGDL -----------------------------------------------------------')
     from sklearn.gaussian_process.kernels import WhiteKernel, Matern
     kernel = 1.**2 * Matern(length_scale=.01*np.ones(x.shape[1]),nu=2.0)\
-            + 1.**2 * WhiteKernel(noise_level=1.)
+            + WhiteKernel(noise_level=1.)
+    from dask.distributed import Client
+    client = Client(processes=False)
+    print(client, client.dashboard_link)
     GPs = GaussianProcessRegressor(kernel=kernel,
                                   alpha=1e-5,
                                   optimizer='hgdl',
                                   random_state=42,
                                   ).fit(
                                           x,y,
-                                  num_individuals=5
+                                  num_individuals=5,
+                                  client=client
                                           )
     for i, gp in enumerate(GPs):
         print('gp - HGDL (',i+1,'): ', gp, '\nkernel:', gp.kernel_)

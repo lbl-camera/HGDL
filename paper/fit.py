@@ -57,15 +57,15 @@ def fit(self, X, y, **kwargs):
         if self.optimizer == 'hgdl':
             from hgdl.hgdl import HGDL
             def obj(x):
-                return -1*self.log_marginal_likelihood(theta=x, clone_kernel=True)
+                return self.log_marginal_likelihood(theta=x, clone_kernel=True)
             def grad(x):
-                return -1*self.log_marginal_likelihood(theta=x, eval_gradient=True, clone_kernel=True)[1]
+                return self.log_marginal_likelihood(theta=x, eval_gradient=True, clone_kernel=True)[1]
             #res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds, x0=np.array([[-11.51292546,4.69457218,-0.45065571]]), **kwargs)
             res = HGDL(func=obj, grad=grad, bounds=self.kernel_.bounds,  **kwargs)
 
             #res = res.get_final()
             res = res.get_final()
-            print('after get latest', res)
+            print('after get final', res)
             GPs = []
             for i in range(len(res['minima_y'])):
                 x, y = res['minima_x'][i], res['minima_y'][i]

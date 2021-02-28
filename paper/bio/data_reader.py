@@ -22,7 +22,7 @@ class data_reader(object):
     def get_data(self, percent):
         self.rng.shuffle(self.data)
         mark = int(len(self.data)*percent)
-        training, test = self.data[:mark], data[mark:]
+        training, test = self.data[:mark], self.data[mark:]
 
         X, y = training[:,:-1], training[:,-1]
         training_mean_x = np.mean(X, 0)
