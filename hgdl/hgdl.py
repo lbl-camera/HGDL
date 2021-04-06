@@ -175,12 +175,15 @@ class HGDL:
             self.break_condition.set(True)
             while self.main_future.status == "pending":
                 time.sleep(0.1)
+            print("no pending tasks")
             self.client.gather(self.main_future)
+            print("all results gathered")
             self.client.cancel(self.main_future)
-            del self.main_future
+            print("future cancelled")
             self.client.shutdown()
             self.client.close()
             print("kill successful")
+            del self.main_future
         except Exception as err:
             print(err)
             print("kill failed")
