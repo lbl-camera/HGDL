@@ -219,8 +219,7 @@ class HGDL:
         client = dask_client
         return client
     def _init_dask_client(self,dask_client,number_of_walkers,number_of_starting_positions):
-        if dask_client is None:
-            raise Exception("dask_client is None, can only be True/False or a distributed.Client(...)")
+        if dask_client is None: dask_client = True
         client = self._prepare_dask_client(dask_client)
         worker_info = list(client.scheduler_info()["workers"].keys())
         self.workers = {"host": worker_info[0],
