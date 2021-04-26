@@ -28,16 +28,16 @@ def run_local_optimizer(d,x0,x_defl = []):
     import hgdl.local_methods.local_optimizer as local
     dim = d.dim
     number_of_walkers = d.number_of_walkers
-    number_of_workers = len(d.workers["walkers"])
+    #number_of_workers = len(d.workers["walkers"])
     local_opt = DNewton
-    if len(x0) < number_of_walkers: 
+    if len(x0) < number_of_walkers:
         x0 = np.row_stack([x0,misc.random_population(d.bounds,number_of_walkers - len(x0))])
 
     client = get_client()
     tasks = []
-    bf = client.scatter(d)
+    bf = client.scatter(d,workers = d.workers["walkers"])
     for i in range(min(len(x0),number_of_walkers)):
-        worker = d.workers["walkers"][(int(i - ((i // number_of_workers)*number_of_workers)))]
+        worker = d.workers["walkers"][(int(i - ((i // number_of_walkers) * number_of_walkers)))]
         data = {"d":bf,"x0":x0[i],"x_defl":x_defl}
         tasks.append(client.submit(local_opt,data,workers = worker))
     results = client.gather(tasks)

@@ -20,13 +20,13 @@ def main():
 
 
     #print(a.optima_list)
-    print("main thread submitted HGDL and will now sleep for 10 seconds")
-    time.sleep(10)
+    print("main thread submitted HGDL and will now sleep for 1 seconds")
+    time.sleep(1)
     print("main thread asks for 10 best solutions:")
     print(a.get_latest(10))
     #a.cancel_tasks()
-    print("main sleeps for another 10 seconds")
-    time.sleep(10)
+    print("main sleeps for another 2 seconds")
+    time.sleep(2)
     print("main thread kills optimization")
     res = a.kill()
     print("hgdl was killed but I am waiting 2s")
