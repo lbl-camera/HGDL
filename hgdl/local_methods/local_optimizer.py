@@ -41,6 +41,7 @@ def run_local_optimizer(d,x0,x_defl = []):
         tasks = []
         bf = client.scatter(d)
         for i in range(min(len(x0),number_of_walkers)):
+            #n = 
             worker = d.workers["walkers"][(int(i - ((i // number_of_workers)*number_of_workers)))]
             data = {"d":bf,"x0":x0[i],"x_defl":x_defl}
             tasks.append(client.submit(local_opt,data,workers = worker))

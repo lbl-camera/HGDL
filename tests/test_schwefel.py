@@ -3,10 +3,14 @@ from hgdl.hgdl import HGDL as hgdl
 from test_functions import *
 import time
 import dask.distributed as distributed
+import tracemalloc
+
+
 
 def main():
     arr  = 5
     brr  = 6
+
     #dask_client = distributed.Client("10.0.0.184:8786")
     a = hgdl(schwefel, schwefel_gradient, schwefel_hessian,[[-500,500],[-500,500]],
             global_optimizer = "genetic",
