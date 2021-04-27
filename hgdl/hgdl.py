@@ -35,9 +35,11 @@ class HGDL:
     L ... Local
 
     """
-    def __init__(self,func,grad,hess,
-            bounds, num_epochs=100000,
+    def __init__(self,func,grad,hess = None,
+            bounds = None, num_epochs=100000,
             global_optimizer = "genetic",
+            local_optimizer = "dNewton",
+            number_of_optima = 100,
             radius = 0.1, global_tol = 1e-4,
             local_max_iter = 20,
             args = ()):
@@ -48,20 +50,22 @@ class HGDL:
         ---------------
             func:  the objective function
             grad:  the objective function gradient
-            hess:  the objective function hessian
-            bounds:the bounds of the optimization
 
         optional parameters:
         ---------------
+            hess:  the objective function hessian, default = None
+            bounds:the bounds of the optimization, default = None
+
             num_epochs = 100000
             global_optimizer = "genetic"   "genetic"/"gauss"/user defined function,
-                                           use partial to communicate args to the function
-            radius = 20
+                                           use partial() to communicate args to the function
+            local_optimizer = "dNewton"    use dNewton, any scipy local optimizer, or your own callable
+            number_of_optima               how many optima will be recorded and deflated
+            radius = 0.1
             global_tol = 1e-4
             local_max_iter = 20
-            args = (), a n-tuple of parameters, will be communicated to func, grad, hess
+            args = (), an n-tuple of parameters, will be communicated to func, grad, hess
         """
-
         self.func = func
         self.grad= grad
         self.hess= hess
@@ -72,9 +76,9 @@ class HGDL:
         self.local_max_iter = local_max_iter
         self.num_epochs = num_epochs
         self.global_optimizer = global_optimizer
-        self.local_optimizer = True #local_optimizer
+        self.local_optimizer = local_optimizer
         self.args = args
-        self.optima = optima(self.dim)
+        self.optima = optima(self.dim, number_of_optima)
     ###########################################################################
     ###########################################################################
     ############USER FUNCTIONS#################################################
@@ -224,6 +228,7 @@ class HGDL:
                 "optima":self.optima, "d":self.meta_data}
         bf = client.scatter(data, workers = self.workers["host"])
         self.main_future = client.submit(hgdl, bf, workers = self.workers["host"])
+        #hgdl(data)
         self.client = client
 ###########################################################################
 ###########################################################################
@@ -253,5 +258,4 @@ def run_hgdl_epoch(d,optima):
             d.bounds, d.global_optimizer,d.number_of_walkers)
     x0 = np.array(x0)
     optima = run_local(d,optima,x0)
-    optima.list["success"] = True
     return optima

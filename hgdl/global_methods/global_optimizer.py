@@ -6,7 +6,9 @@ import hgdl.misc as misc
 def run_global(x,y,bounds,method,number_of_offspring):
     if method == "genetic": return genetic_step(x,y,bounds,number_of_offspring)
     elif method == "gauss": return gauss_step(x,y,bounds,number_of_offspring)
-    else: return method(x,y,bounds,number_of_offspring)
+    elif method == "bayes": return bayes_step(x,y,bounds,number_of_offspring)
+    elif method is callable: return method(x,y,bounds,number_of_offspring)
+    else: raise Exception("no global method specified")
 
 def gauss_step(x, y, bounds,n):
     ####x is x where in bounds
@@ -80,3 +82,6 @@ def genetic_step(X, y, bounds, numChoose):
     children[oob] = misc.random_sample(np.sum(oob), k, bounds)
     return children
 
+
+def bayes_step(x,y,bounds, number_of_offspring):
+    raise Exception("bayesian global step no yet implemented")

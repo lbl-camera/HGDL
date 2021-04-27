@@ -14,13 +14,14 @@ class optima:
     """
     stores all results and adaptations of it
     """
-    def __init__(self,dim):
+    def __init__(self,dim, max_optima):
         """
         input:
         -----
             dim  the dimensionality of the space
         """
         self.dim = dim
+        self.max_optima = max_optima
         self.list = {"x": np.empty((0,self.dim)), 
                      "func evals": np.empty((0)), 
                      "classifier": [], "eigen values": np.empty((0,self.dim)), 
@@ -58,11 +59,11 @@ class optima:
                         "success": True}
 
         sort_indices = np.argsort(optima_list["func evals"])
-        optima_list["x"] = optima_list["x"][sort_indices]
-        optima_list["func evals"] = optima_list["func evals"][sort_indices]
-        optima_list["classifier"] = [optima_list["classifier"][i] for i in sort_indices]
-        optima_list["eigen values"] = optima_list["eigen values"][sort_indices]
-        optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices]
+        optima_list["x"] = optima_list["x"][sort_indices][0:self.max_optima]
+        optima_list["func evals"] = optima_list["func evals"][sort_indices][0:self.max_optima]
+        optima_list["classifier"] = [optima_list["classifier"][i] for i in sort_indices][0:self.max_optima]
+        optima_list["eigen values"] = optima_list["eigen values"][sort_indices][0:self.max_optima]
+        optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices][0:self.max_optima]
         self.list = dict(optima_list)
         return optima_list
     ####################################################
