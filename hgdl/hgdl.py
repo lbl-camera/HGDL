@@ -107,7 +107,7 @@ class HGDL:
     def get_client_info(self):
         return self.workers
     ###########################################################################
-    def get_latest(self, n):
+    def get_latest(self, n = -1):
         """
         get n best results
 
@@ -129,7 +129,7 @@ class HGDL:
                 "gradient norm":optima_list["gradient norm"][0:n],
                 "success":optima_list["success"]}
     ###########################################################################
-    def get_final(self,n):
+    def get_final(self,n = -1):
         """
         get n final results
 
@@ -247,7 +247,7 @@ def hgdl(data):
         optima = run_hgdl_epoch(d,optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
-    return optima
+    #return optima
 ###########################################################################
 def run_hgdl_epoch(d,optima):
     optima_list = optima.list

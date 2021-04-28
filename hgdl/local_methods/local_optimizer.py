@@ -59,7 +59,7 @@ def run_local_optimizer(d,x0,x_defl = []):
                 success[j] = False; break
         for j in range(len(x_defl)):
             if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * d.radius\
-            and grad_norm[i] < 1e-6:
+            and grad_norm[i] < 1e-5:
                 print("CAUTION: local method converged to deflated position")
                 success[i] = False
                 print(x[i],x_defl[j])
@@ -95,14 +95,14 @@ def local_method(data, method = "dNewton"):
         f = res["fun"]
         g = np.linalg.norm(res["jac"])
         success = res["success"]
-        eig = np.ones(x.shape)
+        eig = np.ones(x.shape) * np.nan
     elif method is callable:
         res = method(d.func,grad,hess,bounds,x0,*args)
         x = res["x"]
         f = res["fun"]
         g = np.linalg.norm(res["jac"])
         success = res["success"]
-        eig = np.ones(x.shape)
+        eig = np.ones(x.shape) * np.nan
     else: raise Exception("no local method specified")
     #return
     return x,f,g,eig,success

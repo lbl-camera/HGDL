@@ -44,9 +44,10 @@ class optima:
         clean_eig = eig[clean_indices]
         classifier = []
         for i in range(len(clean_x)):
-            if clean_grad_norm[i] > 1e-6: classifier.append("degenerate")
+            if clean_grad_norm[i] > 1e-4: classifier.append("degenerate")
             elif len(np.where(clean_eig[i] > 0.0)[0]) == len(clean_eig[i]): classifier.append("minimum")
             elif len(np.where(clean_eig[i] < 0.0)[0]) == len(clean_eig[i]): classifier.append("maximum")
+            elif len(np.where(clean_eig[i] != clean_eig[i])[0]) == len(clean_eig[i]): classifier.append("optimum")
             elif len(np.where(clean_eig[i] == 0.0)[0])  > 0: classifier.append("zero curvature")
             elif len(np.where(clean_eig[i] < 0.0)[0])  < len(clean_eig[i]): classifier.append("saddle point")
             else: classifier.append("ERROR")
@@ -87,7 +88,7 @@ class optima:
     ####################################################
     def get_deflation_points(self,n):
         try:
-            index = [i for i, x in enumerate(self.list["classifier"]) if x == "maximum" or x == "minimum" or x == "saddle point"]
+            index = [i for i, x in enumerate(self.list["classifier"]) if x == "maximum" or x == "minimum" or x == "saddle point" or x == "optimum"]
             return self.list["x"][index], self.list["func evals"][index]
         except:
             print("no deflation points available in the optima_list")
