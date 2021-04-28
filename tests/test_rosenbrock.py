@@ -9,16 +9,10 @@ def main():
             'then get the final result.\n'
             'working on the epochs should happend even during sleeping\n'
             )
-    #hgdl = HGDL(rosen, rosen_der, b, verbose=True)
-    a = HGDL(rosen, rosen_der, rosen_hess,[[-2,2],[-2,2]], radius = 0.1, num_epochs = 10, verbose = False)
-    #a.optimize(dask_client = distributed.Client())
-    a.optimize(dask_client = True)
-    #a.optimize(dask_client = False)
-    #res = a.optima_list
-    #print(res)
+    a = HGDL(rosen, rosen_der, rosen_hess,[[-2,2],[-2,2]], radius = 0.1, num_epochs = 10000)
+    a.optimize()
 
 
-    #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")
     sleep(10)
     print("main thread asks for 10 best solutions:")

@@ -4,15 +4,18 @@ import hgdl.local_methods.bump_function as defl
 import dask.distributed as distributed
 
 
+<<<<<<< HEAD
 #import tracemalloc
 
 def DNewton(data):
     d = data["d"]
     x = np.array(data["x0"])
+=======
+def DNewton(func,grad,hess,bounds,x0,max_iter,*args):
+>>>>>>> marcus_restructure
     e = np.inf
-    success = True
-    counter = 0
     tol = 1e-6
+<<<<<<< HEAD
     func = d.func
     grad = d.grad
     hess = d.hess
@@ -52,10 +55,29 @@ def DNewton(data):
 
     #data["result"] = (x,func(x, *args),e,np.linalg.eig(hessian)[0], success)
     return x,func(x, *args),e,np.linalg.eig(hessian)[0], success
+=======
+    counter = 0
+    x = np.array(x0)
+    success = True
+    while e > tol:
+        counter += 1
+        gradient = grad(x,*args)
+        hessian  = hess(x,*args)
+        e = np.linalg.norm(gradient)
+        try:
+            gamma = np.linalg.solve(hessian,-gradient)
+        except Exception as error: 
+            gamma,a,b,c = np.linalg.lstsq(hessian,-gradient)
+        x += gamma
+        if misc.out_of_bounds(x,bounds):
+            x = np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = len(bounds))
+        if counter > max_iter: return x,func(x, *args),e,np.linalg.eig(hess(x, *args))[0], False
+    return x,func(x, *args),e,np.linalg.eig(hess(x, *args))[0], success
+>>>>>>> marcus_restructure
 
 
 
-def gradient_descent(ObjectiveFunction, GradientFunction,bounds,x_defl,x0, radius, args):
+def gradient_descent(ObjectiveFunction, GradientFunction,bounds,x0, radius, args):
     dim = len(bounds)
     bounds = np.array(bounds)
     epsilon = np.inf
@@ -65,19 +87,18 @@ def gradient_descent(ObjectiveFunction, GradientFunction,bounds,x_defl,x0, radiu
     success = True
     while epsilon > 1e-6:
         step_counter += 1
-        d = defl.deflation_function(x,x_defl,radius)
-        gradient = GradientFunction(x, *args) * d
+        aug_gradient = defl.deflated_grad(GradientFunction,x,x_defl,radius, *args)
         counter = 0
         step = 1.0
-        while misc.out_of_bounds(x - (step * gradient), bounds) or \
-              ObjectiveFunction(x - (step * gradient), *args) > \
-              ObjectiveFunction(x, *args) - ((step / 2.0) * np.linalg.norm(gradient) ** 2):
+        while misc.out_of_bounds(x - (step * aug_gradient), bounds) or \
+              ObjectiveFunction(x - (step * aug_gradient), *args) > \
+              ObjectiveFunction(x, *args) - ((step / 2.0) * np.linalg.norm(aug_gradient) ** 2):
             step = step * beta
             counter += 1
             if counter > 10:
                 return x, ObjectiveFunction(x, *args), False
-        x = x - (step * gradient)
-        epsilon = np.linalg.norm(gradient)
+        x = x - (step * aug_gradient)
+        epsilon = np.linalg.norm(aug_gradient)
         if step_counter > 20:
             success = False
             break

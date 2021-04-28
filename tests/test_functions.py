@@ -9,7 +9,6 @@ import scipy
 
 def schwefel(x,arr,brr):
     x = x.astype(float)
-    #print(arr,brr)
     return 418.9829*len(x) - np.sum(x*np.sin(np.sqrt(np.abs(x))))
 ###########################################################################
 def schwefel_gradient(x,*args):

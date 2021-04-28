@@ -18,6 +18,5 @@ class meta_data:
         self.number_of_walkers = obj.number_of_walkers
         self.num_epochs = obj.num_epochs
         self.global_optimizer = obj.global_optimizer
+        self.local_optimizer = obj.local_optimizer
         self.args = obj.args
-        self.verbose = obj.verbose
-        self.number_of_starting_positions = obj.number_of_starting_positions

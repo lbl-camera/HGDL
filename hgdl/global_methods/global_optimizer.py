@@ -3,12 +3,14 @@ import numpy as np
 import hgdl.misc as misc
 
 
-def run_global(x,y,bounds,method,number_of_offspring,verbose):
-    if method == "genetic": return genetic_step(x,y,bounds,number_of_offspring,verbose)
-    elif method == "gauss": return global_step(x,y,bounds,number_of_offspring,verbose)
-    else: return method(x,y,bounds,n)
+def run_global(x,y,bounds,method,number_of_offspring):
+    if method == "genetic": return genetic_step(x,y,bounds,number_of_offspring)
+    elif method == "gauss": return gauss_step(x,y,bounds,number_of_offspring)
+    elif method == "bayes": return bayes_step(x,y,bounds,number_of_offspring)
+    elif method is callable: return method(x,y,bounds,number_of_offspring)
+    else: raise Exception("no global method specified")
 
-def global_step(x, y, bounds,n,verbose):
+def gauss_step(x, y, bounds,n):
     ####x is x where in bounds
     x_new = []
     y_new = []
@@ -32,7 +34,7 @@ def global_step(x, y, bounds,n,verbose):
             offspring[i] = np.random.uniform(low = bounds[:,0],high = bounds[:,1], size = len(offspring[0]))
     return offspring
 ###########################################################################
-def genetic_step(X, y, bounds, numChoose, verbose):
+def genetic_step(X, y, bounds, numChoose):
     """
     Input:
     X is the individuals - points on a surface
@@ -48,7 +50,6 @@ def genetic_step(X, y, bounds, numChoose, verbose):
     amax = np.amax(y)
     # if the distribution of performance has no width,
     #   give everyone an equal shot
-    if verbose is True: print("        genetic step started")
     if np.isclose(amax,0.):
         p = np.ones(N)*1./N
     else:
@@ -64,10 +65,8 @@ def genetic_step(X, y, bounds, numChoose, verbose):
     p /= np.sum(p)
     if np.isnan(p).any():
         raise Exception("got isnans in GeneticStep")
-    if verbose is True: print("        genetic step initialized")
     moms = np.random.choice(N, size=numChoose, replace=True, p=p)
     dads = np.random.choice(N, size=numChoose, replace=True, p=p)
-    if verbose is True: print("        moms and dads chosen")
     # calculate a perturbation to the median
     #   of each individual's parents
     perturbation = np.random.normal(
@@ -81,6 +80,8 @@ def genetic_step(X, y, bounds, numChoose, verbose):
     children = weighted_linear_sum + perturbation
     oob = np.logical_not([misc.in_bounds(x,bounds) for x in children])
     children[oob] = misc.random_sample(np.sum(oob), k, bounds)
-    if verbose is True: print("        genetic step done")
     return children
 
+
+def bayes_step(x,y,bounds, number_of_offspring):
+    raise Exception("bayesian global step no yet implemented")
