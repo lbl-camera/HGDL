@@ -10,11 +10,7 @@ import tracemalloc
 def main():
     arr  = 5
     brr  = 6
-<<<<<<< HEAD
-
-=======
     bounds = np.array([[-500,500],[-500,500]])
->>>>>>> marcus_restructure
     #dask_client = distributed.Client("10.0.0.184:8786")
     a = hgdl(schwefel, schwefel_gradient, hess = schwefel_hessian,bounds = bounds,
             global_optimizer = "genetic",

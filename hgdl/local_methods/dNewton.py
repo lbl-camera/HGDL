@@ -4,58 +4,9 @@ import hgdl.local_methods.bump_function as defl
 import dask.distributed as distributed
 
 
-<<<<<<< HEAD
-#import tracemalloc
-
-def DNewton(data):
-    d = data["d"]
-    x = np.array(data["x0"])
-=======
 def DNewton(func,grad,hess,bounds,x0,max_iter,*args):
->>>>>>> marcus_restructure
     e = np.inf
     tol = 1e-6
-<<<<<<< HEAD
-    func = d.func
-    grad = d.grad
-    hess = d.hess
-    x_defl = data["x_defl"]
-    bounds = d.bounds
-    radius = d.radius
-    max_iter = d.local_max_iter
-    args = d.args
-    #tracemalloc.start()
-    while e > tol:
-        counter += 1
-        #snapshot1 = tracemalloc.take_snapshot()
-        d = defl.deflation_function(x,x_defl,radius)
-        dg = defl.deflation_function_gradient(x,x_defl,radius)
-        gradient = grad(x, *args)
-        hessian = hess(x, *args)
-        e = np.linalg.norm(d*gradient)
-        try:
-            gamma = np.linalg.solve(hessian + (np.outer(gradient,dg)/d),-gradient)
-        except Exception as error:
-            gamma,a,b,c = np.linalg.lstsq(hessian + (np.outer(gradient,dg)/d),-gradient)
-        x += gamma
-        #snapshot2 = tracemalloc.take_snapshot()
-        #top_stats = snapshot2.compare_to(snapshot1, 'lineno')
-
-
-        #print("[ Top 10 differences ]")
-        #for stat in top_stats[:10]:
-        #    print(stat)
-        #input()
-
-        if counter >= max_iter or misc.out_of_bounds(x,bounds):
-            print("Newton out of bounds, starting gradient descent...")
-            x,f, s = gradient_descent(func,grad,bounds,x_defl,x-gamma,radius,args)
-            #return x,f,e,np.linalg.eig(hess(x, *args))[0],s
-            return x,func(x, *args),e,np.linalg.eig(hessian)[0], False
-
-    #data["result"] = (x,func(x, *args),e,np.linalg.eig(hessian)[0], success)
-    return x,func(x, *args),e,np.linalg.eig(hessian)[0], success
-=======
     counter = 0
     x = np.array(x0)
     success = True
@@ -73,7 +24,6 @@ def DNewton(func,grad,hess,bounds,x0,max_iter,*args):
             x = np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = len(bounds))
         if counter > max_iter: return x,func(x, *args),e,np.linalg.eig(hess(x, *args))[0], False
     return x,func(x, *args),e,np.linalg.eig(hess(x, *args))[0], success
->>>>>>> marcus_restructure
 
 
 
