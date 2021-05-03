@@ -241,7 +241,7 @@ def hgdl(data):
         optima = run_hgdl_epoch(d,optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
-    #return optima
+    return optima
 ###########################################################################
 def run_hgdl_epoch(d,optima):
     optima_list = optima.list
