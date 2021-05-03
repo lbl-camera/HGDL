@@ -15,12 +15,6 @@ import pickle
 ###institution: CAMERA @ Lawrence Berkeley National Laboratory
 
 
-"""
-TODO:
-*the radius is still ad hoc, should be related to curvature and unique to a deflation point
-* finish implementation of user-defined local methods and test,test,test
-* dNewton has to be better, should not jump out so often
-"""
 
 class HGDL:
     """
@@ -57,7 +51,7 @@ class HGDL:
             bounds:the bounds of the optimization, default = None
 
             num_epochs = 100000
-            global_optimizer = "genetic"   "genetic"/"gauss"/user defined function,
+            global_optimizer = "genetic"   "genetic"/"gauss"/user defined function (soon Bayes),
                                            use partial() to communicate args to the function
             local_optimizer = "dNewton"    use dNewton, any scipy local optimizer, or your own callable
             number_of_optima               how many optima will be recorded and deflated

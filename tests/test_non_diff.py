@@ -7,15 +7,10 @@ import dask.distributed as distributed
 def main():
     #dask_client = distributed.Client("10.0.0.184:8786")
     a = HGDL(non_diff, non_diff_grad, 
-             non_diff_hess,[[-5,5],[-5,5]],
-            radius = 0.1, num_epochs = 5, verbose = False)
-    #a.optimize(dask_client = distributed.Client())
-    #a.optimize(dask_client = True)
-    a.optimize(dask_client = False)
+             hess = non_diff_hess,bounds = [[-5,5],[-5,5]],
+            radius = 0.1, num_epochs = 5)
+    a.optimize(dask_client = None)
     res = a.optima.list
-    print(res)
-    exit()
-
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 10 seconds")
