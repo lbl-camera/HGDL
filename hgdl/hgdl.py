@@ -53,7 +53,7 @@ class HGDL:
             num_epochs = 100000
             global_optimizer = "genetic"   "genetic"/"gauss"/user defined function (soon Bayes),
                                            use partial() to communicate args to the function
-            local_optimizer = "dNewton"    use dNewton, any scipy local optimizer, or your own callable
+            local_optimizer = "dNewton"    use dNewton, any scipy local optimizer (recommended: L-BFGS-B), or your own callable
             number_of_optima               how many optima will be recorded and deflated
             radius = 0.1
             global_tol = 1e-4

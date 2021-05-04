@@ -42,6 +42,7 @@ def run_local_optimizer(d,x0,x_defl = []):
         worker = d.workers["walkers"][(int(i - ((i // number_of_walkers) * number_of_walkers)))]
         data = {"d":bf,"x0":x0[i],"x_defl":x_defl}
         tasks.append(client.submit(local_method,data,workers = worker))
+        print("local optimizer submitted to worker ", worker," ; method: ", d.local_optimizer)
     results = client.gather(tasks)
     number_of_walkers = len(tasks)
     x = np.empty((number_of_walkers, dim))
