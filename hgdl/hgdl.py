@@ -34,7 +34,7 @@ class HGDL:
             global_optimizer = "genetic",
             local_optimizer = "dNewton",
             number_of_optima = 100,
-            radius = 0.1, global_tol = 1e-4,
+            radius = 1.0, global_tol = 1e-4,
             local_max_iter = 20,
             args = ()):
         """
