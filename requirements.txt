@@ -5,6 +5,6 @@ scipy
 matplotlib
 dask
 torch
-distributed
+distributed >= 2021.4.1
 bokeh
 paramiko

@@ -152,10 +152,9 @@ class HGDL:
         -------
             latest results
         """
+        print("HGDL is cancelling all tasks...")
         res = self.get_latest(-1)
         self.break_condition.set(True)
-        while self.main_future.status != "finished":
-            time.sleep(0.1)
         self.client.cancel(self.main_future)
         print("Status of HGDL task: ", self.main_future.status)
         print("This leaves the client alive.")
@@ -172,8 +171,6 @@ class HGDL:
         res = self.get_latest(n)
         try:
             self.break_condition.set(True)
-            while self.main_future.status == "pending":
-                time.sleep(0.1)
             print("no pending tasks")
             self.client.gather(self.main_future)
             print("all results gathered")
