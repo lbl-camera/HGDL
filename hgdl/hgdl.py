@@ -167,22 +167,19 @@ class HGDL:
         -------
             latest results
         """
-        print("Kill initialized ...")
+        print("HGDL kill initialized ...")
         res = self.get_latest(n)
         try:
             self.break_condition.set(True)
-            print("no pending tasks")
             self.client.gather(self.main_future)
-            print("all results gathered")
             self.client.cancel(self.main_future)
             del self.main_future
-            print("future cancelled")
             self.client.shutdown()
             self.client.close()
-            print("kill successful")
+            print("HGDL kill successful")
         except Exception as err:
             print(err)
-            print("kill failed")
+            print("HGDL kill failed")
         time.sleep(0.1)
         return res
     ###########################################################################
@@ -234,8 +231,8 @@ def hgdl(data):
     optima = data["optima"]
     for i in range(d.num_epochs):
         bc = break_condition.get()
-        if bc is True: print("Epoch ",i," was cancelled");break
-        print("Computing epoch ",i," of ",d.num_epochs)
+        if bc is True: print("HGDL Epoch ",i," was cancelled");break
+        print("HGDL computing epoch ",i," of ",d.num_epochs)
         optima = run_hgdl_epoch(d,optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
