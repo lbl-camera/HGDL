@@ -95,7 +95,8 @@ class HGDL:
         client = self._init_dask_client(dask_client,number_of_walkers)
         x0 = self._prepare_starting_positions(x0)
         #f = np.asarray([self.func(x0[i], *self.args) for i in range(len(x0))])
-        self.optima.fill_in_optima_list(x0,np.ones((len(x0))) * 1e6,np.ones((len(x0))) * 1e6,np.ones((len(x0),self.dim)),[True]*len(x0))
+        print("HGDL starts with: ", x0)
+        self.optima.fill_in_optima_list(x0,np.ones((len(x0))) * 1e6, np.ones((len(x0))) * 1e6,np.ones((len(x0),self.dim)),[True]*len(x0))
         self.meta_data = meta_data(self)
         self._run_epochs(client)
     ###########################################################################
@@ -189,9 +190,10 @@ class HGDL:
         if x0.ndim == 1: x0 = np.array([x0])
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         elif len(x0) < self.number_of_walkers:
-            x0 = np.empty((self.number_of_walkers,len(x0[0])))
-            x0[0:len(x0)] = x0
-            x0[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0))
+            x0_aux = np.zeros((self.number_of_walkers,len(x0[0])))
+            x0_aux[0:len(x0)] = x0
+            x0_aux[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0))
+            x0 = x0_aux
         elif len(x0) > self.number_of_walkers:
             x0 = x0[0:self.number_of_walkers]
         else: x0 = x0
