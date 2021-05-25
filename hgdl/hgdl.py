@@ -186,8 +186,9 @@ class HGDL:
     ############USER FUNCTIONS END#############################################
     ###########################################################################
     def _prepare_starting_positions(self,x0):
+        if x0.ndim == 1: x0 = np.array([x0])
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
-        elif len(x0) < self.number_of_walkers: 
+        elif len(x0) < self.number_of_walkers:
             x0 = np.empty((self.number_of_walkers,len(x0[0])))
             x0[0:len(x0)] = x0
             x0[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0))
