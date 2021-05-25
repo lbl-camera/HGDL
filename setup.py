@@ -33,7 +33,7 @@ with open(path.join(here, 'requirements.txt')) as requirements_file:
 
 setup(
     name='hgdl',
-    version="1.0.9",
+    version="1.0.10",
     #cmdclass=versioneer.get_cmdclass(),
     description="HGDL Optimization",
     long_description=readme,

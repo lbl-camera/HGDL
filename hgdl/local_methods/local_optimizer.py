@@ -61,7 +61,7 @@ def run_local_optimizer(d,x0,x_defl = []):
         for j in range(len(x_defl)):
             if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * d.radius\
             and grad_norm[i] < 1e-5:
-                print("CAUTION: local method converged to deflated position in HGDL")
+                print("CAUTION: local method converged within 2 x radius of a deflated position in HGDL")
                 success[i] = False
                 print(x[i],x_defl[j])
                 print(grad_norm[i])
