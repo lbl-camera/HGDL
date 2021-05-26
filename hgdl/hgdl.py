@@ -235,7 +235,7 @@ def hgdl(data):
     for i in range(d.num_epochs):
         bc = break_condition.get()
         if bc is True: print("HGDL Epoch ",i," was cancelled");break
-        print("HGDL computing epoch ",i," of ",d.num_epochs)
+        print("HGDL computing epoch ",i+1," of ",d.num_epochs)
         optima = run_hgdl_epoch(d,optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
