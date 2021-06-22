@@ -36,7 +36,7 @@ class HGDL:
             number_of_optima = 100,
             radius = 1.0, global_tol = 1e-4,
             local_max_iter = 20,
-            args = ()):
+            args = (), constr = ()):
         """
         intialization for the HGDL class
 
@@ -73,6 +73,7 @@ class HGDL:
         self.global_optimizer = global_optimizer
         self.local_optimizer = local_optimizer
         self.args = args
+        self.constr = constr
         self.optima = optima(self.dim, number_of_optima)
     ###########################################################################
     ###########################################################################
@@ -187,8 +188,8 @@ class HGDL:
     ############USER FUNCTIONS END#############################################
     ###########################################################################
     def _prepare_starting_positions(self,x0):
-        if x0.ndim == 1: x0 = np.array([x0])
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
+        if x0.ndim == 1: x0 = np.array([x0])
         elif len(x0) < self.number_of_walkers:
             x0_aux = np.zeros((self.number_of_walkers,len(x0[0])))
             x0_aux[0:len(x0)] = x0

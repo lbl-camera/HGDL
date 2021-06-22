@@ -20,3 +20,4 @@ class meta_data:
         self.global_optimizer = obj.global_optimizer
         self.local_optimizer = obj.local_optimizer
         self.args = obj.args
+        self.constr = obj.constr
