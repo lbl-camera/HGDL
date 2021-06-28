@@ -75,6 +75,7 @@ class HGDL:
         self.args = args
         self.constr = constr
         self.optima = optima(self.dim, number_of_optima)
+        print("HGDL successfully initiated")
     ###########################################################################
     ###########################################################################
     ############USER FUNCTIONS#################################################
@@ -206,6 +207,7 @@ class HGDL:
         worker_info = list(client.scheduler_info()["workers"].keys())
         self.workers = {"host": worker_info[0],
                 "walkers": worker_info[1:]}
+        print("Host ",self.workers["host"]," has ", len(self.workers["walkers"])," workers.")
         if number_of_walkers is None: number_of_walkers = len(self.workers["walkers"])
         self.number_of_walkers = number_of_walkers
         return client
