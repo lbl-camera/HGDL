@@ -3,8 +3,8 @@ versioneer
 numpy
 scipy
 matplotlib
-dask
-torch
+torch >= 1.9.0
+dask >= 2021.06.2
 distributed >= 2021.4.1
 bokeh
 paramiko
