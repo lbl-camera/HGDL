@@ -9,7 +9,6 @@ def b(x,x0,r):
     evaluates the bump function
     x ... a point (1d numpy array)
     x0 ... 1d numpy array of location of bump function
-    
     returns the bump function b(x,x0) with radius r
     """
     d = np.sqrt((x - x0).T @ (x - x0))

@@ -33,9 +33,9 @@ class HGDL:
             bounds = None, num_epochs=100000,
             global_optimizer = "genetic",
             local_optimizer = "dNewton",
-            number_of_optima = 100,
-            radius = 1.0, global_tol = 1e-4,
-            local_max_iter = 20,
+            number_of_optima = 1000000,
+            radius = None, global_tol = 1e-4,
+            local_max_iter = 100,
             args = (), constr = ()):
         """
         intialization for the HGDL class
@@ -65,7 +65,8 @@ class HGDL:
         self.grad= grad
         self.hess= hess
         self.bounds = np.asarray(bounds)
-        self.radius = radius
+        if radius == None: self.radius = np.min(bounds[:,1]-bounds[:,0])/1000.0
+        else: self.radius = radius
         self.dim = len(self.bounds)
         self.global_tol = global_tol
         self.local_max_iter = local_max_iter
@@ -76,6 +77,8 @@ class HGDL:
         self.constr = constr
         self.optima = optima(self.dim, number_of_optima)
         print("HGDL successfully initiated")
+        print("deflation radius set to ",self.radius)
+        print("========================")
     ###########################################################################
     ###########################################################################
     ############USER FUNCTIONS#################################################
