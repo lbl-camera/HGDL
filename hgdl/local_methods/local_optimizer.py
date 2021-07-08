@@ -92,7 +92,7 @@ def local_method(data, method = "dNewton"):
     if method == "dNewton":
         x,f,g,eig,success = DNewton(d.func,grad,hess,bounds,x0,max_iter,*args)
     elif type(method) == str:
-        res = minimize(d.func,x0,args = args,method = method,jac = grad,bounds = bounds, constraints = d.constr)
+        res = minimize(d.func,x0,args = args,method = method,jac = grad,bounds = bounds, constraints = d.constr, options = {"disp":True})
         x = res["x"]
         f = res["fun"]
         g = np.linalg.norm(res["jac"])
