@@ -208,6 +208,7 @@ class HGDL:
         if dask_client is None: dask_client = dask.distributed.Client()
         client = dask_client
         worker_info = list(client.scheduler_info()["workers"].keys())
+        if not worker_info: raise Exception("No workers available")
         self.workers = {"host": worker_info[0],
                 "walkers": worker_info[1:]}
         print("Host ",self.workers["host"]," has ", len(self.workers["walkers"])," workers.")
