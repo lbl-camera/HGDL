@@ -85,19 +85,16 @@ class HGDL:
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    def optimize(self, dask_client = None,
-            x0 = None, number_of_walkers = None):
+    def optimize(self, dask_client = None, x0 = None):
         """
         optional input:
         -----
             dask_client = None = dask.distributed.Client()
             x0 = None = random.rand()   starting positions
-            number_of_walkers = None, make sure you have enough workers for
-                               your walkers ( walkers + 1 <= workers)
-                               otherwise ignore for the assignment
         """
 
-        client = self._init_dask_client(dask_client,number_of_walkers)
+        client = self._init_dask_client(dask_client)
+        print(client)
         x0 = self._prepare_starting_positions(x0)
         #f = np.asarray([self.func(x0[i], *self.args) for i in range(len(x0))])
         print("HGDL starts with: ", x0)
@@ -173,7 +170,7 @@ class HGDL:
         -------
             latest results
         """
-        print("HGDL kill initialized ...")
+        print("HGDL kill client initialized ...")
         res = self.get_latest(n)
         try:
             self.break_condition.set(True)
@@ -182,10 +179,10 @@ class HGDL:
             del self.main_future
             self.client.shutdown()
             self.client.close()
-            print("HGDL kill successful")
+            print("HGDL kill client successful")
         except Exception as err:
-            print(err)
             print("HGDL kill failed")
+            print(str(err))
         time.sleep(0.1)
         return res
     ###########################################################################
@@ -193,8 +190,8 @@ class HGDL:
     ###########################################################################
     def _prepare_starting_positions(self,x0):
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
-        if x0.ndim == 1: x0 = np.array([x0])
-        elif len(x0) < self.number_of_walkers:
+        elif x0.ndim == 1: x0 = np.array([x0])
+        if len(x0) < self.number_of_walkers:
             x0_aux = np.zeros((self.number_of_walkers,len(x0[0])))
             x0_aux[0:len(x0)] = x0
             x0_aux[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0))
@@ -204,7 +201,7 @@ class HGDL:
         else: x0 = x0
         return x0
     ###########################################################################
-    def _init_dask_client(self,dask_client,number_of_walkers):
+    def _init_dask_client(self,dask_client):
         if dask_client is None: dask_client = dask.distributed.Client()
         client = dask_client
         worker_info = list(client.scheduler_info()["workers"].keys())
@@ -212,8 +209,7 @@ class HGDL:
         self.workers = {"host": worker_info[0],
                 "walkers": worker_info[1:]}
         print("Host ",self.workers["host"]," has ", len(self.workers["walkers"])," workers.")
-        if number_of_walkers is None: number_of_walkers = len(self.workers["walkers"])
-        self.number_of_walkers = number_of_walkers
+        self.number_of_walkers = len(self.workers["walkers"])
         return client
     ###########################################################################
     def _run_epochs(self,client):
@@ -227,7 +223,6 @@ class HGDL:
                 "optima":self.optima, "d":self.meta_data}
         bf = client.scatter(data, workers = self.workers["host"])
         self.main_future = client.submit(hgdl, bf, workers = self.workers["host"])
-        #hgdl(data)
         self.client = client
 ###########################################################################
 ###########################################################################
