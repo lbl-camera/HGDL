@@ -11,7 +11,7 @@ from dask.distributed import as_completed
 from hgdl.optima  import optima
 from hgdl.meta_data  import meta_data
 import pickle
-###authors: David Perryman, Marcus Noack
+###authors: Marcus Noack,David Perryman
 ###institution: CAMERA @ Lawrence Berkeley National Laboratory
 
 
@@ -95,10 +95,10 @@ class HGDL:
 
         client = self._init_dask_client(dask_client)
         print(client)
-        x0 = self._prepare_starting_positions(x0)
+        self.x0 = self._prepare_starting_positions(x0)
         #f = np.asarray([self.func(x0[i], *self.args) for i in range(len(x0))])
-        print("HGDL starts with: ", x0)
-        self.optima.fill_in_optima_list(x0,np.ones((len(x0))) * 1e6, np.ones((len(x0))) * 1e6,np.ones((len(x0),self.dim)),[True]*len(x0))
+        print("HGDL starts with: ", self.x0)
+        #self.optima.fill_in_optima_list(x0,np.ones((len(x0))) * 1e6, np.ones((len(x0))) * 1e6,np.ones((len(x0),self.dim)),[True]*len(x0))
         self.meta_data = meta_data(self)
         self._run_epochs(client)
     ###########################################################################
@@ -220,7 +220,7 @@ class HGDL:
         self.break_condition.set(False)
         data = {"transfer data":self.transfer_data,
                 "break condition":self.break_condition,
-                "optima":self.optima, "d":self.meta_data}
+                "optima":self.optima, "metadata":self.meta_data}
         bf = client.scatter(data, workers = self.workers["host"])
         self.main_future = client.submit(hgdl, bf, workers = self.workers["host"])
         self.client = client
@@ -230,26 +230,27 @@ class HGDL:
 ###########################################################################
 ###########################################################################
 def hgdl(data):
-    d = data["d"]
+    metadata = data["metadata"]
     transfer_data = data["transfer data"]
     break_condition = data["break condition"]
     optima = data["optima"]
-    for i in range(d.num_epochs):
+    data["optima"].fill_in_optima_list(metadata.x0,np.ones((len(metadata.x0))) * 1e6, np.ones((len(metadata.x0))) * 1e6,np.ones((len(metadata.x0),metadata.dim)),[True]*len(metadata.x0))
+    for i in range(metadata.num_epochs):
         bc = break_condition.get()
         if bc is True: print("HGDL Epoch ",i," was cancelled");break
-        print("HGDL computing epoch ",i+1," of ",d.num_epochs)
-        optima = run_hgdl_epoch(d,optima)
+        print("HGDL computing epoch ",i+1," of ",metadata.num_epochs)
+        optima = run_hgdl_epoch(metadata,optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
     return optima
 ###########################################################################
-def run_hgdl_epoch(d,optima):
+def run_hgdl_epoch(metadata,optima):
     optima_list = optima.list
-    n = min(len(optima_list["x"]),d.number_of_walkers)
+    n = min(len(optima_list["x"]),metadata.number_of_walkers)
     x0 = run_global(\
             np.array(optima_list["x"][0:n,:]),
             np.array(optima_list["func evals"][0:n]),
-            d.bounds, d.global_optimizer,d.number_of_walkers)
+            metadata.bounds, metadata.global_optimizer,metadata.number_of_walkers)
     x0 = np.array(x0)
-    optima = run_local(d,optima,x0)
+    optima = run_local(metadata,optima,x0)
     return optima
