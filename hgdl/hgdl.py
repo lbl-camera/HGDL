@@ -234,8 +234,9 @@ def hgdl(data):
     transfer_data = data["transfer data"]
     break_condition = data["break condition"]
     optima = data["optima"]
-    data["optima"].fill_in_optima_list(metadata.x0,np.ones((len(metadata.x0))) * 1e6, np.ones((len(metadata.x0))) * 1e6,np.ones((len(metadata.x0),metadata.dim)),[True]*len(metadata.x0))
-    for i in range(metadata.num_epochs):
+    print("HGDL computing epoch 1 of ",metadata.num_epochs)
+    optima = run_local(metadata,optima,metadata.x0)
+    for i in range(1,metadata.num_epochs):
         bc = break_condition.get()
         if bc is True: print("HGDL Epoch ",i," was cancelled");break
         print("HGDL computing epoch ",i+1," of ",metadata.num_epochs)

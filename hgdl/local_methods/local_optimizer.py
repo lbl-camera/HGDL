@@ -10,7 +10,6 @@ import hgdl.local_methods.bump_function as defl
 
 
 def run_local(d,optima,x0):
-    x_init = np.array(x0)
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
     x,f,grad_norm,eig,success = run_local_optimizer(d,x0,x_defl)
     optima.fill_in_optima_list(x,f,grad_norm,eig,success)
@@ -92,7 +91,7 @@ def local_method(data, method = "dNewton"):
     if method == "dNewton":
         x,f,g,eig,success = DNewton(d.func,grad,hess,bounds,x0,max_iter,*args)
     elif type(method) == str:
-        res = minimize(d.func,x0,args = args,method = method,jac = grad,bounds = bounds, constraints = d.constr, options = {"disp":True})
+        res = minimize(d.func,x0,args = args,method = method,jac = grad,bounds = bounds, constraints = d.constr, options = {"disp":False})
         x = res["x"]
         f = res["fun"]
         g = np.linalg.norm(res["jac"])

@@ -16,7 +16,7 @@ def main():
             global_optimizer = "genetic",
             local_optimizer = "L-BFGS-B",
             number_of_optima = 300,
-            args = (arr,brr), radius = 5.0, num_epochs = 8000)
+            args = (arr,brr), radius = 5.0, num_epochs = 10000)
     #a.optimize(dask_client = distributed.Client())
     x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
     print("starting positions: ")
