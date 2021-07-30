@@ -8,18 +8,18 @@ def main():
             'then get the final result.\n'
             'working on the epochs should happend even during sleeping\n'
             )
-    a = HGDL(rosen, rosen_der, hess = rosen_hess,bounds = [[-2,2],[-2,2]], radius = 0.1, num_epochs = 10000)
+    a = HGDL(rosen, rosen_der,[[-2,2],[-2,2]], hess = rosen_hess, radius = 0.1, num_epochs = 10000)
     a.optimize()
 
 
     print("main thread submitted HGDL and will now sleep for 10 seconds")
-    sleep(10)
+    sleep(5)
     print("main thread asks for 10 best solutions:")
     print(a.get_latest(10))
     print("main sleeps for another 10 seconds")
-    sleep(10)
+    sleep(3)
     print("main thread kills optimization")
-    res = a.kill()
+    res = a.kill_client()
     print("hgdl was killed but I am waiting 2s")
     sleep(2)
     print("")

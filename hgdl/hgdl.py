@@ -18,7 +18,7 @@ import pickle
 
 class HGDL:
     """
-    This is the HGDL class, a class to do asynchronous HPC-ready optimization
+    This is the HGDL, a class to do asynchronous HPC-ready optimization
     type help(name you gave at import)
     e.g.:
     from hgdl.hgdl import HGDL
@@ -27,14 +27,13 @@ class HGDL:
     G ... Global
     D ... Deflated
     L ... Local
-
     """
-    def __init__(self,func,grad,hess = None,
-            bounds = None, num_epochs=100000,
+    def __init__(self, func, grad, bounds,
+            hess = None, num_epochs=100000,
             global_optimizer = "genetic",
             local_optimizer = "dNewton",
             number_of_optima = 1000000,
-            radius = None, global_tol = 1e-4,
+            radius = None,
             local_max_iter = 100,
             args = (), constr = ()):
         """
@@ -42,24 +41,23 @@ class HGDL:
 
         required parameters:
         ---------------
-            func:  the objective function
-            grad:  the objective function gradient
+            func:  the objective function, callable R^dim --> R
+            grad:  the objective function gradient, callable R^dim --> R^dim
+            bounds: optimization bounds, 2d numpy array
 
         optional parameters:
         ---------------
-            hess:  the objective function hessian, default = None
-            bounds:the bounds of the optimization, default = None
-
-            num_epochs = 100000
+            hess = None:  the objective function hessian, R^dim --> R^dim*dim
+            num_epochs = 100000: run until num_epochs are completed
             global_optimizer = "genetic"   "genetic"/"gauss"/user defined function (soon Bayes),
                                            use partial() to communicate args to the function
-            local_optimizer = "dNewton"    use dNewton, any scipy local optimizer 
+            local_optimizer = "dNewton"    use dNewton or any scipy local optimizer
                                            (recommended: L-BFGS-B, SLSQP, TNC (those allow for bounds)), or your own callable
             number_of_optima               how many optima will be recorded and deflated
-            radius = 0.1
-            global_tol = 1e-4
+            radius = None, means it will be set to the mean of the domain size/100, felation radius
             local_max_iter = 20
             args = (), an n-tuple of parameters, will be communicated to func, grad, hess
+            constr = (), define constraints following the format in scipy.optimize.minimize (only foir certain local optimizers)
         """
         self.func = func
         self.grad= grad
@@ -68,7 +66,6 @@ class HGDL:
         if radius == None: self.radius = np.min(bounds[:,1]-bounds[:,0])/1000.0
         else: self.radius = radius
         self.dim = len(self.bounds)
-        self.global_tol = global_tol
         self.local_max_iter = local_max_iter
         self.num_epochs = num_epochs
         self.global_optimizer = global_optimizer
@@ -105,7 +102,7 @@ class HGDL:
     def get_client_info(self):
         return self.workers
     ###########################################################################
-    def get_latest(self, n = -1):
+    def get_latest(self, n = None):
         """
         get n best results
 
@@ -119,7 +116,9 @@ class HGDL:
         except:
             self.optima = self.optima
         optima_list = self.optima.list
-        n = min(n,len(optima_list["x"]))
+        if n is not None: n = min(n,len(optima_list["x"]))
+        else: n = len(optima_list["x"])
+
         return {"x": optima_list["x"][0:n], \
                 "func evals": optima_list["func evals"][0:n],
                 "classifier": optima_list["classifier"][0:n],
@@ -127,7 +126,7 @@ class HGDL:
                 "gradient norm":optima_list["gradient norm"][0:n],
                 "success":optima_list["success"]}
     ###########################################################################
-    def get_final(self,n = -1):
+    def get_final(self,n = None):
         """
         get n final results
 
@@ -140,7 +139,8 @@ class HGDL:
         except:
             pass
         optima_list = self.optima.list
-        n = min(n,len(optima_list["x"]))
+        if n is not None: n = min(n,len(optima_list["x"]))
+        else: n = len(optima_list["x"])
         return {"x": optima_list["x"][0:n], \
                 "func evals": optima_list["func evals"][0:n],
                 "classifier": optima_list["classifier"][0:n],
@@ -148,7 +148,7 @@ class HGDL:
                 "gradient norm":optima_list["gradient norm"][0:n],
                 "success":optima_list["success"]}
     ###########################################################################
-    def cancel_tasks(self):
+    def cancel_tasks(self, n = None):
         """
         cancel tasks but leave client alive
         return:
@@ -156,14 +156,14 @@ class HGDL:
             latest results
         """
         print("HGDL is cancelling all tasks...")
-        res = self.get_latest(-1)
+        res = self.get_latest(n)
         self.break_condition.set(True)
         self.client.cancel(self.main_future)
         print("Status of HGDL task: ", self.main_future.status)
         print("This leaves the client alive.")
         return res
     ###########################################################################
-    def kill(self, n= -1):
+    def kill_client(self, n = None):
         """
         kill tasks and shutdown client
         return:
@@ -172,6 +172,7 @@ class HGDL:
         """
         print("HGDL kill client initialized ...")
         res = self.get_latest(n)
+        print("res res:   ", res)
         try:
             self.break_condition.set(True)
             self.client.gather(self.main_future)

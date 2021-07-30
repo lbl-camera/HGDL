@@ -14,7 +14,6 @@ class meta_data:
         self.bounds = obj.bounds
         self.radius = obj.radius
         self.dim = obj.dim
-        self.global_tol = obj.global_tol
         self.local_max_iter = obj.local_max_iter
         self.number_of_walkers = obj.number_of_walkers
         self.num_epochs = obj.num_epochs

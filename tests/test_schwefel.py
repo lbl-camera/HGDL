@@ -12,7 +12,8 @@ def main():
     brr  = 6
     bounds = np.array([[-500,500],[-500,500]])
     #dask_client = distributed.Client("10.0.0.184:8786")
-    a = hgdl(schwefel, schwefel_gradient, hess = schwefel_hessian,bounds = bounds,
+    a = hgdl(schwefel, schwefel_gradient, bounds,
+            hess = schwefel_hessian,
             global_optimizer = "genetic",
             local_optimizer = "L-BFGS-B",
             number_of_optima = 300,
@@ -37,7 +38,7 @@ def main():
     print("main sleeps for another 2 seconds")
     time.sleep(2)
     print("main thread kills optimization")
-    res = a.kill()
+    res = a.kill_client()
     print("hgdl was killed but I am waiting 2s")
     print("")
     print("")
