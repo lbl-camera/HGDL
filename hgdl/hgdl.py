@@ -172,7 +172,6 @@ class HGDL:
         """
         print("HGDL kill client initialized ...")
         res = self.get_latest(n)
-        print("res res:   ", res)
         try:
             self.break_condition.set(True)
             self.client.gather(self.main_future)
