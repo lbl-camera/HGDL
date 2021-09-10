@@ -7,6 +7,7 @@ def run_global(x,y,bounds,method,number_of_offspring):
     if method == "genetic": return genetic_step(x,y,bounds,number_of_offspring)
     elif method == "gauss": return gauss_step(x,y,bounds,number_of_offspring)
     elif method == "bayes": return bayes_step(x,y,bounds,number_of_offspring)
+    elif method =="random": return random_step(x,y,bounds,number_of_offspring)
     elif method is callable: return method(x,y,bounds,number_of_offspring)
     else: raise Exception("no global method specified")
 
@@ -33,6 +34,11 @@ def gauss_step(x, y, bounds,n):
         if not misc.in_bounds(offspring[i],bounds): 
             offspring[i] = np.random.uniform(low = bounds[:,0],high = bounds[:,1], size = len(offspring[0]))
     return offspring
+
+def random_step(x, y, bounds,n):
+    offspring = np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = (n, len(bounds)))
+    return offspring
+
 ###########################################################################
 def genetic_step(X, y, bounds, numChoose):
     """

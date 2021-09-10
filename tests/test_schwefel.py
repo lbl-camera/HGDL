@@ -14,7 +14,9 @@ def main():
     #dask_client = distributed.Client("10.0.0.184:8786")
     a = hgdl(schwefel, schwefel_gradient, bounds,
             hess = schwefel_hessian,
+            #global_optimizer = "random",
             global_optimizer = "genetic",
+            #global_optimizer = "gauss",
             local_optimizer = "L-BFGS-B",
             number_of_optima = 300,
             args = (arr,brr), radius = 5.0, num_epochs = 10000)

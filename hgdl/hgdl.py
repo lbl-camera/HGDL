@@ -63,7 +63,7 @@ class HGDL:
         self.grad= grad
         self.hess= hess
         self.bounds = np.asarray(bounds)
-        if radius == None: self.radius = np.min(bounds[:,1]-bounds[:,0])/1000.0
+        if radius is None: self.radius = np.min(bounds[:,1]-bounds[:,0])/1000.0
         else: self.radius = radius
         self.dim = len(self.bounds)
         self.local_max_iter = local_max_iter
@@ -113,12 +113,21 @@ class HGDL:
         try:
             data, frames = self.transfer_data.get()
             self.optima = distributed.protocol.deserialize(data,frames)
+            print("HGDL called get_latest() successfully")
         except:
             self.optima = self.optima
+            print("HGDL get_latest failed due to ", str(err))
+            print("optima list unchanged")
+
         optima_list = self.optima.list
         if n is not None: n = min(n,len(optima_list["x"]))
         else: n = len(optima_list["x"])
-
+        print("HGDL get_latest() returned: ",{"x": optima_list["x"][0:n], \
+                "func evals": optima_list["func evals"][0:n],
+                "classifier": optima_list["classifier"][0:n],
+                "eigen values": optima_list["eigen values"][0:n],
+                "gradient norm":optima_list["gradient norm"][0:n],
+                "success":optima_list["success"]})
         return {"x": optima_list["x"][0:n], \
                 "func evals": optima_list["func evals"][0:n],
                 "classifier": optima_list["classifier"][0:n],
@@ -136,8 +145,8 @@ class HGDL:
         """
         try:
             self.optima = self.main_future.result()
-        except:
-            pass
+        except Exception as err:
+            print("HGDL get_final failed due to ", str(err))
         optima_list = self.optima.list
         if n is not None: n = min(n,len(optima_list["x"]))
         else: n = len(optima_list["x"])
@@ -202,7 +211,10 @@ class HGDL:
         return x0
     ###########################################################################
     def _init_dask_client(self,dask_client):
-        if dask_client is None: dask_client = dask.distributed.Client()
+        if dask_client is None: 
+            dask_client = dask.distributed.Client()
+            print("No dask client provided to HGDL. Using the local client")
+        else: print("dask client provided to HGDL")
         client = dask_client
         worker_info = list(client.scheduler_info()["workers"].keys())
         if not worker_info: raise Exception("No workers available")
@@ -236,6 +248,9 @@ def hgdl(data):
     optima = data["optima"]
     print("HGDL computing epoch 1 of ",metadata.num_epochs)
     optima = run_local(metadata,optima,metadata.x0)
+    a = distributed.protocol.serialize(optima)
+    transfer_data.set(a)
+
     for i in range(1,metadata.num_epochs):
         bc = break_condition.get()
         if bc is True: print("HGDL Epoch ",i," was cancelled");break
