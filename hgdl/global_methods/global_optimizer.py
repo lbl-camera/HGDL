@@ -87,7 +87,7 @@ def genetic_step(X, y, bounds, numChoose):
     oob = np.logical_not([misc.in_bounds(x,bounds) for x in children])
     children[oob] = misc.random_sample(np.sum(oob), k, bounds)
     print("=========================")
-    print("Children in HGDL genetic alg.:")
+    print("Children in HGDL genetic alg.:", flush = True)
     print(children)
     print("=========================")
     return children
