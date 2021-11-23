@@ -37,7 +37,7 @@ class HGDL:
             local_max_iter = 100,
             args = (), constr = ()):
         """
-        intialization for the HGDL class
+        Initialization for the HGDL class
 
         required parameters:
         ---------------
@@ -55,7 +55,7 @@ class HGDL:
                                            (recommended: L-BFGS-B, SLSQP, TNC (those allow for bounds)), or your own callable
             number_of_optima               how many optima will be recorded and deflated
             radius = None, means it will be set to the mean of the domain size/100, felation radius
-            local_max_iter = 20
+            local_max_iter = 100
             args = (), an n-tuple of parameters, will be communicated to func, grad, hess
             constr = (), define constraints following the format in scipy.optimize.minimize (only foir certain local optimizers)
         """
@@ -75,6 +75,7 @@ class HGDL:
         self.optima = optima(self.dim, number_of_optima)
         print("HGDL successfully initiated", flush = True)
         print("deflation radius set to ",self.radius, flush = True)
+        if callable(self.hess): print("Hessian was provided by the user:", self.hess)
         print("========================")
     ###########################################################################
     ###########################################################################

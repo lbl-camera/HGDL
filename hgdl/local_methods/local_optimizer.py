@@ -55,21 +55,22 @@ def run_local_optimizer(d,x0,x_defl = []):
         for j in range(i):
             #exchange for function def too_close():
             if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * d.radius and success[j] == True:
-                print("CAUTION: points too close to each other in HGDL; point removed")
+                print("CAUTION: points converged too close to each other in HGDL; point removed")
                 success[j] = False; break
         for j in range(len(x_defl)):
             if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * d.radius\
             and grad_norm[i] < 1e-5:
                 print("CAUTION: local method converged within 2 x radius of a deflated position in HGDL")
                 success[i] = False
-                print(x[i],x_defl[j])
-                print(grad_norm[i])
+                print("point found: ",x[i]," deflated point: ",x_defl[j])
+                print("gradient at the point: ",grad_norm[i])
+                print("distance between the points: ",np.linalg.norm(np.subtract(x[i],x_defl[j])))
                 print("--")
     return x, f, grad_norm, eig, success
 ###########################################################################
 
-from functools import *
 def local_method(data, method = "dNewton"):
+    from functools import partial
     d = data["d"]
     x0 = np.array(data["x0"])
     e = np.inf
@@ -82,9 +83,9 @@ def local_method(data, method = "dNewton"):
     method = d.local_optimizer
     #augment grad, hess
     grad = partial(defl.deflated_grad, grad_func = d.grad, x_defl = x_defl, radius = d.radius)
-    if d.hess is callable:
+    if callable(d.hess):
         hess = partial(defl.deflated_hess, grad_func = d.grad,
-        hess_func = d.hess, x_defl = x_defl, radius = d.radius)
+                       hess_func = d.hess, x_defl = x_defl, radius = d.radius)
     else:
         hess = d.hess
     #call local methods
@@ -97,7 +98,7 @@ def local_method(data, method = "dNewton"):
         g = np.linalg.norm(res["jac"])
         success = res["success"]
         eig = np.ones(x.shape) * np.nan
-    elif method is callable:
+    elif callable(method):
         res = method(d.func,grad,hess,bounds,x0,*args)
         x = res["x"]
         f = res["fun"]

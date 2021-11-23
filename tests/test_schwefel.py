@@ -17,9 +17,9 @@ def main():
             #global_optimizer = "random",
             global_optimizer = "genetic",
             #global_optimizer = "gauss",
-            local_optimizer = "L-BFGS-B",
+            local_optimizer = "dNewton",
             number_of_optima = 300,
-            args = (arr,brr), radius = 5.0, num_epochs = 10000)
+            args = (arr,brr), radius = 0.10, num_epochs = 100)
     #a.optimize(dask_client = distributed.Client())
     x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
     print("starting positions: ")

@@ -28,15 +28,15 @@ class optima:
                      "gradient norm":np.empty((0)),
                      "success": False}
     ####################################################
-    def fill_in_optima_list(self,x,f,grad_norm,eig, success):
-        clean_indices = np.where(np.asarray(success) == True)[0]
+    def fill_in_optima_list(self,x,f,grad_norm,eig, local_success):
+        clean_indices = np.where(np.asarray(local_success) == True)[0]
         if len(clean_indices) == 0:
             return {"x": self.list["x"], \
                     "func evals": self.list["func evals"], \
                     "classifier": self.list["classifier"], \
                     "eigen values": self.list["eigen values"],\
                     "gradient norm": self.list["gradient norm"],\
-                    "success": False}
+                    "success": self.list["success"]}
 
         clean_x = x[clean_indices]
         clean_f = f[clean_indices]
@@ -44,7 +44,7 @@ class optima:
         clean_eig = eig[clean_indices]
         classifier = []
         for i in range(len(clean_x)):
-            if clean_grad_norm[i] > 1e-3: classifier.append("degenerate")
+            if clean_grad_norm[i] > 1e-5: classifier.append("degenerate")
             elif len(np.where(clean_eig[i] > 0.0)[0]) == len(clean_eig[i]): classifier.append("minimum")
             elif len(np.where(clean_eig[i] < 0.0)[0]) == len(clean_eig[i]): classifier.append("maximum")
             elif len(np.where(clean_eig[i] != clean_eig[i])[0]) == len(clean_eig[i]): classifier.append("optimum")
