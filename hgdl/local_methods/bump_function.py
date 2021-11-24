@@ -57,18 +57,16 @@ def deflation_function_gradient(x,x0,r):
     return s2/((1.0-s1)**2)
 
 
-def deflated_grad(x, *args, grad_func = None, x_defl = [], radius = np.inf):
+def deflated_grad(x, *args, grad_func = None, x_defl = [], radius = 0.01):
     d = deflation_function(x,x_defl,radius)
     return d*grad_func(x, *args)
 
 
 def deflated_hess(x,*args, grad_func = None, hess_func = None, x_defl = [], 
-                  radius = np.inf):
+                  radius = 0.01):
     d = deflation_function(x,x_defl,radius)
     dg = deflation_function_gradient(x,x_defl,radius)
     return (hess_func(x, *args)*d) + np.outer(grad_func(x, *args),dg)
-
-
 
 #def deflated_solve( x, *args, grad_func = None, hess_func = None, x_defl=[],
 #                    radius = 0.5, extended_return = False):

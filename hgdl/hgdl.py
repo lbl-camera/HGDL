@@ -83,7 +83,7 @@ class HGDL:
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    def optimize(self, dask_client = None, x0 = None):
+    def optimize(self, dask_client = None, x0 = None, tolerance = 1e-6):
         """
         optional input:
         -----
@@ -92,6 +92,7 @@ class HGDL:
         """
 
         client = self._init_dask_client(dask_client)
+        self.tolerance = tolerance
         print(client, flush = True)
         self.x0 = self._prepare_starting_positions(x0)
         #f = np.asarray([self.func(x0[i], *self.args) for i in range(len(x0))])

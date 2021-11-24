@@ -44,7 +44,7 @@ class optima:
         clean_eig = eig[clean_indices]
         classifier = []
         for i in range(len(clean_x)):
-            if clean_grad_norm[i] > 1e-5: classifier.append("degenerate")
+            if clean_grad_norm[i] > 1e-4: classifier.append("degenerate")
             elif len(np.where(clean_eig[i] > 0.0)[0]) == len(clean_eig[i]): classifier.append("minimum")
             elif len(np.where(clean_eig[i] < 0.0)[0]) == len(clean_eig[i]): classifier.append("maximum")
             elif len(np.where(clean_eig[i] != clean_eig[i])[0]) == len(clean_eig[i]): classifier.append("optimum")

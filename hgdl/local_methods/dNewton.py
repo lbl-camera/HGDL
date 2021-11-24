@@ -4,9 +4,8 @@ import hgdl.local_methods.bump_function as defl
 import dask.distributed as distributed
 
 
-def DNewton(func,grad,hess,bounds,x0,max_iter,*args):
+def DNewton(func,grad,hess,bounds,x0,max_iter,tol,*args):
     e = np.inf
-    tol = 1e-6
     counter = 0
     x = np.array(x0)
     success = True
@@ -20,12 +19,12 @@ def DNewton(func,grad,hess,bounds,x0,max_iter,*args):
         except Exception as error:
             gamma,a,b,c = np.linalg.lstsq(hessian,-gradient)
         x += gamma
-        #print(np.linalg.norm(gradient), np.max(abs(gamma)), flush = True)
         e = np.max(abs(gamma))
+        #print("e = ", e," gradient = ",gradient,flush = True)
         if misc.out_of_bounds(x,bounds):
             x = np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = len(bounds))
         if counter > max_iter:
-            print("dNewton takes a long time to converge, possibly due to not finding any non-deflated optima...")
+            print("dNewton takes a long time to converge, possibly due to not finding any non-deflated optima...", flush = True)
             return x,func(x, *args),e,np.linalg.eig(hess(x, *args))[0], False
         counter += 1
     return x,func(x, *args),e,np.linalg.eig(hess(x, *args))[0], success
