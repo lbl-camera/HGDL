@@ -11,9 +11,11 @@ import hgdl.local_methods.bump_function as defl
 
 def run_local(d,optima,x0):
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
-    x,f,grad_norm,eig,success = run_local_optimizer(d,x0,x_defl)
-    if len(x) == 0: print("No optima found on first attempt, filling in placeholders..."); success[:] = True
-    optima.fill_in_optima_list(x,f,grad_norm,eig,success)
+    x,f,grad_norm,eig,local_success = run_local_optimizer(d,x0,x_defl)
+    if not np.any(local_success) and len(optima.list["x"]) == 0:
+        print("No optima found on first attempt, filling in placeholders...")
+        local_success[:] = True
+    optima.fill_in_optima_list(x,f,grad_norm,eig,local_success)
     return optima
 ###########################################################################
 
@@ -26,7 +28,7 @@ def run_local_optimizer(d,x0,x_defl = []):
         2d numpy array of initial positions
         2d numpy array of positions of deflations (optional, default = [])
     return:
-        optima_locations, func values, gradient norms, eigenvalues, success(bool)
+        optima_locations, func values, gradient norms, eigenvalues, local_success(bool)
     """
     dim = d.dim
     number_of_walkers = d.number_of_walkers
@@ -38,7 +40,6 @@ def run_local_optimizer(d,x0,x_defl = []):
     tasks = []
     bf = client.scatter(d,workers = d.workers["walkers"])
     for i in range(min(len(x0),number_of_walkers)):
-    #for i in range(1):
         worker = d.workers["walkers"][(int(i - ((i // number_of_walkers) * number_of_walkers)))]
         data = {"d":bf,"x0":x0[i],"x_defl":x_defl}
         tasks.append(client.submit(local_method,data,workers = worker))
@@ -49,29 +50,25 @@ def run_local_optimizer(d,x0,x_defl = []):
     f = np.empty((number_of_walkers))
     grad_norm = np.empty((number_of_walkers))
     eig = np.empty((number_of_walkers,dim))
-    success = np.empty((number_of_walkers))
+    local_success = np.empty((number_of_walkers), dtype = bool)
     for i in range(len(tasks)):
-        x[i],f[i],grad_norm[i],eig[i],success[i] = results[i]
+        x[i],f[i],grad_norm[i],eig[i],local_success[i] = results[i]
         client.cancel(tasks[i])
         for j in range(i):
             #exchange for function def too_close():
-            if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * d.radius and success[j] == True:
+            if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * d.radius and local_success[j] == True:
                 print("CAUTION: points converged too close to each other in HGDL; point removed")
-                success[j] = False; break
+                local_success[j] = False; break
         for j in range(len(x_defl)):
             if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * d.radius\
             and grad_norm[i] < 1e-5:
                 print("CAUTION: local method converged within 2 x radius of a deflated position in HGDL")
-                success[i] = False
+                local_success[i] = False
                 print("point found: ",x[i]," deflated point: ",x_defl[j])
                 print("gradient at the point: ",grad_norm[i])
                 print("distance between the points: ",np.linalg.norm(np.subtract(x[i],x_defl[j])))
                 print("--")
-    #print("x found:", flush = True)
-    #print(x, flush = True)
-    #print(grad_norm, flush = True)
-    #print(success, flush = True)
-    return x, f, grad_norm, eig, success
+    return x, f, grad_norm, eig, local_success
 ###########################################################################
 
 def local_method(data, method = "dNewton"):
@@ -79,7 +76,7 @@ def local_method(data, method = "dNewton"):
     d = data["d"]
     x0 = np.array(data["x0"])
     e = np.inf
-    success = True
+    local_success = True
     tol = d.tolerance
     x_defl = data["x_defl"]
     bounds = d.bounds
@@ -95,25 +92,24 @@ def local_method(data, method = "dNewton"):
         hess = d.hess
     #call local methods
     if method == "dNewton":
-        x,f,g,eig,success = DNewton(d.func,grad,hess,bounds,x0,max_iter,tol,*args)
+        x,f,g,eig,local_success = DNewton(d.func,grad,hess,bounds,x0,max_iter,tol,*args)
     elif type(method) == str:
         res = minimize(d.func,x0,args = args,method = method,jac = grad,
                        bounds = bounds, constraints = d.constr, options = {"disp":False})
         x = res["x"]
         f = res["fun"]
         g = np.linalg.norm(res["jac"])
-        success = res["success"]
-        print("success", success, flush = True)
+        local_success = res["success"]
         eig = np.ones(x.shape) * np.nan
     elif callable(method):
         res = method(d.func,grad,hess,bounds,x0,*args)
         x = res["x"]
         f = res["fun"]
         g = np.linalg.norm(res["jac"])
-        success = res["success"]
+        local_success = res["success"]
         eig = np.ones(x.shape) * np.nan
     else: raise Exception("no local method specified")
-    return x,f,g,eig,success
+    return x,f,g,eig,local_success
 ###########################################################################
 
 

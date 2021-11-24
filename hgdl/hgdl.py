@@ -260,6 +260,7 @@ def hgdl(data):
         optima = run_hgdl_epoch(metadata,optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
+    print("HGDL finished all epochs!")
     return optima
 ###########################################################################
 def run_hgdl_epoch(metadata,optima):
