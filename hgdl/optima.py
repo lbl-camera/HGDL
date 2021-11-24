@@ -45,9 +45,9 @@ class optima:
         classifier = []
         for i in range(len(clean_x)):
             if clean_grad_norm[i] > 1e-4: classifier.append("degenerate")
+            elif len(np.where(clean_eig[i] != clean_eig[i])[0]) == len(clean_eig[i]): classifier.append("optimum")
             elif len(np.where(clean_eig[i] > 0.0)[0]) == len(clean_eig[i]): classifier.append("minimum")
             elif len(np.where(clean_eig[i] < 0.0)[0]) == len(clean_eig[i]): classifier.append("maximum")
-            elif len(np.where(clean_eig[i] != clean_eig[i])[0]) == len(clean_eig[i]): classifier.append("optimum")
             elif len(np.where(clean_eig[i] == 0.0)[0])  > 0: classifier.append("zero curvature")
             elif len(np.where(clean_eig[i] < 0.0)[0])  < len(clean_eig[i]): classifier.append("saddle point")
             else: classifier.append("ERROR")
