@@ -94,7 +94,7 @@ def local_method(data, method = "dNewton"):
     if method == "dNewton":
         x,f,g,eig,local_success = DNewton(d.func,grad,hess,bounds,x0,max_iter,tol,*args)
     elif type(method) == str:
-        res = minimize(d.func,x0,args = args,method = method,jac = grad,
+        res = minimize(d.func,x0,args = args,method = method,jac = grad, hess = hess,
                        bounds = bounds, constraints = d.constr, options = {"disp":False})
         x = res["x"]
         f = res["fun"]
