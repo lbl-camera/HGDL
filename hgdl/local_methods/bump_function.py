@@ -3,7 +3,6 @@ import numpy as np
 import hgdl.misc as misc
 import asyncio
 import time
-import matplotlib.pyplot as plt
 def b(x,x0,r):
     """
     evaluates the bump function

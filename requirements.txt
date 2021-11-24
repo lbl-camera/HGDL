@@ -2,8 +2,8 @@ wheel
 versioneer
 numpy
 scipy
-matplotlib
 torch >= 1.9.0
+matplotlib
 dask >= 2021.6.2
 distributed >= 2021.6.2
 bokeh
