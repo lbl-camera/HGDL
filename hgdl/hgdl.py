@@ -124,12 +124,12 @@ class HGDL:
         optima_list = self.optima.list
         if n is not None: n = min(n,len(optima_list["x"]))
         else: n = len(optima_list["x"])
-        print("HGDL get_latest() returned: ",{"x": optima_list["x"][0:n], \
-                "func evals": optima_list["func evals"][0:n],
-                "classifier": optima_list["classifier"][0:n],
-                "eigen values": optima_list["eigen values"][0:n],
-                "gradient norm":optima_list["gradient norm"][0:n],
-                "success":optima_list["success"]}, flush = True)
+        #print("HGDL get_latest() returned: ",{"x": optima_list["x"][0:n], \
+        #        "func evals": optima_list["func evals"][0:n],
+        #        "classifier": optima_list["classifier"][0:n],
+        #        "eigen values": optima_list["eigen values"][0:n],
+        #        "gradient norm":optima_list["gradient norm"][0:n],
+        #        "success":optima_list["success"]}, flush = True)
         return {"x": optima_list["x"][0:n], \
                 "func evals": optima_list["func evals"][0:n],
                 "classifier": optima_list["classifier"][0:n],

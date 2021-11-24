@@ -33,7 +33,7 @@ with open(path.join(here, 'requirements.txt')) as requirements_file:
 
 setup(
     name='hgdl',
-    version="1.3.7",
+    version="1.3.8",
     #cmdclass=versioneer.get_cmdclass(),
     description="HGDL Optimization",
     long_description=readme,
@@ -56,7 +56,7 @@ setup(
         ]
     },
     install_requires=requirements,
-    license="Camera license",
+    license="BSD3",
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Natural Language :: English',
