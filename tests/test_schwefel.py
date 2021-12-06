@@ -1,13 +1,13 @@
 import numpy as np
 from hgdl.hgdl import HGDL as hgdl
-from test_functions import *
+from .support_functions import *
 import time
 import dask.distributed as distributed
 import tracemalloc
 
 
 
-def main():
+def test_schwefel():
     arr  = 5
     brr  = 6
     bounds = np.array([[-500,500],[-500,500]])
@@ -49,4 +49,4 @@ def main():
     print(res)
 
 if __name__ == '__main__':
-    main()
+    test_schwefel()

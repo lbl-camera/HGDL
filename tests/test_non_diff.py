@@ -1,10 +1,10 @@
 import numpy as np
 from hgdl.hgdl import HGDL
-from test_functions import *
+from .support_functions import *
 import time
 import dask.distributed as distributed
 
-def main():
+def test_non_diff():
     #dask_client = distributed.Client("10.0.0.184:8786")
     a = HGDL(non_diff, non_diff_grad, 
              hess = non_diff_hess,bounds = [[-5,5],[-5,5]],
@@ -30,4 +30,4 @@ def main():
     print(res)
 
 if __name__ == '__main__':
-    main()
+    test_non_diff()

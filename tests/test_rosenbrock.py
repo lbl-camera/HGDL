@@ -1,4 +1,4 @@
-def main():
+def test_rosebrock():
     from scipy.optimize import rosen, rosen_der, rosen_hess
     import numpy as np
     from hgdl.hgdl import HGDL
@@ -29,4 +29,4 @@ def main():
     print(res)
 
 if __name__ == "__main__":
-    main()
+    test_rosebrock()
