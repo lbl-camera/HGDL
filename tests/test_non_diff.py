@@ -20,7 +20,7 @@ def test_non_diff():
     print("main sleeps for another 10 seconds")
     time.sleep(10)
     print("main thread kills optimization")
-    res = a.kill()
+    res = a.kill_client()
     print("hgdl was killed but I am waiting 2s")
     time.sleep(2)
     print("")
