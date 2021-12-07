@@ -4,3 +4,6 @@
 #del get_versions
 
 #global_config = None
+
+from . import _version
+__version__ = _version.get_versions()['version']
