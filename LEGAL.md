@@ -1,7 +1,3 @@
-=====
-hgdl
-=====
-
 HGDL Copyright (c) 2020, The Regents of the University of California,
 through Lawrence Berkeley National Laboratory (subject to receipt of
 any required approvals from the U.S. Dept. of Energy). All rights reserved.
@@ -17,14 +13,3 @@ its behalf a paid-up, nonexclusive, irrevocable, worldwide license in the
 Software to reproduce, distribute copies to the public, prepare derivative 
 works, and perform publicly and display publicly, and to permit others to do so.
 
-===========================================================================
-
-Hybrid GLobal Deflated Local Optimization
-
-* Free software: GPL license
-* Documentation: https://www.overleaf.com/read/nrcyxxsbhvbx
-
-Features of hgdl
-----------------
-
-Asynchronous Distributed HPC hybrid optimization
