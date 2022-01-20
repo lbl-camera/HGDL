@@ -1,6 +1,7 @@
 from os import path
 from setuptools import setup, find_packages
 import sys
+import versioneer
 
 # NOTE: This file must remain Python 2 compatible for the foreseeable future,
 # to ensure that we error out properly for people with outdated setuptools
@@ -33,8 +34,9 @@ with open(path.join(here, 'requirements.txt')) as requirements_file:
 
 setup(
     name='hgdl',
-    version="1.4.3",
-    #cmdclass=versioneer.get_cmdclass(),
+    # version="1.4.3",
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     description="HGDL Optimization",
     long_description=readme,
     author="David Perryman, Marcus, Noack",
