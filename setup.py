@@ -58,6 +58,9 @@ setup(
         ]
     },
     install_requires=requirements,
+    extras_require={
+        'tests': ['pytest', 'codecov', 'pytest-cov']
+    },
     license="BSD3",
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
