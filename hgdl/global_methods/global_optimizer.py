@@ -4,7 +4,7 @@ import hgdl.misc as misc
 
 
 def run_global(x,y,bounds,method,number_of_offspring):
-    print("Global optimizer: ", method)
+    #print("Global optimizer: ", method)
     if method == "genetic": return genetic_step(x,y,bounds,number_of_offspring)
     elif method == "gauss": return gauss_step(x,y,bounds,number_of_offspring)
     elif method =="random": return random_step(x,y,bounds,number_of_offspring)
@@ -86,9 +86,9 @@ def genetic_step(X, y, bounds, numChoose):
     children = weighted_linear_sum + perturbation
     oob = np.logical_not([misc.in_bounds(x,bounds) for x in children])
     children[oob] = misc.random_sample(np.sum(oob), k, bounds)
-    print("=========================")
-    print("Children in HGDL genetic alg.:", flush = True)
-    print(children)
-    print("=========================")
+    #print("=========================")
+    #print("Children in HGDL genetic alg.:", flush = True)
+    #print(children)
+    #print("=========================")
     return children
 

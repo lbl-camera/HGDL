@@ -1,6 +1,6 @@
 import numpy as np
 from hgdl.hgdl import HGDL as hgdl
-from .support_functions import *
+from support_functions import *
 import time
 import dask.distributed as distributed
 import tracemalloc
@@ -18,9 +18,9 @@ def test_schwefel():
             global_optimizer = "genetic",
             #global_optimizer = "gauss",
             local_optimizer = "dNewton",
-            number_of_optima = 300,
-            args = (arr,brr), radius = 0.10, num_epochs = 100)
-    #a.optimize(dask_client = distributed.Client())
+            number_of_optima = 30000,
+            args = (arr,brr), radius = None, num_epochs = 100)
+
     x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
     print("starting positions: ")
     print(x0)

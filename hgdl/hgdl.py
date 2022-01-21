@@ -18,16 +18,79 @@ import pickle
 
 class HGDL:
     """
-    This is the HGDL, a class to do asynchronous HPC-ready optimization
-    type help(name you gave at import)
-    e.g.:
-    from hgdl.hgdl import HGDL
-    help(HGDL)
+    """
+    """
+    This is HGDL, a class for asynchronous HPC-tailored optimization.
     H ... Hybrid
     G ... Global
     D ... Deflated
     L ... Local
+    The algorithm places a number of walkers inside the domain (the number is determined by the dask client), all if which perform
+    a local optimization in a distributed way in parallel. When the walkers have identified local optima, their positions are communicated back to the host
+    removes the found optima by deflation, and replaces the fittest walkers by a global optimization step. Fromt here the next epoch
+    begins with distributed local optimizations of the new walkers. The algorithm reults in a sorted list of unique optima (only of optima
+    are strict optima f'(x) = 0)
+    The method `hgdl.optimize` instantly returns a result object that can be queried for a growing, sorted list of
+    optima.
+
+    Parameters
+    ----------
+    func : Callable
+        The function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a scalar.
+    grad : Callable
+        The gradient of the function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a vector
+        (np.ndarray) of shape (D), where D is the dimensionality of the space in which the
+        optimization takes place.
+    bounds : np.ndarray
+        The bounds in which to optimize; an np.ndarray of shape (D x 2), where D is the dimensionality of the space in which the
+        optimization takes place.
+    hess : Callable, optional
+        The Hessian of the function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a
+        np.ndarray of shape (D x D). The default value is no-op.
+    num_epochs : int, optional
+        The number of epochs the algorithm runs through before being terminated. One epoch is the convergence of all local walkers,
+        the deflation of the identified optima and the global replacement of the walkers. Note, the algorithm is running asynchronously, so a high number
+        of epochs can be chosen without concern, it will not affect the run time to obtain the optima. Therefore, the default is
+        100000.
+    global_optimizer : Callable or str, optional
+        The function (identified by by a str of a Callable) that replaces the fittest walkers after their local convergence.
+        The possible options are `genetic` (default), `gauss`, `random` or a callable that accepts an
+        np.ndarray of shape (U x D) of positions, an np.ndarray of shape (U) of function values,
+        and np.ndarray of shape (D x 2) of bounds, and an integer specifying the number of of offspring
+        individuals that should be returned. The callable should return the positions of the offspring
+        individuals as a np.ndarray of shape (number_of_offspring x D).
+    local_optimizer : Callable or str, optional
+        The local optimizer that is used for the local-walker optimization. The options are
+        `dNewton` (the default Newton method that need a Hessian), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG` and most other scipy.optimize.minimize
+        local optimizers. The above have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs for specifications
+        and limitations of the local methods. The parameter also accepts a callable that accepts as input a function, gradient, Hessian,
+        bounds (all as specified above), and args, and returns an object similiar to the scipy.optimize.minimize methods.
+    number_of_optima : int, optional
+        The number of optima that will be stored in the optima list and deflated. The default is 1e6.
+    radius: float, optional
+        The radius of the deflation operator. The default is estimted fromt he size of the domain.
+        THIS will be changed in fure releases to be estimated form the curvature of the function
+        at the optima.
+    local_max_iter : int, optional
+        The number of iterations before local optimizations are terminated. The default is 100.
+    args : tuple, optional
+        A tuple of argiments that will be communicated to the function, the gradient and the Hessian callables.
+        Default = ().
+    constr : object, optional
+        An optional constraint that is communicated to the local optimizers. The format follows from scipy.optimize.minimize.
+        The default is no constraints.
+    info : bool, optional
+        If True, info is printed during the execution of the algorithm. Note, the executuoin happens asynchronously, so the output might
+        appear at strange places.
+
+    Attributes
+    ----------
+    optima : object
+        Contains the attribute optima.list in which the optima are stored. However, there is a method to access the optima.
+
+
     """
+
     def __init__(self, func, grad, bounds,
             hess = None, num_epochs=100000,
             global_optimizer = "genetic",
@@ -35,30 +98,9 @@ class HGDL:
             number_of_optima = 1000000,
             radius = None,
             local_max_iter = 100,
-            args = (), constr = ()):
-        """
-        Initialization for the HGDL class
+            args = (), constr = (), 
+            info = False):
 
-        required parameters:
-        ---------------
-            func:  the objective function, callable R^dim --> R
-            grad:  the objective function gradient, callable R^dim --> R^dim
-            bounds: optimization bounds, 2d numpy array
-
-        optional parameters:
-        ---------------
-            hess = None:  the objective function hessian, R^dim --> R^dim*dim
-            num_epochs = 100000: run until num_epochs are completed
-            global_optimizer = "genetic"   "genetic"/"gauss"/user defined function (soon Bayes),
-                                           use partial() to communicate args to the function
-            local_optimizer = "dNewton"    use dNewton or any scipy local optimizer
-                                           (recommended: L-BFGS-B, SLSQP, TNC (those allow for bounds)), or your own callable
-            number_of_optima               how many optima will be recorded and deflated
-            radius = None, means it will be set to the mean of the domain size/100, felation radius
-            local_max_iter = 100
-            args = (), an n-tuple of parameters, will be communicated to func, grad, hess
-            constr = (), define constraints following the format in scipy.optimize.minimize (only foir certain local optimizers)
-        """
         self.func = func
         self.grad= grad
         self.hess= hess
@@ -71,12 +113,13 @@ class HGDL:
         self.global_optimizer = global_optimizer
         self.local_optimizer = local_optimizer
         self.args = args
+        self.info = info
         self.constr = constr
         self.optima = optima(self.dim, number_of_optima)
-        print("HGDL successfully initiated", flush = True)
-        print("deflation radius set to ",self.radius, flush = True)
-        if callable(self.hess): print("Hessian was provided by the user:", self.hess)
-        print("========================")
+        if self.info is True: print("HGDL successfully initiated", flush = True)
+        if self.info is True: print("deflation radius set to ",self.radius, flush = True)
+        if callable(self.hess) and self.info is True: print("Hessian was provided by the user:", self.hess)
+        if self.info is True: print("========================")
     ###########################################################################
     ###########################################################################
     ############USER FUNCTIONS#################################################
@@ -85,37 +128,52 @@ class HGDL:
     ###########################################################################
     def optimize(self, dask_client = None, x0 = None, tolerance = 1e-6):
         """
-        optional input:
-        -----
-            dask_client = None = dask.distributed.Client()
-            x0 = None = random.rand()   starting positions
+        Function to start the optimization. Note, this function will no return anything.
+        Use the method hgdl.HGDL.get_latest() (non-blocking) or hgdl.HGDL.get_latest() (blocking)
+        to query for results.
+
+        Parameters
+        ----------
+        dask_client : distributed.client.Client, optional
+            The client that will be used for the distibuted local optimizations. The default is a local client.
+        x0 : np.ndarray, optional
+            An np.ndarray of shape (V x D) of points used as starting positions.
+            If V > number of walkers (specified by the dask client) the array will be truncated.
+            If V < number of walkers, random points will be appended.
+            The default is None, meaning only random points will be used.
+        tolerance : float, optional
+            The tolerance used by the local optimizers. The default is 1e-6
         """
 
         client = self._init_dask_client(dask_client)
         self.tolerance = tolerance
-        print(client, flush = True)
+        if self.info is True: print(client, flush = True)
         self.x0 = self._prepare_starting_positions(x0)
-        #f = np.asarray([self.func(x0[i], *self.args) for i in range(len(x0))])
-        print("HGDL starts with: ", self.x0, flush = True)
-        #self.optima.fill_in_optima_list(x0,np.ones((len(x0))) * 1e6, np.ones((len(x0))) * 1e6,np.ones((len(x0),self.dim)),[True]*len(x0))
+        if self.info is True: print("HGDL starts with: ", self.x0, flush = True)
         self.meta_data = meta_data(self)
         self._run_epochs(client)
+
     ###########################################################################
     def get_client_info(self):
+        """
+        Function to receive info about the workers.
+        """
         return self.workers
     ###########################################################################
     def get_latest(self, n = None):
         """
-        get n best results
+        Function to request current best n results.
 
-        input:
-        -----
-            n: number of results requested
+        Parameters
+        ----------
+        n : int, optional
+            Number of optima list entries to be returned.
+            Default is the length of the current optima list.
         """
         try:
             data, frames = self.transfer_data.get()
             self.optima = distributed.protocol.deserialize(data,frames)
-            print("HGDL called get_latest() successfully")
+            if self.info is True: print("HGDL called get_latest() successfully")
         except:
             self.optima = self.optima
             print("HGDL get_latest failed due to ", str(err))
@@ -124,12 +182,6 @@ class HGDL:
         optima_list = self.optima.list
         if n is not None: n = min(n,len(optima_list["x"]))
         else: n = len(optima_list["x"])
-        #print("HGDL get_latest() returned: ",{"x": optima_list["x"][0:n], \
-        #        "func evals": optima_list["func evals"][0:n],
-        #        "classifier": optima_list["classifier"][0:n],
-        #        "eigen values": optima_list["eigen values"][0:n],
-        #        "gradient norm":optima_list["gradient norm"][0:n],
-        #        "success":optima_list["success"]}, flush = True)
         return {"x": optima_list["x"][0:n], \
                 "func evals": optima_list["func evals"][0:n],
                 "classifier": optima_list["classifier"][0:n],
@@ -139,11 +191,15 @@ class HGDL:
     ###########################################################################
     def get_final(self,n = None):
         """
-        get n final results
+        Function to request final result.
+        CAUTION: This function will call the main thread until 
+        the end of all epochs is reached.
 
-        input:
-        -----
-            n: number of results requested
+        Parameters
+        ----------
+        n : int, optional
+            Number of optima list entries to be returned.
+            Default is the length of the final optima list.
         """
         try:
             self.optima = self.main_future.result()
@@ -161,27 +217,34 @@ class HGDL:
     ###########################################################################
     def cancel_tasks(self, n = None):
         """
-        cancel tasks but leave client alive
-        return:
-        -------
-            latest results
+        Function to cancel all tasks and therefore the execution.
+        However, this function does not kill the client.
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of optima list entries to be returned.
+            Default is the length of the current optima list.
         """
-        print("HGDL is cancelling all tasks...")
+        if self.info is True: print("HGDL is cancelling all tasks...")
         res = self.get_latest(n)
         self.break_condition.set(True)
         self.client.cancel(self.main_future)
-        print("Status of HGDL task: ", self.main_future.status)
-        print("This leaves the client alive.")
+        if self.info is True: print("Status of HGDL task: ", self.main_future.status)
+        if self.info is True: print("This leaves the client alive.")
         return res
     ###########################################################################
     def kill_client(self, n = None):
         """
-        kill tasks and shutdown client
-        return:
-        -------
-            latest results
+        Function to cancel all tasks and kill the dask client, and therefore the execution.
+
+        Parameters
+        ----------
+        n : int, optional
+            Number of optima list entries to be returned.
+            Default is the length of the current optima list.
         """
-        print("HGDL kill client initialized ...")
+        if self.info is True: print("HGDL kill client initialized ...")
         res = self.get_latest(n)
         try:
             self.break_condition.set(True)
@@ -190,11 +253,10 @@ class HGDL:
             del self.main_future
             self.client.shutdown()
             self.client.close()
-            print("HGDL kill client successful")
+            if self.info is True: print("HGDL kill client successful")
         except Exception as err:
             print("HGDL kill failed")
             print(str(err))
-        time.sleep(0.1)
         return res
     ###########################################################################
     ############USER FUNCTIONS END#############################################
@@ -215,14 +277,14 @@ class HGDL:
     def _init_dask_client(self,dask_client):
         if dask_client is None: 
             dask_client = dask.distributed.Client()
-            print("No dask client provided to HGDL. Using the local client", flush = True)
+            if self.info is True: print("No dask client provided to HGDL. Using the local client", flush = True)
         else: print("dask client provided to HGDL", flush = True)
         client = dask_client
         worker_info = list(client.scheduler_info()["workers"].keys())
         if not worker_info: raise Exception("No workers available")
         self.workers = {"host": worker_info[0],
                 "walkers": worker_info[1:]}
-        print("Host ",self.workers["host"]," has ", len(self.workers["walkers"])," workers.")
+        if self.info is True: print("Host ",self.workers["host"]," has ", len(self.workers["walkers"])," workers.")
         self.number_of_walkers = len(self.workers["walkers"])
         return client
     ###########################################################################
