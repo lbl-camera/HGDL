@@ -17,7 +17,7 @@ kernelspec:
 Try it out: (if this does not work from within a jupiter notebook, try to run the code from a script.)
 
 ```{code-cell} ipython3
-:tags: [scroll-output]
+:tags: [remove-output]
 
 def test_rosebrock():
     from scipy.optimize import rosen, rosen_der, rosen_hess
@@ -51,8 +51,4 @@ def test_rosebrock():
 
 
 test_rosebrock()
-```
-
-```{code-cell} ipython3
-
 ```
