@@ -27,7 +27,8 @@ $
 +++
 
 For HGDL this happens by using local optimization, global optimization and deflation to find many unique optima.
-The deflation has the power to remove identified optima form the function to avoid the high costs of reidentification. Thnis is done by applying a deflation operator, based on the b ump function.
+The deflation has the power to remove identified optima form the function to avoid the high costs of reidentification.
+This is done by applying a deflation operator, based on the b ump function.
 
 +++
 
@@ -48,4 +49,9 @@ $
  * minima is a list of all technical minima
  * r is the radius of deflation
  * alpha is a parameter describing the shape of the bump function.
+
+## See Also
+
+* [gpCAM](https://gpcam.readthedocs.io)
+* [fvGP](https://fvgp.readthedocs.io)
  
