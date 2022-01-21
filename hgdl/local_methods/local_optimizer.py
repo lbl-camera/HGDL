@@ -13,7 +13,7 @@ def run_local(d,optima,x0):
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
     x,f,grad_norm,eig,local_success = run_local_optimizer(d,x0,x_defl)
     if not np.any(local_success) and len(optima.list["x"]) == 0:
-        print("No optima found on first attempt, filling in placeholders...")
+        #print("No optima found on first attempt, filling in placeholders...")
         local_success[:] = True
     optima.fill_in_optima_list(x,f,grad_norm,eig,local_success)
     return optima
@@ -43,7 +43,7 @@ def run_local_optimizer(d,x0,x_defl = []):
         worker = d.workers["walkers"][(int(i - ((i // number_of_walkers) * number_of_walkers)))]
         data = {"d":bf,"x0":x0[i],"x_defl":x_defl}
         tasks.append(client.submit(local_method,data,workers = worker))
-        print("HGDL says: local optimizer submitted to worker ", worker," ; method: ", d.local_optimizer," tol: ",d.tolerance, flush = True)
+        #print("HGDL says: local optimizer submitted to worker ", worker," ; method: ", d.local_optimizer," tol: ",d.tolerance, flush = True)
     results = client.gather(tasks)
     number_of_walkers = len(tasks)
     x = np.empty((number_of_walkers, dim))
@@ -57,17 +57,17 @@ def run_local_optimizer(d,x0,x_defl = []):
         for j in range(i):
             #exchange for function def too_close():
             if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * d.radius and local_success[j] == True:
-                print("CAUTION: points converged too close to each other in HGDL; point removed")
+                print("WARNING: points converged too close to each other in HGDL; point removed")
                 local_success[j] = False; break
         for j in range(len(x_defl)):
             if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * d.radius\
             and grad_norm[i] < 1e-5:
-                print("CAUTION: local method converged within 2 x radius of a deflated position in HGDL")
+                print("WARNING: local method converged within 2 x radius of a deflated position in HGDL")
                 local_success[i] = False
-                print("point found: ",x[i]," deflated point: ",x_defl[j])
-                print("gradient at the point: ",grad_norm[i])
-                print("distance between the points: ",np.linalg.norm(np.subtract(x[i],x_defl[j])))
-                print("--")
+                #print("point found: ",x[i]," deflated point: ",x_defl[j])
+                #print("gradient at the point: ",grad_norm[i])
+                #print("distance between the points: ",np.linalg.norm(np.subtract(x[i],x_defl[j])))
+                #print("--")
     return x, f, grad_norm, eig, local_success
 ###########################################################################
 

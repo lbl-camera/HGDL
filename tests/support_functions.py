@@ -1,6 +1,6 @@
 ###########################################################################
 ###########################################################################
-##################TEST FUNCTION############################################
+##################TEST FUNCTIONS###########################################
 ###########################################################################
 ###########################################################################
 import numpy as np
@@ -30,6 +30,7 @@ def schwefel_hessian(x,*args):
         hessian[i,i] = a[i]
     return hessian
 ###########################################################################
+
 def non_diff(x):
     p = np.array([2,2])
     if np.linalg.norm(np.subtract(p,x))<1.0: return -1.0
@@ -40,31 +41,4 @@ def non_diff_grad(x):
 ###########################################################################
 def non_diff_hess(x):
     return np.zeros((len(x),len(x)))
-###########################################################################
-def plot_schwefel(bounds = [[-500,500],[-500,500]], resolution = 100, points = None, deflation_points = None):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib import cm
-
-    X = np.linspace(bounds[0][0], bounds[0][1], resolution)
-    Y = np.linspace(bounds[1][0], bounds[1][1], resolution)
-    X, Y = np.meshgrid(X, Y)
-    schwefel = np.empty((X.shape))
-    gr = np.empty((X.shape))
-
-    for i in range(len(X)):
-        for j in range(len(Y)):
-            schwefel[i,j] = self.schwefel(np.array([X[i,j],Y[i,j]]))
-            if deflation_points is not None:
-                gr[i,j] = self.schwefel_gradient(np.array([X[i,j],Y[i,j]]))[0] * self.deflation_function(np.array([[X[i,j],Y[i,j]]]), deflation_points)
-                #gr[i,j] = self.deflation_function(np.array([[X[i,j],Y[i,j]]]), deflation_points)
-
-
-    fig = plt.figure(0)
-    a = plt.pcolormesh(X, Y, schwefel, cmap=cm.viridis)
-    plt.colorbar(a)
-    if points is not None: plt.scatter(points[:,0], points[:,1])
-
-    if len(deflation_points) != 0: plt.scatter(deflation_points[:,0], deflation_points[:,1])
-    plt.show()
 ###########################################################################

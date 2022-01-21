@@ -1,0 +1,7 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors: Marcus Michael Noack, David Perryman, Harinarayan Krishnan, Petrus H. Zwart
+title: "HGDL"
+version: 1.4.3
+doi: 
+date-released: 2021-08-11
