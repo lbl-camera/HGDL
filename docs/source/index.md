@@ -7,6 +7,15 @@ banner_height: "100vh"
 ---
 hidden: true
 maxdepth: 2
+caption: API
+---
+api/HGDL.md
+```
+
+```{toctree}
+---
+hidden: true
+maxdepth: 2
 caption: Examples
 ---
 examples/rosenbrock.md
