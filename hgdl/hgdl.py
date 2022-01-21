@@ -18,8 +18,6 @@ import pickle
 
 class HGDL:
     """
-    """
-    """
     This is HGDL, a class for asynchronous HPC-tailored optimization.
     H ... Hybrid
     G ... Global
