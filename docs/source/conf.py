@@ -19,7 +19,7 @@ from hgdl import _version
 # -- Project information -----------------------------------------------------
 
 project = 'HGDL'
-copyright = '2022, David Perryman, Marcus Noack'
+copyright = '2021, David Perryman, Marcus Noack'
 author = 'David Perryman, Marcus Noack'
 
 # The full version, including alpha/beta/rc tags
