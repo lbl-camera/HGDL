@@ -1,6 +1,6 @@
 import numpy as np
 from hgdl.hgdl import HGDL as hgdl
-from support_functions import *
+from tests.support_functions import *
 import time
 import dask.distributed as distributed
 import tracemalloc
