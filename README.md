@@ -1,6 +1,15 @@
+[![PyPI](https://img.shields.io/pypi/v/HGDL)](https://pypi.org/project/hgdl/)
+[![Documentation Status](https://readthedocs.org/projects/gpcam/badge/?version=latest)](https://gpcam.readthedocs.io/en/latest/?badge=latest)
+[![HGDL CI](https://github.com/lbl-camera/HGDL/actions/workflows/HGDL-CI.yml/badge.svg)](https://github.com/lbl-camera/fvGP/actions/workflows/HGDL-CI.yml)
+[![Codecov](https://img.shields.io/codecov/c/github/lbl-camera/HGDL)](https://app.codecov.io/gh/lbl-camera/HGDL)
+[![PyPI - License](https://img.shields.io/pypi/l/HGDL)](https://pypi.org/project/hgdl/)
+
 # HGDL
 
-HGDL is an API for HPC distributed function optimization. At the core, the algorithm uses local and global optimization and bump-function-based deflation to provide a growing list of unique optima of a differetniable functions. This tackles the common problem of non-uniquness of optimization problems, especially in machine learning.
+HGDL is an API for HPC distributed function optimization.
+At the core, the algorithm uses local and global optimization
+and bump-function-based deflation to provide a growing list of unique optima of a differetniable functions.
+This tackles the common problem of non-uniquness of optimization problems, especially in machine learning.
 
 ## Usage
 
