@@ -330,3 +330,8 @@ def run_hgdl_epoch(metadata,optima):
     x0 = np.array(x0)
     optima = run_local(metadata,optima,x0)
     return optima
+
+
+def unused():
+    print('blah')
+    return True
