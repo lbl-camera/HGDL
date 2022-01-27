@@ -9,12 +9,12 @@ coverage:
       default:
         target: auto
         paths:
-          - "src"
+          - "hgdl"
         informational: true 
     patch:
       default:
         target: auto
         paths:
-          - "src"
+          - "hgdl"
         informational: true
 
