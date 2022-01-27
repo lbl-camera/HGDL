@@ -16,5 +16,7 @@ coverage:
         informational: true
 
 ignore:
-  - "hgdl/_version.py"
+  - "hgdl/_version.py"\
+  - "setup.py"
+  - "versioneer.py"
 
