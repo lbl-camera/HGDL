@@ -1,22 +1,4 @@
 ignore:
-  - "hgdl/_version.py"
-  - "setup.py"
   - "versioneer.py"
-
-coverage:
-  status:
-    project:
-      default:
-        target: auto
-        paths:
-          - "src"
-        if_ci_failed: ignore
-        informational: true 
-    patch:
-      default:
-        target: auto
-        paths:
-          - "src"
-        if_ci_failed: ignore
-        informational: true
+  - "gpcam/_version.py"
 
