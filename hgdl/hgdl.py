@@ -11,9 +11,6 @@ from dask.distributed import as_completed
 from hgdl.optima  import optima
 from hgdl.meta_data  import meta_data
 import pickle
-###authors: Marcus Noack,David Perryman
-###institution: CAMERA @ Lawrence Berkeley National Laboratory
-
 
 
 class HGDL:
@@ -67,7 +64,7 @@ class HGDL:
         The number of optima that will be stored in the optima list and deflated. The default is 1e6.
     radius: float, optional
         The radius of the deflation operator. The default is estimted fromt he size of the domain.
-        THIS will be changed in fure releases to be estimated form the curvature of the function
+        This will be changed in fure releases to be estimated form the curvature of the function
         at the optima.
     local_max_iter : int, optional
         The number of iterations before local optimizations are terminated. The default is 100.
