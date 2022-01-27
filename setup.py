@@ -39,7 +39,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     description="HGDL Optimization",
     long_description=readme,
-    author="David Perryman, Marcus, Noack",
+    author="David Perryman, Marcus Noack",
     author_email='MarcusNoack@lbl.gov',
     url='https://github.com//hgdl',
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
@@ -59,7 +59,9 @@ setup(
     },
     install_requires=requirements,
     extras_require={
-        'tests': ['pytest', 'codecov', 'pytest-cov']
+        'tests': ['pytest', 'codecov', 'pytest-cov'],
+        'docs': ['sphinx', 'sphinx-rtd-theme', 'myst-parser', 'myst-nb', 'sphinx-panels', 'autodocs', 'jupytext']
+
     },
     license="BSD3",
     classifiers=[
