@@ -1,4 +1,20 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        paths:
+          - "src"
+        if_ci_failed: ignore
+        informational: true 
+    patch:
+      default:
+        target: auto
+        paths:
+          - "src"
+        if_ci_failed: ignore
+        informational: true
+
 ignore:
-  - "versioneer.py"
   - "hgdl/_version.py"
 
