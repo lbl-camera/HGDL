@@ -10,14 +10,14 @@ coverage:
         target: auto
         paths:
           - "src"
-        if_ci_failed: ignore
+        if_ci_failed: success
         informational: true 
     patch:
       default:
         target: auto
         paths:
           - "src"
-        if_ci_failed: ignore
+        if_ci_failed: success 
         informational: true
 
 
