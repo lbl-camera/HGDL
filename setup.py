@@ -1,9 +1,7 @@
 from os import path
 from setuptools import setup, find_packages
 import sys
-import versioneer
-
-# Adding temp comment to test codecov CI step (fail_ci_if_error = false)
+import versioneer # Add temp comment to existing line (testing fail_ci_if_error = false)
 
 # NOTE: This file must remain Python 2 compatible for the foreseeable future,
 # to ensure that we error out properly for people with outdated setuptools
