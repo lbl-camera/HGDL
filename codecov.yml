@@ -1,3 +1,8 @@
+ignore:
+  - "hgdl/_version.py"
+  - "setup.py"
+  - "versioneer.py"
+
 coverage:
   status:
     project:
@@ -14,9 +19,4 @@ coverage:
           - "src"
         if_ci_failed: ignore
         informational: true
-
-ignore:
-  - "hgdl/_version.py"\
-  - "setup.py"
-  - "versioneer.py"
 
