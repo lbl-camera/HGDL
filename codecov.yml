@@ -1,4 +1,4 @@
 ignore:
   - "versioneer.py"
-  - "gpcam/_version.py"
+  - "hgdl/_version.py"
 
