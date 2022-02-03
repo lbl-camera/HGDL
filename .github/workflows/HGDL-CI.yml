@@ -46,7 +46,7 @@ jobs:
           verbose: true
 
   deploy:
-    needs: build
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Setup Python 3.8
