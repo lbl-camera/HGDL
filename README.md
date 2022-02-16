@@ -1,3 +1,5 @@
+# HGDL
+
 [![PyPI](https://img.shields.io/pypi/v/HGDL)](https://pypi.org/project/hgdl/)
 [![Documentation Status](https://readthedocs.org/projects/gpcam/badge/?version=latest)](https://gpcam.readthedocs.io/en/latest/?badge=latest)
 [![HGDL CI](https://github.com/lbl-camera/HGDL/actions/workflows/HGDL-CI.yml/badge.svg)](https://github.com/lbl-camera/fvGP/actions/workflows/HGDL-CI.yml)
@@ -6,7 +8,6 @@
 [<img src="https://img.shields.io/badge/slack-@gpCAM-purple.svg?logo=slack">](https://gpCAM.slack.com/)
 [![DOI](https://zenodo.org/badge/434769975.svg)](https://zenodo.org/badge/latestdoi/434769975)
 
-# HGDL
 
 HGDL is an API for HPC distributed function optimization.
 At the core, the algorithm uses local and global optimization
