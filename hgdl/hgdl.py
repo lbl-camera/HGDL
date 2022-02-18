@@ -15,15 +15,15 @@ import pickle
 
 class HGDL:
     """
-    This is HGDL, a class for asynchronous HPC-tailored optimization.
+    This is HGDL, a class for asynchronous HPC-customized optimization.
     H ... Hybrid
     G ... Global
     D ... Deflated
     L ... Local
-    The algorithm places a number of walkers inside the domain (the number is determined by the dask client), all if which perform
+    The algorithm places a number of walkers inside the domain (the number is determined by the dask client), all of which perform
     a local optimization in a distributed way in parallel. When the walkers have identified local optima, their positions are communicated back to the host
-    removes the found optima by deflation, and replaces the fittest walkers by a global optimization step. Fromt here the next epoch
-    begins with distributed local optimizations of the new walkers. The algorithm reults in a sorted list of unique optima (only of optima
+    removes the found optima by deflation, and replaces the fittest walkers by a global optimization step. From here the next epoch
+    begins with distributed local optimizations of the new walkers. The algorithm results in a sorted list of unique optima (only of optima
     are strict optima f'(x) = 0)
     The method `hgdl.optimize` instantly returns a result object that can be queried for a growing, sorted list of
     optima.
@@ -44,44 +44,45 @@ class HGDL:
         np.ndarray of shape (D x D). The default value is no-op.
     num_epochs : int, optional
         The number of epochs the algorithm runs through before being terminated. One epoch is the convergence of all local walkers,
-        the deflation of the identified optima and the global replacement of the walkers. Note, the algorithm is running asynchronously, so a high number
+        the deflation of the identified optima, and the global replacement of the walkers. Note, the algorithm is running asynchronously, so a high number
         of epochs can be chosen without concern, it will not affect the run time to obtain the optima. Therefore, the default is
         100000.
     global_optimizer : Callable or str, optional
-        The function (identified by by a str of a Callable) that replaces the fittest walkers after their local convergence.
+        The function (identified by a string or a Callable) that replaces the fittest walkers after their local convergence.
         The possible options are `genetic` (default), `gauss`, `random` or a callable that accepts an
         np.ndarray of shape (U x D) of positions, an np.ndarray of shape (U) of function values,
-        and np.ndarray of shape (D x 2) of bounds, and an integer specifying the number of of offspring
+        and np.ndarray of shape (D x 2) of bounds, and an integer specifying the number of offspring
         individuals that should be returned. The callable should return the positions of the offspring
-        individuals as a np.ndarray of shape (number_of_offspring x D).
+        individuals as an np.ndarray of shape (number_of_offspring x D).
     local_optimizer : Callable or str, optional
         The local optimizer that is used for the local-walker optimization. The options are
         `dNewton` (the default Newton method that need a Hessian), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG` and most other scipy.optimize.minimize
-        local optimizers. The above have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs for specifications
+        local optimizers. The above methods have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs for specifications
         and limitations of the local methods. The parameter also accepts a callable that accepts as input a function, gradient, Hessian,
-        bounds (all as specified above), and args, and returns an object similiar to the scipy.optimize.minimize methods.
+        bounds (all as specified above), and args, and returns an object similar to the scipy.optimize.minimize methods.
     number_of_optima : int, optional
         The number of optima that will be stored in the optima list and deflated. The default is 1e6.
     radius: float, optional
-        The radius of the deflation operator. The default is estimted fromt he size of the domain.
-        This will be changed in fure releases to be estimated form the curvature of the function
+        The radius of the deflation operator. The default is estimated from the size of the domain.
+        This will be changed in future releases to be estimated from the curvature of the function
         at the optima.
     local_max_iter : int, optional
         The number of iterations before local optimizations are terminated. The default is 100.
     args : tuple, optional
-        A tuple of argiments that will be communicated to the function, the gradient and the Hessian callables.
+        A tuple of arguments that will be communicated to the function, the gradient, and the Hessian callables.
         Default = ().
     constr : object, optional
         An optional constraint that is communicated to the local optimizers. The format follows from scipy.optimize.minimize.
         The default is no constraints.
     info : bool, optional
-        If True, info is printed during the execution of the algorithm. Note, the executuoin happens asynchronously, so the output might
+        If True, info is printed during the execution of the algorithm. Note, the execution happens asynchronously, so the output might
         appear at strange places.
 
     Attributes
     ----------
     optima : object
-        Contains the attribute optima.list in which the optima are stored. However, there is a method to access the optima.
+        Contains the attribute optima.list in which the optima are stored. 
+        However, the method 'get_latest(n)' should be used to access the optima.
 
 
     """
@@ -123,9 +124,9 @@ class HGDL:
     ###########################################################################
     def optimize(self, dask_client = None, x0 = None, tolerance = 1e-6):
         """
-        Function to start the optimization. Note, this function will no return anything.
-        Use the method hgdl.HGDL.get_latest() (non-blocking) or hgdl.HGDL.get_latest() (blocking)
-        to query for results.
+        Function to start the optimization. Note, this function will not return anything.
+        Use the method hgdl.HGDL.get_latest() (non-blocking) or hgdl.HGDL.get_final() (blocking)
+        to query results.
 
         Parameters
         ----------
@@ -157,7 +158,7 @@ class HGDL:
     ###########################################################################
     def get_latest(self, n = None):
         """
-        Function to request current best n results.
+        Function to request the current best n results.
 
         Parameters
         ----------
@@ -186,8 +187,8 @@ class HGDL:
     ###########################################################################
     def get_final(self,n = None):
         """
-        Function to request final result.
-        CAUTION: This function will call the main thread until 
+        Function to request the final result.
+        CAUTION: This function will block the main thread until
         the end of all epochs is reached.
 
         Parameters
