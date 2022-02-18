@@ -28,7 +28,7 @@ examples/rosenbrock.md
 ## HGDL
 
 Welcome to the documentation of the HGDL API.
-HGDL is an optimization algorithms specialized to find not only one but a diverse set of optima,
+HGDL is an optimization algorithm specialized to find not only one but a diverse set of optima,
 alleviating challenges of non-uniqueness that is common in modern applications of inversion problems
 and training machine learning models.
 
