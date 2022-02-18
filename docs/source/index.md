@@ -59,11 +59,11 @@ $
  * r is the radius of deflation
  * alpha is a parameter describing the shape of the bump function.
 
-HGDL is customized for distributed HPC computing; all workers can be distributed across many nodes.
-All local optimizations will then happen in parallel.
+HGDL is customized for distributed HPC computing; all workers can be distributed across as many nodes.
+All local optimizations will then be executed in parallel.
 
 ## See Also
 
 * [gpCAM](https://gpcam.readthedocs.io)
 * [fvGP](https://fvgp.readthedocs.io)
- 
+* [HGDN](https://www.sciencedirect.com/science/article/pii/S037704271730225X)
