@@ -22,11 +22,11 @@ class HGDL:
     L ... Local
     The algorithm places a number of walkers inside the domain (the number is determined by the dask client), all of which perform
     a local optimization in a distributed way in parallel. When the walkers have identified local optima, their positions are communicated back to the host
-    removes the found optima by deflation, and replaces the fittest walkers by a global optimization step. From here the next epoch
-    begins with distributed local optimizations of the new walkers. The algorithm results in a sorted list of unique optima (only of optima
-    are strict optima f'(x) = 0)
+    who removes the found optima by deflation, and replaces the fittest walkers by a global optimization step. From here the next epoch
+    begins with distributed local optimizations of the new walkers. The algorithm results in a sorted list of unique optima (only if optima
+    are of the form f'(x) = 0)
     The method `hgdl.optimize` instantly returns a result object that can be queried for a growing, sorted list of
-    optima.
+    optima. If a Hessian is provided, those optima are classified as minima, maxima or sattle points.
 
     Parameters
     ----------
