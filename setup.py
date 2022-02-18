@@ -39,6 +39,7 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     description="HGDL Optimization",
     long_description=readme,
+    long_description_content_type="text/markdown",
     author="David Perryman, Marcus Noack",
     author_email='MarcusNoack@lbl.gov',
     url='https://github.com//hgdl',
