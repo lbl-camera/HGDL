@@ -28,15 +28,15 @@ examples/rosenbrock.md
 ## HGDL
 
 Welcome to the documentation of the HGDL API.
-HGDL is an optimization algorithm specialized to find not only one but a diverse set of optima,
-alleviating challenges of non-uniqueness that is common in modern applications of inversion problems
-and training machine learning models.
+HGDL is an optimization algorithm specialized in finding not only one but a diverse set of optima,
+alleviating challenges of non-uniqueness that are common in modern applications such as inversion problems
+and training of machine learning models.
 
 
-HGDL is customized for distributed HP computing; all workers can be distributed across as many nodes.
+HGDL is customized for distributed HP computing; all workers can be distributed across as many nodes or cores.
 All local optimizations will then be executed in parallel.
 As solutions are found, they are deflated which effectively removes those optima from the function,
-so that they cannot be identified again. For more information have a look at the links below.
+so that they cannot be reidentified by subsequent local searches. For more information please have a look at the content below.
 
 ## See Also
 
