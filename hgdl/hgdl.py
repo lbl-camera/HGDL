@@ -26,7 +26,7 @@ class HGDL:
     begins with distributed local optimizations of the new walkers. The algorithm results in a sorted list of unique optima (only if optima
     are of the form f'(x) = 0)
     The method `hgdl.optimize` instantly returns a result object that can be queried for a growing, sorted list of
-    optima. If a Hessian is provided, those optima are classified as minima, maxima or sattle points.
+    optima. If a Hessian is provided, those optima are classified as minima, maxima or saddle points.
 
     Parameters
     ----------
