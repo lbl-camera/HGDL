@@ -21,7 +21,7 @@ caption: Examples
 examples/rosenbrock.md
 ```
 
-# The HGDL Package: Hybrid HPC Distributed Optimization
+# HGDL: Distributed Hybrid Optimization
 
 +++
 
