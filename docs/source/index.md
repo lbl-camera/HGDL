@@ -21,7 +21,7 @@ caption: Examples
 examples/rosenbrock.md
 ```
 
-# HGDL: Distributed Hybrid Optimization
+# HGDL
 
 +++
 
