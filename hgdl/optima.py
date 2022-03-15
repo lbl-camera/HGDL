@@ -1,6 +1,9 @@
 import numpy as np
 import torch as t
 import time
+
+from loguru import logger
+
 import hgdl.misc as misc
 import hgdl.local_methods as local
 import hgdl.global_methods as glob
@@ -74,7 +77,7 @@ class optima:
             index = index[0:min(n,len(index))]
             return self.list["x"][index], self.list["func evals"][index]
         except:
-            print("no minima available in the optima_list")
+            logger.debug("no minima available in the optima_list")
             return np.empty((0,self.dim)),np.empty((0))
     ####################################################
     def get_maxima(self,n):
@@ -83,7 +86,7 @@ class optima:
             index = index[0:min(n,len(index))]
             return self.list["x"][index], self.list["func evals"][index]
         except:
-            print("no maxima available in the optima_list")
+            logger.debug("no maxima available in the optima_list")
             return np.empty((0,self.dim)),np.empty((0))
     ####################################################
     def get_deflation_points(self,n):
@@ -91,6 +94,6 @@ class optima:
             index = [i for i, x in enumerate(self.list["classifier"]) if x == "maximum" or x == "minimum" or x == "saddle point" or x == "optimum"]
             return self.list["x"][index], self.list["func evals"][index]
         except:
-            print("no deflation points available in the optima_list")
+            logger.debug("no deflation points available in the optima_list")
             return np.empty((0,self.dim)),np.empty((0))
 

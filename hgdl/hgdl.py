@@ -1,6 +1,9 @@
 import numpy as np
 import torch as t
 import time
+
+from loguru import logger
+
 import hgdl.misc as misc
 from hgdl.local_methods.local_optimizer import run_local_optimizer
 from hgdl.global_methods.global_optimizer import run_global
@@ -94,8 +97,7 @@ class HGDL:
             number_of_optima = 1000000,
             radius = None,
             local_max_iter = 100,
-            args = (), constr = (), 
-            info = False):
+            args = (), constr = ()):
 
         self.func = func
         self.grad= grad
@@ -109,13 +111,12 @@ class HGDL:
         self.global_optimizer = global_optimizer
         self.local_optimizer = local_optimizer
         self.args = args
-        self.info = info
         self.constr = constr
         self.optima = optima(self.dim, number_of_optima)
-        if self.info is True: print("HGDL successfully initiated", flush = True)
-        if self.info is True: print("deflation radius set to ",self.radius, flush = True)
-        if callable(self.hess) and self.info is True: print("Hessian was provided by the user:", self.hess)
-        if self.info is True: print("========================")
+        logger.debug("HGDL successfully initiated {}")
+        logger.debug("deflation radius set to {}", self.radius)
+        if callable(self.hess): logger.debug("Hessian was provided by the user: {}", self.hess)
+        logger.debug("========================")
     ###########################################################################
     ###########################################################################
     ############USER FUNCTIONS#################################################
@@ -143,9 +144,9 @@ class HGDL:
 
         client = self._init_dask_client(dask_client)
         self.tolerance = tolerance
-        if self.info is True: print(client, flush = True)
+        logger.debug(client)
         self.x0 = self._prepare_starting_positions(x0)
-        if self.info is True: print("HGDL starts with: ", self.x0, flush = True)
+        logger.debug("HGDL starts with: {}", self.x0)
         self.meta_data = meta_data(self)
         self._run_epochs(client)
 
@@ -169,11 +170,10 @@ class HGDL:
         try:
             data, frames = self.transfer_data.get()
             self.optima = distributed.protocol.deserialize(data,frames)
-            if self.info is True: print("HGDL called get_latest() successfully")
-        except:
+            logger.debug("HGDL called get_latest() successfully")
+        except Exception as err:
             self.optima = self.optima
-            print("HGDL get_latest failed due to ", str(err))
-            print("optima list unchanged")
+            logger.error("HGDL get_latest failed due to {} \n optima list unchanged", str(err))
 
         optima_list = self.optima.list
         if n is not None: n = min(n,len(optima_list["x"]))
@@ -200,7 +200,7 @@ class HGDL:
         try:
             self.optima = self.main_future.result()
         except Exception as err:
-            print("HGDL get_final failed due to ", str(err))
+            logger.error("HGDL get_final failed due to {}", str(err))
         optima_list = self.optima.list
         if n is not None: n = min(n,len(optima_list["x"]))
         else: n = len(optima_list["x"])
@@ -222,12 +222,12 @@ class HGDL:
             Number of optima list entries to be returned.
             Default is the length of the current optima list.
         """
-        if self.info is True: print("HGDL is cancelling all tasks...")
+        logger.debug("HGDL is cancelling all tasks...")
         res = self.get_latest(n)
         self.break_condition.set(True)
         self.client.cancel(self.main_future)
-        if self.info is True: print("Status of HGDL task: ", self.main_future.status)
-        if self.info is True: print("This leaves the client alive.")
+        logger.debug("Status of HGDL task: ", self.main_future.status)
+        logger.debug("This leaves the client alive.")
         return res
     ###########################################################################
     def kill_client(self, n = None):
@@ -240,7 +240,7 @@ class HGDL:
             Number of optima list entries to be returned.
             Default is the length of the current optima list.
         """
-        if self.info is True: print("HGDL kill client initialized ...")
+        logger.debug("HGDL kill client initialized ...")
         res = self.get_latest(n)
         try:
             self.break_condition.set(True)
@@ -249,10 +249,9 @@ class HGDL:
             del self.main_future
             self.client.shutdown()
             self.client.close()
-            if self.info is True: print("HGDL kill client successful")
+            logger.debug("HGDL kill client successful")
         except Exception as err:
-            print("HGDL kill failed")
-            print(str(err))
+            raise RuntimeError("HGDL kill failed") from err
         return res
     ###########################################################################
     ############USER FUNCTIONS END#############################################
@@ -273,14 +272,15 @@ class HGDL:
     def _init_dask_client(self,dask_client):
         if dask_client is None: 
             dask_client = dask.distributed.Client()
-            if self.info is True: print("No dask client provided to HGDL. Using the local client", flush = True)
-        else: print("dask client provided to HGDL", flush = True)
+            logger.debug("No dask client provided to HGDL. Using the local client")
+        else:
+            logger.debug("dask client provided to HGDL")
         client = dask_client
         worker_info = list(client.scheduler_info()["workers"].keys())
         if not worker_info: raise Exception("No workers available")
         self.workers = {"host": worker_info[0],
                 "walkers": worker_info[1:]}
-        if self.info is True: print("Host ",self.workers["host"]," has ", len(self.workers["walkers"])," workers.")
+        logger.debug(f"Host {self.workers['host']} has {len(self.workers['walkers'])} workers.")
         self.number_of_walkers = len(self.workers["walkers"])
         return client
     ###########################################################################
@@ -306,19 +306,21 @@ def hgdl(data):
     transfer_data = data["transfer data"]
     break_condition = data["break condition"]
     optima = data["optima"]
-    print("HGDL computing epoch 1 of ",metadata.num_epochs, flush = True)
+    logger.debug("HGDL computing epoch 1 of {}", metadata.num_epochs)
     optima = run_local(metadata,optima,metadata.x0)
     a = distributed.protocol.serialize(optima)
     transfer_data.set(a)
 
     for i in range(1,metadata.num_epochs):
         bc = break_condition.get()
-        if bc is True: print("HGDL Epoch ",i," was cancelled", flush = True);break
-        print("HGDL computing epoch ",i+1," of ",metadata.num_epochs, flush = True)
+        if bc is True:
+            logger.debug(f"HGDL Epoch {i} was cancelled")
+            break
+        logger.debug(f"HGDL computing epoch {i+1} of ", metadata.num_epochs)
         optima = run_hgdl_epoch(metadata,optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
-    print("HGDL finished all epochs!")
+    logger.debug("HGDL finished all epochs!")
     return optima
 ###########################################################################
 def run_hgdl_epoch(metadata,optima):

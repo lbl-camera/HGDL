@@ -10,6 +10,7 @@ maxdepth: 2
 caption: API
 ---
 api/HGDL.md
+api/logging.md
 ```
 
 ```{toctree}

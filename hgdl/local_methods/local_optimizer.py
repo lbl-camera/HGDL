@@ -1,5 +1,8 @@
 import numpy as np
 import time
+
+from loguru import logger
+
 import hgdl.misc as misc
 import dask.distributed
 from distributed import Client, get_client, secede, rejoin, protocol
@@ -57,12 +60,12 @@ def run_local_optimizer(d,x0,x_defl = []):
         for j in range(i):
             #exchange for function def too_close():
             if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * d.radius and local_success[j] == True:
-                print("WARNING: points converged too close to each other in HGDL; point removed")
+                logger.warning("points converged too close to each other in HGDL; point removed")
                 local_success[j] = False; break
         for j in range(len(x_defl)):
             if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * d.radius\
             and grad_norm[i] < 1e-5:
-                print("WARNING: local method converged within 2 x radius of a deflated position in HGDL")
+                logger.warning("local method converged within 2 x radius of a deflated position in HGDL")
                 local_success[i] = False
                 #print("point found: ",x[i]," deflated point: ",x_defl[j])
                 #print("gradient at the point: ",grad_norm[i])
