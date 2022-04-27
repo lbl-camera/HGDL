@@ -14,11 +14,11 @@ kernelspec:
 
 # Rosenbrock Example
 
-Try it out: (if this does not work from within a jupiter notebook, try to run the code from a script.)
 
 ```{code-cell} ipython3
 :tags: [remove-output]
 
+from hgdl.hgdl import HGDL
 def test_rosebrock():
     from scipy.optimize import rosen, rosen_der, rosen_hess
     import numpy as np
@@ -49,6 +49,6 @@ def test_rosebrock():
     print("")
     print(res)
 
-
+#run the test function
 test_rosebrock()
 ```
