@@ -1,6 +1,6 @@
 import numpy as np
 from hgdl.hgdl import HGDL
-from tests.support_functions import *
+from hgdl.support_functions import *
 import time
 import dask.distributed as distributed
 

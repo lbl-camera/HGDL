@@ -76,10 +76,8 @@ class HGDL:
         Default = ().
     constr : object, optional
         An optional constraint that is communicated to the local optimizers. The format follows from scipy.optimize.minimize.
-        The default is no constraints.
-    info : bool, optional
-        If True, info is printed during the execution of the algorithm. Note, the execution happens asynchronously, so the output might
-        appear at strange places.
+        The default is no constraints. Make sure you use a local optimizer that allows for constraints. The recommended option is
+        `local_optimizer = "SLSQP"`.
 
     Attributes
     ----------
@@ -93,7 +91,7 @@ class HGDL:
     def __init__(self, func, grad, bounds,
             hess = None, num_epochs=100000,
             global_optimizer = "genetic",
-            local_optimizer = "dNewton",
+            local_optimizer = "L-BFGS-B",
             number_of_optima = 1000000,
             radius = None,
             local_max_iter = 100,

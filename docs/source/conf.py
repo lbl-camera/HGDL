@@ -19,8 +19,8 @@ from hgdl import _version
 # -- Project information -----------------------------------------------------
 
 project = 'HGDL'
-copyright = '2021, David Perryman, Marcus Noack'
-author = 'David Perryman, Marcus Noack'
+copyright = '2021, Marcus Noack, David Perryman'
+author = 'Marcus Noack, David Perryman, Harinarayan Krishnan, Petrus Zwart'
 
 # The full version, including alpha/beta/rc tags
 release = _version.get_versions()['version']
@@ -71,4 +71,5 @@ html_theme_options = dict(
 )
 
 # Configure execution (and output generation) of myst-nb files
-jupyter_execute_notebooks = "auto"
+jupyter_execute_notebooks = 'auto'
+autodoc_member_order = 'bysource'

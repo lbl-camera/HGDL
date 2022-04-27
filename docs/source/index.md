@@ -21,6 +21,7 @@ caption: Examples
 ---
 examples/rosenbrock.ipynb
 examples/schwefel.ipynb
+examples/schwefel_constrained.ipynb
 ```
 
 # HGDL
