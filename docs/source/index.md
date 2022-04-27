@@ -20,6 +20,7 @@ maxdepth: 2
 caption: Examples
 ---
 examples/rosenbrock.ipynb
+examples/schwefel.ipynb
 ```
 
 # HGDL
