@@ -19,7 +19,7 @@ hidden: true
 maxdepth: 2
 caption: Examples
 ---
-examples/rosenbrock.md
+examples/rosenbrock.ipynb
 ```
 
 # HGDL
