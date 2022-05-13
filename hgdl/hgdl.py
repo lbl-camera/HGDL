@@ -3,7 +3,7 @@ import torch as t
 import time
 
 from loguru import logger
-
+from functools import *
 import hgdl.misc as misc
 from hgdl.local_methods.local_optimizer import run_local_optimizer
 from hgdl.global_methods.global_optimizer import run_global
@@ -14,6 +14,10 @@ from dask.distributed import as_completed
 from hgdl.optima  import optima
 from hgdl.meta_data  import meta_data
 import pickle
+
+
+#####todo: Constraints: we have to update the new lamb and slack variables in the constraint class
+
 
 
 class HGDL:
@@ -95,11 +99,28 @@ class HGDL:
             number_of_optima = 1000000,
             radius = None,
             local_max_iter = 100,
-            args = (), constr = ()):
-
-        self.func = func
-        self.grad= grad
-        self.hess= hess
+            args = (), constraints = ()):
+        self.constr = constraints
+        self.dim_orig = len(bounds)
+        if self.constr:
+            #option 1: func/grad/hass class methods, have self.constraints
+            #option 2: use partial, constraints dont have to be attribute
+            #option 3: func,... not class methods
+            c_var = 0
+            for c in self.constr:
+                if c.ctype == "=": c_var += 1
+                else: c_var += 2
+                bounds = np.row_stack([bounds,c.bounds])
+            self.L = func
+            self.Lgrad = grad
+            self.Lhess = hess
+            self.func = self.lagrangian
+            self.grad = self.lagrangian_grad
+            self.hess = None #self.lagrangian_hess
+        else:
+            self.func = func
+            self.grad = grad
+            self.hess = hess
         self.bounds = np.asarray(bounds)
         if radius is None: self.radius = np.min(bounds[:,1]-bounds[:,0])/1000.0
         else: self.radius = radius
@@ -109,7 +130,6 @@ class HGDL:
         self.global_optimizer = global_optimizer
         self.local_optimizer = local_optimizer
         self.args = args
-        self.constr = constr
         self.optima = optima(self.dim, number_of_optima)
         logger.debug("HGDL successfully initiated {}")
         logger.debug("deflation radius set to {}", self.radius)
@@ -143,6 +163,7 @@ class HGDL:
         client = self._init_dask_client(dask_client)
         self.tolerance = tolerance
         logger.debug(client)
+        if x0 is not None and len(x0[0]) != self.dim: raise Exception("The given starting locations do not have the right dimensionality.")
         self.x0 = self._prepare_starting_positions(x0)
         logger.debug("HGDL starts with: {}", self.x0)
         self.meta_data = meta_data(self)
@@ -257,6 +278,7 @@ class HGDL:
     def _prepare_starting_positions(self,x0):
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         elif x0.ndim == 1: x0 = np.array([x0])
+
         if len(x0) < self.number_of_walkers:
             x0_aux = np.zeros((self.number_of_walkers,len(x0[0])))
             x0_aux[0:len(x0)] = x0
@@ -294,6 +316,37 @@ class HGDL:
         bf = client.scatter(data, workers = self.workers["host"])
         self.main_future = client.submit(hgdl, bf, workers = self.workers["host"])
         self.client = client
+    ###########################################################################
+    def lagrangian(self,x, *args):
+        L = self.L(x[0:self.dim_orig], *args)
+        for c in self.constr:
+            if   c.ctype == '=': L += c.lamb * (c.nlc(x[0:self.dim_orig],*args) - c.value)
+            elif c.ctype == '<': L += c.lamb * (c.nlc(x[0:self.dim_orig],*args) - c.value + c.slack**2)
+            elif c.ctype == '>': L += c.lamb * (c.nlc(x[0:self.dim_orig],*args) - c.value - c.slack**2)
+            else: raise Exception("Wrong ctype in constraint")
+        return L
+    def lagrangian_grad(self,x, *args):
+        Lgrad = np.zeros((len(x)))
+        Lgrad[0:self.dim_orig] = self.Lgrad(x[0:self.dim_orig], *args) 
+        index = self.dim_orig
+        for c in self.constr:
+            Lgrad[0:self.dim_orig] += c.lamb * c.nlc_grad(x[0:self.dim_orig], *args)
+            if c.ctype == '=':
+                Lgrad[index] = c.nlc(x[0:self.dim_orig],*args) - c.value
+                index += 1
+            elif c.ctype == '<':
+                Lgrad[index] = c.nlc(x[0:self.dim_orig],*args) - c.value + c.slack**2
+                index += 1
+                Lgrad[index] = 2.0 * c.lamb * c.slack
+                index += 1
+            elif c.ctype == '>':
+                Lgrad[index] = c.nlc(x[0:self.dim_orig],*args) - c.value - c.slack**2
+                index += 1
+                Lgrad[index] = -2.0 * c.lamb * c.slack
+                index += 1
+            else: raise Exception("Wrong ctype in constraint")
+        return Lgrad
+
 ###########################################################################
 ###########################################################################
 ##################hgdl functions###########################################

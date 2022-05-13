@@ -16,12 +16,10 @@ def run_local(d,optima,x0):
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
     x,f,grad_norm,eig,local_success = run_local_optimizer(d,x0,x_defl)
     if not np.any(local_success) and len(optima.list["x"]) == 0:
-        #print("No optima found on first attempt, filling in placeholders...")
         local_success[:] = True
     optima.fill_in_optima_list(x,f,grad_norm,eig,local_success)
     return optima
 ###########################################################################
-
 def run_local_optimizer(d,x0,x_defl = []):
     """
     this function runs a deflated local methos for
