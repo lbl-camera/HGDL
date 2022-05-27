@@ -24,12 +24,20 @@ class NonLinearConstraint:
         Value of the constraint. Default = 0.0.
     """
 
-    def __init__(self,nlc,nlc_grad, nlc_hess = None, ctype = "=", value = 0.0, multiplier = 0.0, slack = None, bounds = np.array([[-1e6,1e6]])):
+    def __init__(self,nlc,nlc_grad, nlc_hess = None, ctype = "=", value = 0.0, bounds = np.array([[-10000000,10000000]])):
         self.nlc = nlc
         self.nlc_grad = nlc_grad
         self.nlc_hess = nlc_hess
         self.ctype = ctype
         self.value = value
-        self.lamb = multiplier
-        self.slack = slack
         self.bounds = bounds
+        self.multiplier_index = None
+        self.slack_index = None
+        if ctype != "=" and len(bounds) == 1: 
+            raise Exception("You have specified inequality constraints which need bounds sepcified for the multiplier and the slack varianble.")
+
+    def set_multiplier_index(self,index):
+        self.multiplier_index = index
+    def set_slack_index(self,index):
+        self.slack_index = index
+

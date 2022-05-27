@@ -61,17 +61,8 @@ def deflated_grad(x, *args, grad_func = None, x_defl = [], radius = 0.01):
     return d*grad_func(x, *args)
 
 
-def deflated_hess(x,*args, grad_func = None, hess_func = None, x_defl = [], 
-                  radius = 0.01):
+def deflated_hess(x,*args, grad_func = None, hess_func = None, x_defl = [], radius = 0.01):
     d = deflation_function(x,x_defl,radius)
     dg = deflation_function_gradient(x,x_defl,radius)
     return (hess_func(x, *args)*d) + np.outer(grad_func(x, *args),dg)
-
-#def deflated_solve( x, *args, grad_func = None, hess_func = None, x_defl=[],
-#                    radius = 0.5, extended_return = False):
-#    d = deflation_function(x,x_defl,radius)
-#    dg = deflation_function_gradient(x,x_defl,radius)
-#    #if extended_return == True: return hess_func(x, *args) + (np.outer(grad_func(x, *args),dg)/d),d,dg
-#    return hess_func(x, *args)+ (np.outer(grad_func(x, *args),dg) * d)
-
 
