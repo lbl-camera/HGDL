@@ -113,5 +113,5 @@ def local_method(data, method = "dNewton"):
 
     else: raise Exception("no local method specified")
 
-    return x,f,Lg,eig,local_success
+    return x,f,Lg,np.real(eig),local_success
 ###########################################################################

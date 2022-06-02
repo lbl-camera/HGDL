@@ -192,18 +192,10 @@ class HGDL:
         except Exception as err:
             self.optima = self.optima
             logger.error("HGDL get_latest failed due to {} \n optima list unchanged", str(err))
-        print(self.optima, flush = True)
         optima_list = self.optima.list
         if n is not None: n = min(n,len(optima_list["x"]))
         else: n = len(optima_list["x"])
         return optima_list
-        #return {"x": optima_list["x"][0:n],
-        #        "f(x)": optima_list["f(x)"][0:n],
-        #        "classifier": optima_list["classifier"][0:n],
-        #        "Hessian eigvals": optima_list["Hessian eigvals"][0:n],
-        #        "|df/dx|":optima_list["|df/dx|"][0:n],
-        #        "df/dx":optima_list["df/dx"][0:n],
-        #        "success":optima_list["success"]}
     ###########################################################################
     def get_final(self,n = None):
         """
@@ -222,15 +214,7 @@ class HGDL:
         except Exception as err:
             logger.error("HGDL get_final failed due to {}", str(err))
         optima_list = self.optima.list
-        if n is not None: n = min(n,len(optima_list["x"]))
-        else: n = len(optima_list["x"])
-        return {"x": optima_list["x"][0:n],
-                "f(x)": optima_list["f(x)"][0:n],
-                "classifier": optima_list["classifier"][0:n],
-                "Hessian eigvals": optima_list["Hessian eigvals"][0:n],
-                "|df/dx|":optima_list["|df/dx|"][0:n],
-                "df/dx":optima_list["df/dx"][0:n],
-                "success":optima_list["success"]}
+        return optima_list
     ###########################################################################
     def cancel_tasks(self, n = None):
         """
@@ -334,48 +318,35 @@ class HGDL:
         Lgrad = np.zeros((len(x)))
         Lgrad[0:self.dim_x] = self.grad(x[0:self.dim_x], *args)
         index = self.dim_x
-        ####THERE CAN BE NO c.lamb here, just x[index]
         for c in self.constr:
-            Lgrad[0:self.dim_x] += x[index] * c.nlc_grad(x[0:self.dim_x], *args)
+            Lgrad[0:self.dim_x] += x[c.multiplier_index] * c.nlc_grad(x[0:self.dim_x], *args)
             if c.ctype == '=':
-                Lgrad[index] = c.nlc(x[0:self.dim_x],*args) - c.value
-                index += 1
-            #elif c.ctype == '<':
-            #    Lgrad[index] = c.nlc(x[0:self.dim_x],*args) - c.value + x[index]**2
-            #    index += 1
-            #    Lgrad[index] = 2.0 * c.lamb * c.slack
-            #    index += 1
-            #elif c.ctype == '>':
-            #    Lgrad[index] = c.nlc(x[0:self.dim_x],*args) - c.value - c.slack**2
-            #    index += 1
-            #    Lgrad[index] = -2.0 * c.lamb * c.slack
-            #    index += 1
+                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value
+            elif c.ctype == '<':
+                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value + x[c.slack_index]**2
+                Lgrad[c.slack_index] = 2.0 * x[c.multiplier_index] * x[c.slack_index]
+            elif c.ctype == '>':
+                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value - x[c.slack_index]**2
+                Lgrad[c.slack_index] = -2.0 * x[c.multiplier_index] * x[c.slack_index]
             else: raise Exception("Wrong ctype in constraint")
-        #print("grad: ", Lgrad, flush = True)
         return Lgrad
 
     def lagrangian_hess(self,x, *args):
         Lhess = np.zeros((len(x),len(x)))
         Lhess[0:self.dim_x,0:self.dim_x] = self.hess(x[0:self.dim_x], *args)
-        index = self.dim_x
         ####THERE CAN BE NO c.lamb here, just x[index]
         for c in self.constr:
-            Lhess[0:self.dim_x,0:self.dim_x] += x[index] * c.nlc_hess(x[0:self.dim_x], *args)
+            Lhess[0:self.dim_x,0:self.dim_x] += x[c.multiplier_index] * c.nlc_hess(x[0:self.dim_x], *args)
             if c.ctype == '=':
                 cc = c.nlc_grad(x[0:self.dim_x],*args)
-                Lhess[index,0:self.dim_x] = cc
-                Lhess[0:self.dim_x,index] = cc
-                index += 1
+                Lhess[c.multiplier_index,0:self.dim_x] = cc
+                Lhess[0:self.dim_x,c.multiplier_index] = cc
             #elif c.ctype == '<':
-            #    Lgrad[index] = c.nlc(x[0:self.dim_x],*args) - c.value + x[index]**2
-            #    index += 1
-            #    Lgrad[index] = 2.0 * c.lamb * c.slack
-            #    index += 1
+            #    Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value + x[c.multiplier_index]**2
+            #    Lgrad[c.multiplier_index] = 2.0 * c.lamb * c.slack
             #elif c.ctype == '>':
-            #    Lgrad[index] = c.nlc(x[0:self.dim_x],*args) - c.value - c.slack**2
-            #    index += 1
-            #    Lgrad[index] = -2.0 * c.lamb * c.slack
-            #    index += 1
+            #    Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value - c.slack**2
+            #    Lgrad[c.multiplier_index] = -2.0 * c.lamb * c.slack
             else: raise Exception("Wrong ctype in constraint")
         #print("grad: ", Lgrad, flush = True)
         return Lhess
