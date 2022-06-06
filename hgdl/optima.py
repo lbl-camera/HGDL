@@ -127,10 +127,10 @@ class optima_constr:
 
         self.max_optima = max_optima
         self.list = {"x": np.empty((0,self.dim_x)),
-                     "k": np.empty((self.dim_k)),
+                     "k": np.empty((0,self.dim_k)),
                      "f(x)": np.empty((0)),
                      "classifier": [],
-                     "Hessian eigvals": np.empty((0,self.dim)),
+                     "Hessian eigvals": np.empty((0,self.dim_x)),
                      "dL/dx": np.empty((0,self.dim_x)),
                      "dL/dk": np.empty((self.dim_k)),
                      "|dL/dx|":np.empty((0)),
@@ -139,6 +139,7 @@ class optima_constr:
     ####################################################
     def fill_in_optima_list(self,res):
         x,f,Lg,eig,local_success = res[0],res[1],res[2],res[3],res[4]
+        eig = eig[:,0:self.dim_x]
         if not np.any(local_success) and len(self.list["x"]) == 0: local_success[:] = True
         clean_indices = np.where(np.asarray(local_success) == True)[0]
 

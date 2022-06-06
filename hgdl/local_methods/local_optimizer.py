@@ -14,13 +14,7 @@ import hgdl.local_methods.bump_function as defl
 
 def run_local(d,optima,x0):
     x_defl,f_defl = optima.get_deflation_points(len(optima.list))
-    #print(x_defl,flush = True)
-    #x,f,Lg,eig,local_success = 
     return run_local_optimizer(d,x0,x_defl)
-    #if optima.dim_k == 0: 
-    #optima.fill_in_optima_list(x,f,fg,fg_norm,eig,local_success)
-    #else : optima.fill_in_optima_list(x,k,f,fg,fg_norm,Lg,Lg_norm,eig,local_success)
-    #return optima
 ###########################################################################
 def run_local_optimizer(d,x0,x_defl = []):
     """

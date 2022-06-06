@@ -76,9 +76,11 @@ class HGDL:
         A tuple of arguments that will be communicated to the function, the gradient, and the Hessian callables.
         Default = ().
     constr : object, optional
-        An optional constraint that is communicated to the local optimizers. The format follows from scipy.optimize.minimize.
-        The default is no constraints. Make sure you use a local optimizer that allows for constraints. The recommended option is
-        `local_optimizer = "SLSQP"`.
+        An optional n-tuple of constraint objects. See hgdl.constraints.NonLinearConstraints.
+        The default is no constraints (). Make sure you use a `local_optimizer = "dNewton"` if constraints are used.
+        Also, try to provide a Hessian callable. If not, the Hessian will be approximated from the gradient which is fine as long as
+        your gradient function is fast and exact. When constraints are used, the space extended by a linear space with elements 'k' which
+        will be part of the result object.
 
     Attributes
     ----------
@@ -92,7 +94,7 @@ class HGDL:
     def __init__(self, func, grad, bounds,
             hess = None, num_epochs=100000,
             global_optimizer = "genetic",
-            local_optimizer = "L-BFGS-B",
+            local_optimizer = "dNewton",
             number_of_optima = 1000000,
             radius = None,
             local_max_iter = 1000,
@@ -109,7 +111,7 @@ class HGDL:
         index = self.dim_x
         if self.constr and local_optimizer != "dNewton": raise Exception("Please use ``local_optimizer = 'dNewton' if constraints are used''.")
         for c in self.constr:
-            if c.ctype == "=": 
+            if c.ctype == "=":
                 c.set_multiplier_index(index)
                 index += 1
             else:
@@ -305,19 +307,16 @@ class HGDL:
     ###########################################################################
     def lagrangian(self,x, *args):
         L = self.func(x[0:self.dim_x], *args)
-        index = self.dim_x
         for c in self.constr:
-            if   c.ctype == '=':
-                L += x[index] * (c.nlc(x[0:self.dim_x],*args) - c.value)
-                index += 1
-        #    elif c.ctype == '<': L += c.lamb * (c.nlc(x[0:self.dim_x],*args) - c.value + c.slack**2)
-        #    elif c.ctype == '>': L += c.lamb * (c.nlc(x[0:self.dim_x],*args) - c.value - c.slack**2)
+            if   c.ctype == '=': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value)
+            elif c.ctype == '<': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value + x[c.slack_index]**2)
+            elif c.ctype == '>': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value - x[c.slack_index]**2)
             else: raise Exception("Wrong ctype in constraint")
         return L
+
     def lagrangian_grad(self,x, *args):
         Lgrad = np.zeros((len(x)))
         Lgrad[0:self.dim_x] = self.grad(x[0:self.dim_x], *args)
-        index = self.dim_x
         for c in self.constr:
             Lgrad[0:self.dim_x] += x[c.multiplier_index] * c.nlc_grad(x[0:self.dim_x], *args)
             if c.ctype == '=':
@@ -333,24 +332,58 @@ class HGDL:
 
     def lagrangian_hess(self,x, *args):
         Lhess = np.zeros((len(x),len(x)))
+        if not self.hess: return self.lagrangian_hess_approx(x,*args)
         Lhess[0:self.dim_x,0:self.dim_x] = self.hess(x[0:self.dim_x], *args)
-        ####THERE CAN BE NO c.lamb here, just x[index]
         for c in self.constr:
             Lhess[0:self.dim_x,0:self.dim_x] += x[c.multiplier_index] * c.nlc_hess(x[0:self.dim_x], *args)
             if c.ctype == '=':
+                #mixed: x, multiplier
                 cc = c.nlc_grad(x[0:self.dim_x],*args)
                 Lhess[c.multiplier_index,0:self.dim_x] = cc
                 Lhess[0:self.dim_x,c.multiplier_index] = cc
-            #elif c.ctype == '<':
-            #    Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value + x[c.multiplier_index]**2
-            #    Lgrad[c.multiplier_index] = 2.0 * c.lamb * c.slack
-            #elif c.ctype == '>':
-            #    Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value - c.slack**2
-            #    Lgrad[c.multiplier_index] = -2.0 * c.lamb * c.slack
+                #same
+                ##Lhess[c.multiplier_index,c.multiplier_index] = 0 ##already zero
+            elif c.ctype == '<':
+                #mixed: x,multiplier
+                cc = c.nlc_grad(x[0:self.dim_x],*args)
+                Lhess[c.multiplier_index,0:self.dim_x] = cc
+                Lhess[0:self.dim_x,c.multiplier_index] = cc
+                #mixed: multiplier, slack
+                cc = 2.0 * x[c.slack_index]
+                Lhess[c.slack_index,c.multiplier_index] = cc
+                Lhess[c.multiplier_index,c.slack_index] = cc
+                #same: slack, slack
+                cc = 2.0 * x[c.multiplier_index]
+                Lhess[c.slack_index,c.slack_index] = cc
+
+            elif c.ctype == '>':
+                #mixed: x,multiplier
+                cc = c.nlc_grad(x[0:self.dim_x],*args)
+                Lhess[c.multiplier_index,0:self.dim_x] = cc
+                Lhess[0:self.dim_x,c.multiplier_index] = cc
+                #mixed: multiplier, slack
+                cc = -2.0 * x[c.slack_index]
+                Lhess[c.slack_index,c.multiplier_index] = cc
+                Lhess[c.multiplier_index,c.slack_index] = cc
+                #same: slack, slack
+                cc = -2.0 * x[c.multiplier_index]
+                Lhess[c.slack_index,c.slack_index] = cc
+
             else: raise Exception("Wrong ctype in constraint")
-        #print("grad: ", Lgrad, flush = True)
         return Lhess
 
+    def lagrangian_hess_approx(self,x, *args):
+        ##implements a first-order approximation
+        #grad = self.lagrangian_grad
+        len_x = len(x)
+        hess = np.zeros((len_x,len_x))
+        epsilon = 1e-6
+        grad_x = self.lagrangian_grad(x, *args)
+        for i in range(len_x):
+            x_temp = np.array(x)
+            x_temp[i] = x_temp[i] + epsilon
+            hess[i,i:] = ((self.lagrangian_grad(x_temp,*args) - grad_x)/epsilon)[i:]
+        return hess + hess.T - np.diag(np.diag(hess))
 ###########################################################################
 ###########################################################################
 ##################hgdl functions###########################################
