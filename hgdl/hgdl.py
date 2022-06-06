@@ -3,7 +3,7 @@ import torch as t
 import time
 
 from loguru import logger
-
+from functools import *
 import hgdl.misc as misc
 from hgdl.local_methods.local_optimizer import run_local_optimizer
 from hgdl.global_methods.global_optimizer import run_global
@@ -12,6 +12,7 @@ import dask.distributed as distributed
 import dask.multiprocessing
 from dask.distributed import as_completed
 from hgdl.optima  import optima
+from hgdl.optima  import optima_constr
 from hgdl.meta_data  import meta_data
 import pickle
 
@@ -75,9 +76,11 @@ class HGDL:
         A tuple of arguments that will be communicated to the function, the gradient, and the Hessian callables.
         Default = ().
     constr : object, optional
-        An optional constraint that is communicated to the local optimizers. The format follows from scipy.optimize.minimize.
-        The default is no constraints. Make sure you use a local optimizer that allows for constraints. The recommended option is
-        `local_optimizer = "SLSQP"`.
+        An optional n-tuple of constraint objects. See hgdl.constraints.NonLinearConstraints.
+        The default is no constraints (). Make sure you use a `local_optimizer = "dNewton"` if constraints are used.
+        Also, try to provide a Hessian callable. If not, the Hessian will be approximated from the gradient which is fine as long as
+        your gradient function is fast and exact. When constraints are used, the space extended by a linear space with elements 'k' which
+        will be part of the result object.
 
     Attributes
     ----------
@@ -91,26 +94,44 @@ class HGDL:
     def __init__(self, func, grad, bounds,
             hess = None, num_epochs=100000,
             global_optimizer = "genetic",
-            local_optimizer = "L-BFGS-B",
+            local_optimizer = "dNewton",
             number_of_optima = 1000000,
             radius = None,
-            local_max_iter = 100,
-            args = (), constr = ()):
+            local_max_iter = 1000,
+            args = (), constraints = ()):
 
-        self.func = func
-        self.grad= grad
-        self.hess= hess
+        self.constr = constraints
+        self.dim_x = len(bounds)
+        self.func = func #self.lagrangian ##this canalways happen
+        self.grad = grad
+        self.hess = hess
+        self.L = self.lagrangian
+        self.Lgrad = self.lagrangian_grad
+        self.Lhess = self.lagrangian_hess
+        index = self.dim_x
+        if self.constr and local_optimizer != "dNewton": raise Exception("Please use ``local_optimizer = 'dNewton' if constraints are used''.")
+        for c in self.constr:
+            if c.ctype == "=":
+                c.set_multiplier_index(index)
+                index += 1
+            else:
+                c.set_multiplier_index(index)
+                c.set_slack_index(index+1)
+                index += 2
+            bounds = np.row_stack([bounds,c.bounds])
+
         self.bounds = np.asarray(bounds)
-        if radius is None: self.radius = np.min(bounds[:,1]-bounds[:,0])/1000.0
+        if radius is None: self.radius = np.min(bounds[0:self.dim_x,1]-bounds[0:self.dim_x,0])/1000.0
         else: self.radius = radius
         self.dim = len(self.bounds)
+        self.dim_k = self.dim - self.dim_x
         self.local_max_iter = local_max_iter
         self.num_epochs = num_epochs
         self.global_optimizer = global_optimizer
         self.local_optimizer = local_optimizer
         self.args = args
-        self.constr = constr
-        self.optima = optima(self.dim, number_of_optima)
+        if self.dim_k == 0: self.optima = optima(self.dim_x,number_of_optima)
+        if self.dim_k >  0: self.optima = optima_constr(self.dim_x, self.dim_k,number_of_optima)
         logger.debug("HGDL successfully initiated {}")
         logger.debug("deflation radius set to {}", self.radius)
         if callable(self.hess): logger.debug("Hessian was provided by the user: {}", self.hess)
@@ -143,6 +164,7 @@ class HGDL:
         client = self._init_dask_client(dask_client)
         self.tolerance = tolerance
         logger.debug(client)
+        if x0 is not None and len(x0[0]) != self.dim: raise Exception("The given starting locations do not have the right dimensionality.")
         self.x0 = self._prepare_starting_positions(x0)
         logger.debug("HGDL starts with: {}", self.x0)
         self.meta_data = meta_data(self)
@@ -172,16 +194,10 @@ class HGDL:
         except Exception as err:
             self.optima = self.optima
             logger.error("HGDL get_latest failed due to {} \n optima list unchanged", str(err))
-
         optima_list = self.optima.list
         if n is not None: n = min(n,len(optima_list["x"]))
         else: n = len(optima_list["x"])
-        return {"x": optima_list["x"][0:n], \
-                "func evals": optima_list["func evals"][0:n],
-                "classifier": optima_list["classifier"][0:n],
-                "eigen values": optima_list["eigen values"][0:n],
-                "gradient norm":optima_list["gradient norm"][0:n],
-                "success":optima_list["success"]}
+        return optima_list
     ###########################################################################
     def get_final(self,n = None):
         """
@@ -200,14 +216,7 @@ class HGDL:
         except Exception as err:
             logger.error("HGDL get_final failed due to {}", str(err))
         optima_list = self.optima.list
-        if n is not None: n = min(n,len(optima_list["x"]))
-        else: n = len(optima_list["x"])
-        return {"x": optima_list["x"][0:n], \
-                "func evals": optima_list["func evals"][0:n],
-                "classifier": optima_list["classifier"][0:n],
-                "eigen values": optima_list["eigen values"][0:n],
-                "gradient norm":optima_list["gradient norm"][0:n],
-                "success":optima_list["success"]}
+        return optima_list
     ###########################################################################
     def cancel_tasks(self, n = None):
         """
@@ -257,6 +266,7 @@ class HGDL:
     def _prepare_starting_positions(self,x0):
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         elif x0.ndim == 1: x0 = np.array([x0])
+
         if len(x0) < self.number_of_walkers:
             x0_aux = np.zeros((self.number_of_walkers,len(x0[0])))
             x0_aux[0:len(x0)] = x0
@@ -294,6 +304,86 @@ class HGDL:
         bf = client.scatter(data, workers = self.workers["host"])
         self.main_future = client.submit(hgdl, bf, workers = self.workers["host"])
         self.client = client
+    ###########################################################################
+    def lagrangian(self,x, *args):
+        L = self.func(x[0:self.dim_x], *args)
+        for c in self.constr:
+            if   c.ctype == '=': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value)
+            elif c.ctype == '<': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value + x[c.slack_index]**2)
+            elif c.ctype == '>': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value - x[c.slack_index]**2)
+            else: raise Exception("Wrong ctype in constraint")
+        return L
+
+    def lagrangian_grad(self,x, *args):
+        Lgrad = np.zeros((len(x)))
+        Lgrad[0:self.dim_x] = self.grad(x[0:self.dim_x], *args)
+        for c in self.constr:
+            Lgrad[0:self.dim_x] += x[c.multiplier_index] * c.nlc_grad(x[0:self.dim_x], *args)
+            if c.ctype == '=':
+                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value
+            elif c.ctype == '<':
+                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value + x[c.slack_index]**2
+                Lgrad[c.slack_index] = 2.0 * x[c.multiplier_index] * x[c.slack_index]
+            elif c.ctype == '>':
+                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value - x[c.slack_index]**2
+                Lgrad[c.slack_index] = -2.0 * x[c.multiplier_index] * x[c.slack_index]
+            else: raise Exception("Wrong ctype in constraint")
+        return Lgrad
+
+    def lagrangian_hess(self,x, *args):
+        Lhess = np.zeros((len(x),len(x)))
+        if not self.hess: return self.lagrangian_hess_approx(x,*args)
+        Lhess[0:self.dim_x,0:self.dim_x] = self.hess(x[0:self.dim_x], *args)
+        for c in self.constr:
+            Lhess[0:self.dim_x,0:self.dim_x] += x[c.multiplier_index] * c.nlc_hess(x[0:self.dim_x], *args)
+            if c.ctype == '=':
+                #mixed: x, multiplier
+                cc = c.nlc_grad(x[0:self.dim_x],*args)
+                Lhess[c.multiplier_index,0:self.dim_x] = cc
+                Lhess[0:self.dim_x,c.multiplier_index] = cc
+                #same
+                ##Lhess[c.multiplier_index,c.multiplier_index] = 0 ##already zero
+            elif c.ctype == '<':
+                #mixed: x,multiplier
+                cc = c.nlc_grad(x[0:self.dim_x],*args)
+                Lhess[c.multiplier_index,0:self.dim_x] = cc
+                Lhess[0:self.dim_x,c.multiplier_index] = cc
+                #mixed: multiplier, slack
+                cc = 2.0 * x[c.slack_index]
+                Lhess[c.slack_index,c.multiplier_index] = cc
+                Lhess[c.multiplier_index,c.slack_index] = cc
+                #same: slack, slack
+                cc = 2.0 * x[c.multiplier_index]
+                Lhess[c.slack_index,c.slack_index] = cc
+
+            elif c.ctype == '>':
+                #mixed: x,multiplier
+                cc = c.nlc_grad(x[0:self.dim_x],*args)
+                Lhess[c.multiplier_index,0:self.dim_x] = cc
+                Lhess[0:self.dim_x,c.multiplier_index] = cc
+                #mixed: multiplier, slack
+                cc = -2.0 * x[c.slack_index]
+                Lhess[c.slack_index,c.multiplier_index] = cc
+                Lhess[c.multiplier_index,c.slack_index] = cc
+                #same: slack, slack
+                cc = -2.0 * x[c.multiplier_index]
+                Lhess[c.slack_index,c.slack_index] = cc
+
+            else: raise Exception("Wrong ctype in constraint")
+        return Lhess
+
+    def lagrangian_hess_approx(self,x, *args):
+        ##implements a first-order approximation
+        #grad = self.lagrangian_grad
+        len_x = len(x)
+        hess = np.zeros((len_x,len_x))
+        epsilon = 1e-6
+        grad_x = self.lagrangian_grad(x, *args)
+        for i in range(len_x):
+            x_temp = np.array(x)
+            x_temp[i] = x_temp[i] + epsilon
+            hess[i,i:] = ((self.lagrangian_grad(x_temp,*args) - grad_x)/epsilon)[i:]
+        return hess + hess.T - np.diag(np.diag(hess))
 ###########################################################################
 ###########################################################################
 ##################hgdl functions###########################################
@@ -305,7 +395,8 @@ def hgdl(data):
     break_condition = data["break condition"]
     optima = data["optima"]
     logger.debug("HGDL computing epoch 1 of {}", metadata.num_epochs)
-    optima = run_local(metadata,optima,metadata.x0)
+    res = run_local(metadata,optima,metadata.x0)
+    optima.fill_in_optima_list(res)
     a = distributed.protocol.serialize(optima)
     transfer_data.set(a)
 
@@ -324,10 +415,13 @@ def hgdl(data):
 def run_hgdl_epoch(metadata,optima):
     optima_list = optima.list
     n = min(len(optima_list["x"]),metadata.number_of_walkers)
-    x0 = run_global(\
-            np.array(optima_list["x"][0:n,:]),
-            np.array(optima_list["func evals"][0:n]),
-            metadata.bounds, metadata.global_optimizer,metadata.number_of_walkers)
-    x0 = np.array(x0)
-    optima = run_local(metadata,optima,x0)
+    global_res = run_global(\
+            np.array(optima_list["x"][0:n]),
+            np.array(optima_list["f(x)"][0:n]),
+            metadata.bounds[0:metadata.dim_x], metadata.global_optimizer,n)
+    x0 = np.zeros((n,metadata.dim))
+    x0[:,0:metadata.dim_x] = np.array(global_res)
+    if metadata.dim != metadata.dim_x: x0[:,metadata.dim_x:] = np.array(optima_list["k"][0:n])
+    res = run_local(metadata,optima,x0)
+    op = optima.fill_in_optima_list(res)
     return optima

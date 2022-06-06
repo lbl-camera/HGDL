@@ -10,64 +10,187 @@ import hgdl.global_methods as glob
 import dask.distributed as distributed
 import dask.multiprocessing
 from dask.distributed import as_completed
-###authors: David Perryman, Marcus Noack
-###institution: CAMERA @ Lawrence Berkeley National Laboratory
 
 class optima:
     """
     stores all results and adaptations of it
     """
-    def __init__(self,dim, max_optima):
+    def __init__(self,dim_x, max_optima):
         """
         input:
         -----
-            dim  the dimensionality of the space
+            dim ... the dimensionality of the space
+            max_optima ... maximum number of stored optima
         """
-        self.dim = dim
+
+        self.dim_x = dim_x
         self.max_optima = max_optima
-        self.list = {"x": np.empty((0,self.dim)), 
-                     "func evals": np.empty((0)), 
-                     "classifier": [], "eigen values": np.empty((0,self.dim)), 
-                     "gradient norm":np.empty((0)),
+        self.list = {"x": np.empty((0,self.dim_x)),
+                     "f(x)": np.empty((0)),
+                     "classifier": [],
+                     "Hessian eigvals": np.empty((0,self.dim_x)),
+                     "df/dx": np.empty((0,self.dim_x)),
+                     "|df/dx|":np.empty((0)),
                      "success": False}
     ####################################################
-    def fill_in_optima_list(self,x,f,grad_norm,eig, local_success):
+    def fill_in_optima_list(self,res):
+        x,f,fg,eig,local_success = res[0],res[1],res[2],res[3],res[4]
+        if not np.any(local_success) and len(self.list["x"]) == 0: local_success[:] = True
         clean_indices = np.where(np.asarray(local_success) == True)[0]
         if len(clean_indices) == 0:
-            return {"x": self.list["x"], \
-                    "func evals": self.list["func evals"], \
-                    "classifier": self.list["classifier"], \
-                    "eigen values": self.list["eigen values"],\
-                    "gradient norm": self.list["gradient norm"],\
+            return {"x": self.list["x"],
+                    "f(x)": self.list["f(x)"],
+                    "classifier": self.list["classifier"],
+                    "Hessian eigvals": self.list["Hessian eigvals"],
+                    "df/dx": self.list["df/dx"],
+                    "|df/dx|": self.list["|df/dx|"],
                     "success": self.list["success"]}
 
         clean_x = x[clean_indices]
         clean_f = f[clean_indices]
-        clean_grad_norm = grad_norm[clean_indices]
+        clean_fg = fg[clean_indices]
         clean_eig = eig[clean_indices]
         classifier = []
         for i in range(len(clean_x)):
-            if clean_grad_norm[i] > 1e-4: classifier.append("degenerate")
-            elif len(np.where(clean_eig[i] != clean_eig[i])[0]) == len(clean_eig[i]): classifier.append("optimum")
-            elif len(np.where(clean_eig[i] > 0.0)[0]) == len(clean_eig[i]): classifier.append("minimum")
-            elif len(np.where(clean_eig[i] < 0.0)[0]) == len(clean_eig[i]): classifier.append("maximum")
-            elif len(np.where(clean_eig[i] == 0.0)[0])  > 0: classifier.append("zero curvature")
+            if any(clean_fg[i] > 1e-5): classifier.append("degenerate")
+            elif any(np.isnan(clean_eig[i])): classifier.append("optimum")
+            elif all(clean_eig[i] > 0.0): classifier.append("minimum")
+            elif all(clean_eig[i] < 0.0): classifier.append("maximum")
+            elif any(abs(clean_eig[i]) < 10e-6): classifier.append("zero curvature")
             elif len(np.where(clean_eig[i] < 0.0)[0])  < len(clean_eig[i]): classifier.append("saddle point")
             else: classifier.append("ERROR")
 
-        optima_list =  {"x":       np.vstack([self.list["x"],clean_x]), \
-                        "func evals":   np.append(self.list["func evals"],clean_f), \
-                        "classifier":   self.list["classifier"] + classifier, \
-                        "eigen values": np.vstack([self.list["eigen values"],clean_eig]),\
-                        "gradient norm":np.append(self.list["gradient norm"],clean_grad_norm),\
+        optima_list =  {"x":       np.vstack([self.list["x"],clean_x]),
+                        "f(x)":    np.append(self.list["f(x)"],clean_f),
+                        "classifier":   self.list["classifier"] + classifier,
+                        "Hessian eigvals": np.vstack([self.list["Hessian eigvals"],clean_eig]),
+                        "df/dx":np.vstack([self.list["df/dx"],clean_fg]),
+                        "|df/dx|":np.append(self.list["|df/dx|"],np.linalg.norm(clean_fg, axis = 1)),
                         "success": True}
 
-        sort_indices = np.argsort(optima_list["func evals"])
+        sort_indices = np.argsort(optima_list["f(x)"])
         optima_list["x"] = optima_list["x"][sort_indices][0:self.max_optima]
-        optima_list["func evals"] = optima_list["func evals"][sort_indices][0:self.max_optima]
+        optima_list["f(x)"] = optima_list["f(x)"][sort_indices][0:self.max_optima]
         optima_list["classifier"] = [optima_list["classifier"][i] for i in sort_indices][0:self.max_optima]
-        optima_list["eigen values"] = optima_list["eigen values"][sort_indices][0:self.max_optima]
-        optima_list["gradient norm"] = optima_list["gradient norm"][sort_indices][0:self.max_optima]
+        optima_list["Hessian eigvals"] = optima_list["Hessian eigvals"][sort_indices][0:self.max_optima]
+        optima_list["df/dx"] = optima_list["df/dx"][sort_indices][0:self.max_optima]
+        optima_list["|df/dx|"] = optima_list["|df/dx|"][sort_indices][0:self.max_optima]
+        self.list = dict(optima_list)
+        return optima_list
+
+    def get_minima(self,n):
+        try:
+            index = [i for i,x in enumerate(self.list["classifier"]) if x == "minimum"]
+            index = index[0:min(n,len(index))]
+            return self.list["x"][index], self.list["f(x)"][index]
+        except:
+            logger.debug("no minima available in the optima_list")
+            return np.empty((0,self.dim_x)),np.empty((0))
+    ####################################################
+    def get_maxima(self,n):
+        try:
+            index = [i for i,x in enumerate(self.list["classifier"]) if x == "maximum"]
+            index = index[0:min(n,len(index))]
+            return self.list["x"][index], self.list["f(x)"][index]
+        except:
+            logger.debug("no maxima available in the optima_list")
+            return np.empty((0,self.dim_x)),np.empty((0))
+    ####################################################
+    def get_deflation_points(self,n):
+        try:
+            index = [i for i, x in enumerate(self.list["classifier"]) if x == "maximum" or x == "minimum" or x == "zero curvature" or x == "saddle point" or x == "optimum"]
+            return self.list["x"][index], self.list["f(x)"][index]
+        except:
+            logger.debug("no deflation points available in the optima_list")
+            return np.empty((0,self.dim_x+self.dim_k)),np.empty((0))
+
+#########################################################
+#########################################################
+#########################################################
+#########################################################
+#########################################################
+class optima_constr:
+    """
+    stores all results and adaptations of it
+    """
+    def __init__(self,dim_x,dim_k, max_optima):
+        """
+        input:
+        -----
+            dim ... the dimensionality of the space
+            max_optima ... maximum number of stored optima
+        """
+
+        self.dim_x = dim_x
+        self.dim_k = dim_k
+        self.dim = self.dim_x + self.dim_k
+
+        self.max_optima = max_optima
+        self.list = {"x": np.empty((0,self.dim_x)),
+                     "k": np.empty((0,self.dim_k)),
+                     "f(x)": np.empty((0)),
+                     "classifier": [],
+                     "Hessian eigvals": np.empty((0,self.dim_x)),
+                     "dL/dx": np.empty((0,self.dim_x)),
+                     "dL/dk": np.empty((self.dim_k)),
+                     "|dL/dx|":np.empty((0)),
+                     "|dL/dk|":np.empty((0)),
+                     "success": False}
+    ####################################################
+    def fill_in_optima_list(self,res):
+        x,f,Lg,eig,local_success = res[0],res[1],res[2],res[3],res[4]
+        eig = eig[:,0:self.dim_x]
+        if not np.any(local_success) and len(self.list["x"]) == 0: local_success[:] = True
+        clean_indices = np.where(np.asarray(local_success) == True)[0]
+
+        if len(clean_indices) == 0:
+            return {"x": self.list["x"][:,0:self.dim_x],
+                    "k": self.list["k"][:,self.dim_x:self.dim],
+                    "f(x)": self.list["f(x)"],
+                    "classifier": self.list["classifier"],
+                    "Hessian eigvals": self.list["Hessian eigvals"],
+                    "dL/dx": self.list["dL/dx"],
+                    "dL/dk": self.list["dL/dk"],
+                    "|dL/dx|": self.list["|dL/dx|"],
+                    "|dL/dk|": self.list["|dL/dk|"],
+                    "success": self.list["success"]}
+
+        clean_x = x[clean_indices]
+        clean_f = f[clean_indices]
+        clean_Lg = Lg[clean_indices]
+        clean_eig = eig[clean_indices]
+        classifier = []
+        for i in range(len(clean_x)):
+            if any(clean_Lg[i] > 1e-5): classifier.append("degenerate")
+            elif any(np.isnan(clean_eig[i])): classifier.append("optimum")
+            elif all(clean_eig[i] > 0.0): classifier.append("minimum")
+            elif all(clean_eig[i] < 0.0): classifier.append("maximum")
+            elif any(abs(clean_eig[i]) < 10e-6): classifier.append("zero curvature")
+            elif len(np.where(clean_eig[i] < 0.0)[0])  < len(clean_eig[i]): classifier.append("saddle point")
+            else: classifier.append("ERROR")
+
+
+        optima_list =  {"x":       np.vstack([self.list["x"],clean_x[:,0:self.dim_x]]),
+                        "k":       np.vstack([self.list["k"],clean_x[:,self.dim_x:self.dim]]),
+                        "f(x)":    np.append(self.list["f(x)"],clean_f),
+                        "classifier":   self.list["classifier"] + classifier,
+                        "Hessian eigvals": np.vstack([self.list["Hessian eigvals"],clean_eig]),
+                        "dL/dx":np.vstack([self.list["dL/dx"],clean_Lg[:,0:self.dim_x]]),
+                        "|dL/dx|":np.append(self.list["|dL/dx|"],np.linalg.norm(clean_Lg[:,0:self.dim_x],axis = 1)),
+                        "dL/dk":np.vstack([self.list["dL/dk"],clean_Lg[:,self.dim_x:self.dim]]),
+                        "|dL/dk|":np.append(self.list["|dL/dk|"],np.linalg.norm(clean_Lg[:,self.dim_x:self.dim],axis = 1)),
+                        "success": True}
+
+        sort_indices = np.argsort(optima_list["f(x)"])
+        optima_list["x"] = optima_list["x"][sort_indices][0:self.max_optima]
+        optima_list["k"] = optima_list["k"][sort_indices][0:self.max_optima]
+        optima_list["f(x)"] = optima_list["f(x)"][sort_indices][0:self.max_optima]
+        optima_list["classifier"] = [optima_list["classifier"][i] for i in sort_indices][0:self.max_optima]
+        optima_list["Hessian eigvals"] = optima_list["Hessian eigvals"][sort_indices][0:self.max_optima]
+        optima_list["dL/dx"] = optima_list["dL/dx"][sort_indices][0:self.max_optima]
+        optima_list["dL/dk"] = optima_list["dL/dk"][sort_indices][0:self.max_optima]
+        optima_list["|dL/dx|"] = optima_list["|dL/dx|"][sort_indices][0:self.max_optima]
+        optima_list["|dL/dk|"] = optima_list["|dL/dk|"][sort_indices][0:self.max_optima]
         self.list = dict(optima_list)
         return optima_list
     ####################################################
@@ -75,25 +198,25 @@ class optima:
         try:
             index = [i for i,x in enumerate(self.list["classifier"]) if x == "minimum"]
             index = index[0:min(n,len(index))]
-            return self.list["x"][index], self.list["func evals"][index]
+            return self.list["x"][index], self.list["f(x)"][index]
         except:
             logger.debug("no minima available in the optima_list")
-            return np.empty((0,self.dim)),np.empty((0))
+            return np.empty((0,self.dim_x)),np.empty((0))
     ####################################################
     def get_maxima(self,n):
         try:
             index = [i for i,x in enumerate(self.list["classifier"]) if x == "maximum"]
             index = index[0:min(n,len(index))]
-            return self.list["x"][index], self.list["func evals"][index]
+            return self.list["x"][index], self.list["f(x)"][index]
         except:
             logger.debug("no maxima available in the optima_list")
-            return np.empty((0,self.dim)),np.empty((0))
+            return np.empty((0,self.dim_x)),np.empty((0))
     ####################################################
     def get_deflation_points(self,n):
         try:
-            index = [i for i, x in enumerate(self.list["classifier"]) if x == "maximum" or x == "minimum" or x == "saddle point" or x == "optimum"]
-            return self.list["x"][index], self.list["func evals"][index]
+            index = [i for i, x in enumerate(self.list["classifier"]) if x == "maximum" or x == "minimum" or x == "zero curvature" or x == "saddle point" or x == "optimum"]
+            return np.column_stack([self.list["x"][index],self.list["k"][index]]), self.list["f(x)"][index]
         except:
             logger.debug("no deflation points available in the optima_list")
-            return np.empty((0,self.dim)),np.empty((0))
+            return np.empty((0,self.dim_x+self.dim_k)),np.empty((0))
 

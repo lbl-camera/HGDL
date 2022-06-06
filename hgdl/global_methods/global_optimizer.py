@@ -27,6 +27,8 @@ def gauss_step(x, y, bounds,n):
     x = x[sorted_indices]
     x = np.array(x[:-int(len(x)/2)])
     y = np.array(y[:-int(len(x)/2)])
+    if len(x) == 0: x = np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = (n, len(bounds)))
+    if len(x) < n: x = np.vstack([x,np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = (n-len(x), len(bounds)))])
     cov = np.cov(x.T)
     mean= np.mean(x , axis = 0)
     offspring = np.random.multivariate_normal(mean, cov, size = n)

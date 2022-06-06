@@ -24,7 +24,13 @@ def finish_up_tasks(tasks):
         if f.status == 'cancelled':
             tasks.remove(f)
     while any(f.status == 'pending' for f in tasks):
-        #print("finishing up last tasks...")
         time.sleep(0.1)
     return tasks
+
+def project_onto_bounds(x,bounds):
+    new_x = np.array(x)
+    for i in range(len(x)):
+        if x[i] < bounds[i,0]: new_x[i] = bounds[i,0]
+        if x[i] > bounds[i,1]: new_x[i] = bounds[i,1]
+    return new_x
 
