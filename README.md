@@ -44,7 +44,7 @@ a.optimize(x0 = x0)
 
 Main Developers: Marcus Noack ([MarcusNoack@lbl.gov](mailto:MarcusNoack@lbl.gov)) and David Perryman.
 Several people from across the DOE national labs have given insights
-that led the code in its current form.
+that led to the code in its current form.
 See [AUTHORS](AUTHORS.rst) for more details on that.
 HGDL is based on the [HGDN](https://www.sciencedirect.com/science/article/pii/S037704271730225X) algorithm by Noack and Funke.
 
