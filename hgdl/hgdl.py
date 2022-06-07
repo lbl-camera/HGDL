@@ -179,7 +179,7 @@ class HGDL:
     ###########################################################################
     def get_latest(self):
         """
-        Function to request the current best n results.
+        Function to request the current result.
         """
         try:
             data, frames = self.transfer_data.get()
@@ -220,6 +220,7 @@ class HGDL:
     def kill_client(self):
         """
         Function to cancel all tasks and kill the dask client, and therefore the execution.
+        If cancel_tasks() is called before, this will throw an error.
         """
         logger.debug("HGDL kill client initialized ...")
         res = self.get_latest()
