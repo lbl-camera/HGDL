@@ -18,11 +18,11 @@ import pickle
 
 class HGDL:
     """
-    This is HGDL, a class for asynchronous HPC-customized optimization. |  
-    H ... Hybrid|  
-    G ... Global|  
-    D ... Deflated|  
-    L ... Local|  
+    This is HGDL, a class for asynchronous HPC-capable optimization. \n
+    H ... Hybrid \n
+    G ... Global \n
+    D ... Deflated \n
+    L ... Local \n
     The algorithm places a number of walkers inside the domain (the number is determined by the dask client), all of which perform
     a local optimization in a distributed way in parallel. When the walkers have identified local optima, their positions are communicated back to the host
     who removes the found optima by deflation, and replaces the fittest walkers by a global optimization step. From here the next epoch
