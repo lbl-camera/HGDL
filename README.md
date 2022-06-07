@@ -21,22 +21,27 @@ The following demonstrates a simple usage of the HGDL API
 ```python
 import numpy as np
 from hgdl.hgdl import HGDL as hgdl
-from support_functions import *
+from hgdl.support_functions import *
 import dask.distributed as distributed
 
 bounds = np.array([[-500,500],[-500,500]])
 #dask_client = distributed.Client("10.0.0.184:8786")
 a = hgdl(schwefel, schwefel_gradient, bounds,
         hess = schwefel_hessian,
-        #global_optimizer = "random",
         global_optimizer = "genetic",
-        #global_optimizer = "gauss",
         local_optimizer = "dNewton",
-        number_of_optima = 30000, info = True,
-        args = (arr,brr), radius = None, num_epochs = 100)
+        number_of_optima = 30000,
+        args = (1,1), radius = None, num_epochs = 100)
 
 x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
 a.optimize(x0 = x0)
+
+###the thread is released, but the work continues in the background
+
+a.get_latest() ##prints the current result
+
+a.kill_client() ##stops the execution
+
 ```
 
 
