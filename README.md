@@ -9,14 +9,14 @@
 [![DOI](https://zenodo.org/badge/434769975.svg)](https://zenodo.org/badge/latestdoi/434769975)
 
 
-HGDL is an API for HPC distributed function optimization.
+HGDL is an API for HPC distributed constrained function optimization.
 At the core, the algorithm uses local and global optimization
-and bump-function-based deflation to provide a growing list of unique optima of a differetniable functions.
+and bump-function-based deflation to provide a growing list of unique optima of a differentiable function.
 This tackles the common problem of non-uniquness of optimization problems, especially in machine learning.
 
 ## Usage
 
-The following demonstrates a simple usage of the HGDL API
+The following demonstrates a simple usage of the HGDL API.
 
 ```python
 import numpy as np
@@ -36,12 +36,11 @@ a = hgdl(schwefel, schwefel_gradient, bounds,
 x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
 a.optimize(x0 = x0)
 
-###the thread is released, but the work continues in the background
+###the thread is now released, but the work continues in the background
 
-a.get_latest() ##prints the current result
+a.get_latest() ##prints the current result whenever queried
 
-a.kill_client() ##stops the execution
-
+a.kill_client() ##stops the execution and returns the result
 ```
 
 
