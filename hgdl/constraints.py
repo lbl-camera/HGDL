@@ -2,7 +2,7 @@ import numpy as np
 
 class NonLinearConstraint:
     """
-    This class provided HGDL with the capability of constrained function
+    This class provides HGDL with the capability of constrained function
     optimization. Every constraint should be fined by one class instance.
 
     Parameters:
