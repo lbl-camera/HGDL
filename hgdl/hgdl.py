@@ -78,8 +78,8 @@ class HGDL:
         An optional n-tuple of constraint objects. See hgdl.constraints.NonLinearConstraints.
         The default is no constraints (). Make sure you use a `local_optimizer = "dNewton"` if constraints are used.
         Also, try to provide a Hessian callable. If not, the Hessian will be approximated from the gradient which is fine as long as
-        your gradient function is fast and exact. When constraints are used, the space extended by a linear space with elements 'k' which
-        will be part of the result object.
+        your gradient function is fast and exact. When constraints are used, the space is extended by a linear space with elements 'k' which
+        are the Lagrangian multipliers and slack variables and will be part of the result object.
 
     Attributes
     ----------

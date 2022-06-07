@@ -10,11 +10,11 @@ class NonLinearConstraint:
     nlc : Callable
         The function of the constraint.
     nlc_grad : Callable
-        The gradient of the constraint
+        The gradient of the constraint.
     nlc_hess : Callable, optional
-        The Hessian of the constraint, if available. 
-        Is only used for second-order local optimization.
-        Default = None.
+        The Hessian of the constraint, if available.
+        Default = None. In this case it will be approximated.
+        If no Hessian is available, don't give HGDL the Hessian of the objective function.
     ctype : str, optional
         String '<', '>', or '=', defining the constraint as inequality or equalit constraint.
         Default = '='.
