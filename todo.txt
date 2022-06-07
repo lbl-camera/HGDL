@@ -4,5 +4,4 @@
 
 
 * the radius is still ad hoc, should be related to curvature and unique to a deflation point
-* user-defined local and global stopping criterion
 

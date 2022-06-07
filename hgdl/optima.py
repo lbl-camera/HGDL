@@ -1,9 +1,7 @@
 import numpy as np
-import torch as t
 import time
 
 from loguru import logger
-
 import hgdl.misc as misc
 import hgdl.local_methods as local
 import hgdl.global_methods as glob

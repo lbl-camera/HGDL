@@ -88,7 +88,7 @@ def local_method(data, method = "dNewton"):
 
     elif type(method) == str:
         if d.constr: logger.warning("Deflated constraints are only supported by local optimizer 'DNewton'")
-        res = minimize(d.L, x0, args = args,method = method, jac = Lgrad, hess = Lhess,
+        res = minimize(d.func, x0, args = args, method = method, jac = Lgrad, hess = Lhess,
                        bounds = bounds, options = {"disp":False})
         x = res["x"]
         f = res["fun"]

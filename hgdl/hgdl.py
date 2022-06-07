@@ -1,5 +1,4 @@
 import numpy as np
-import torch as t
 import time
 
 from loguru import logger
@@ -109,7 +108,8 @@ class HGDL:
         self.Lgrad = self.lagrangian_grad
         self.Lhess = self.lagrangian_hess
         index = self.dim_x
-        if self.constr and local_optimizer != "dNewton": raise Exception("Please use ``local_optimizer = 'dNewton' if constraints are used''.")
+        if self.constr and local_optimizer != "dNewton": raise Exception("Please use ``local_optimizer = 'dNewton' '' if constraints are used.")
+        if local_optimizer == "dNewton": print("Warning: dNewton will not adhere to your bounds. It is recommended to formulated your objective functions bounds-free by simple non-linear transformations.")
         for c in self.constr:
             if c.ctype == "=":
                 c.set_multiplier_index(index)
@@ -177,15 +177,9 @@ class HGDL:
         """
         return self.workers
     ###########################################################################
-    def get_latest(self, n = None):
+    def get_latest(self):
         """
         Function to request the current best n results.
-
-        Parameters
-        ----------
-        n : int, optional
-            Number of optima list entries to be returned.
-            Default is the length of the current optima list.
         """
         try:
             data, frames = self.transfer_data.get()
@@ -195,21 +189,13 @@ class HGDL:
             self.optima = self.optima
             logger.error("HGDL get_latest failed due to {} \n optima list unchanged", str(err))
         optima_list = self.optima.list
-        if n is not None: n = min(n,len(optima_list["x"]))
-        else: n = len(optima_list["x"])
         return optima_list
     ###########################################################################
-    def get_final(self,n = None):
+    def get_final(self):
         """
         Function to request the final result.
         CAUTION: This function will block the main thread until
         the end of all epochs is reached.
-
-        Parameters
-        ----------
-        n : int, optional
-            Number of optima list entries to be returned.
-            Default is the length of the final optima list.
         """
         try:
             self.optima = self.main_future.result()
@@ -218,43 +204,31 @@ class HGDL:
         optima_list = self.optima.list
         return optima_list
     ###########################################################################
-    def cancel_tasks(self, n = None):
+    def cancel_tasks(self):
         """
         Function to cancel all tasks and therefore the execution.
         However, this function does not kill the client.
-
-        Parameters
-        ----------
-        n : int, optional
-            Number of optima list entries to be returned.
-            Default is the length of the current optima list.
         """
         logger.debug("HGDL is cancelling all tasks...")
-        res = self.get_latest(n)
+        res = self.get_latest()
         self.break_condition.set(True)
         self.client.cancel(self.main_future)
         logger.debug("Status of HGDL task: ", self.main_future.status)
         logger.debug("This leaves the client alive.")
         return res
     ###########################################################################
-    def kill_client(self, n = None):
+    def kill_client(self):
         """
         Function to cancel all tasks and kill the dask client, and therefore the execution.
-
-        Parameters
-        ----------
-        n : int, optional
-            Number of optima list entries to be returned.
-            Default is the length of the current optima list.
         """
         logger.debug("HGDL kill client initialized ...")
-        res = self.get_latest(n)
+        res = self.get_latest()
         try:
             self.break_condition.set(True)
-            self.client.gather(self.main_future)
+            #self.client.gather(self.main_future)
             self.client.cancel(self.main_future)
-            del self.main_future
-            self.client.shutdown()
+            #del self.main_future
+            #self.client.shutdown()
             self.client.close()
             logger.debug("HGDL kill client successful")
         except Exception as err:

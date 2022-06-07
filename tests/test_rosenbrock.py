@@ -1,3 +1,13 @@
+import numpy as np
+from hgdl.hgdl import HGDL as hgdl
+from hgdl.support_functions import *
+import time
+import dask.distributed as distributed
+import tracemalloc
+
+
+
+
 def test_rosebrock():
     from scipy.optimize import rosen, rosen_der, rosen_hess
     import numpy as np
@@ -8,18 +18,21 @@ def test_rosebrock():
             'then get the final result.\n'
             'working on the epochs should happend even during sleeping\n'
             )
+    bounds = np.array([[-2,2],[-2,2]])
     a = HGDL(rosen, rosen_der,[[-2,2],[-2,2]], hess = rosen_hess, radius = 0.1, num_epochs = 10000)
-    a.optimize()
+    x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
+    a.optimize(x0 = x0)
 
 
-    print("main thread submitted HGDL and will now sleep for 10 seconds")
+    print("main thread submitted HGDL and will now sleep for 5 seconds")
     sleep(5)
-    print("main thread asks for 10 best solutions:")
-    print(a.get_latest(10))
-    print("main sleeps for another 10 seconds")
+    print("main thread asks for solutions:")
+    print(a.get_latest())
+    print("main sleeps for another 3 seconds")
     sleep(3)
     print("main thread kills optimization")
     res = a.kill_client()
+    #res = a.cancel_tasks()
     print("hgdl was killed but I am waiting 2s")
     sleep(2)
     print("")

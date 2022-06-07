@@ -1,7 +1,5 @@
 import numpy as np
 
-
-
 class NonLinearConstraint:
     """
     This class provided HGDL with the capability of constrained function

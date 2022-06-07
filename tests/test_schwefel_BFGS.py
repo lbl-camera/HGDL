@@ -14,7 +14,7 @@ def test_schwefel():
     a = hgdl(schwefel, schwefel_gradient, bounds,
             hess = schwefel_hessian,
             global_optimizer = "genetic",
-            local_optimizer = "dNewton",
+            local_optimizer = "BFGS",
             number_of_optima = 30000,
             args = (arr,brr), radius = None, num_epochs = 100)
 
