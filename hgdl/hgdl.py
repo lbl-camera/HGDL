@@ -164,7 +164,6 @@ class HGDL:
         client = self._init_dask_client(dask_client)
         self.tolerance = tolerance
         logger.debug(client)
-        if x0 and x0.ndim == 1: x0 = x0.reshape(1,-1)
         if x0 is not None and len(x0[0]) != self.dim: raise Exception("The given starting locations do not have the right dimensionality.")
         self.x0 = self._prepare_starting_positions(x0)
         logger.debug("HGDL starts with: {}", self.x0)
