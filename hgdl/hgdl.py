@@ -59,7 +59,7 @@ class HGDL:
         individuals as an np.ndarray of shape (number_of_offspring x D).
     local_optimizer : Callable or str, optional
         The local optimizer that is used for the local-walker optimization. The options are
-        `dNewton` (the default Newton method that need a Hessian), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG` and most other scipy.optimize.minimize
+        `dNewton` (default), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG` and most other scipy.optimize.minimize
         local optimizers. The above methods have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs for specifications
         and limitations of the local methods. The parameter also accepts a callable that accepts as input a function, gradient, Hessian,
         bounds (all as specified above), and args, and returns an object similar to the scipy.optimize.minimize methods.
@@ -85,7 +85,7 @@ class HGDL:
     ----------
     optima : object
         Contains the attribute optima.list in which the optima are stored. 
-        However, the method 'get_latest(n)' should be used to access the optima.
+        However, the method 'get_latest()' should be used to access the optima.
 
 
     """
@@ -109,7 +109,7 @@ class HGDL:
         self.Lhess = self.lagrangian_hess
         index = self.dim_x
         if self.constr and local_optimizer != "dNewton": raise Exception("Please use ``local_optimizer = 'dNewton' '' if constraints are used.")
-        if local_optimizer == "dNewton": print("Warning: dNewton will not adhere to your bounds. It is recommended to formulated your objective functions bounds-free by simple non-linear transformations.")
+        if local_optimizer == "dNewton": print("Warning: dNewton will not adhere to bounds. It is recommended to formulate your objective function such that it is defined on R^N by simple non-linear transformations.")
         for c in self.constr:
             if c.ctype == "=":
                 c.set_multiplier_index(index)
@@ -180,6 +180,7 @@ class HGDL:
     def get_latest(self):
         """
         Function to request the current result.
+        No inputs
         """
         try:
             data, frames = self.transfer_data.get()
@@ -196,6 +197,7 @@ class HGDL:
         Function to request the final result.
         CAUTION: This function will block the main thread until
         the end of all epochs is reached.
+        No inputs.
         """
         try:
             self.optima = self.main_future.result()
