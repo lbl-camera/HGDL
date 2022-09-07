@@ -78,7 +78,8 @@ class HGDL:
         An optional n-tuple of constraint objects. See hgdl.constraints.NonLinearConstraints.
         The default is no constraints (). Make sure you use a `local_optimizer = "dNewton"` if constraints are used.
         Also, try to provide a Hessian callable. If not, the Hessian will be approximated from the gradient which is fine as long as
-        your gradient function is fast and exact. When constraints are used, the space is extended by a linear space with elements 'k' which
+        your gradient function is fast and exact. Don't bother with a constraint Hessian if you don't have the objective function Hessian; it won't be used.
+        When constraints are used, the space is extended by a linear space with elements 'k' which
         are the Lagrangian multipliers and slack variables and will be part of the result object.
 
     Attributes
@@ -101,7 +102,7 @@ class HGDL:
 
         self.constr = constraints
         self.dim_x = len(bounds)
-        self.func = func #self.lagrangian ##this canalways happen
+        self.func = func
         self.grad = grad
         self.hess = hess
         self.L = self.lagrangian
@@ -164,7 +165,6 @@ class HGDL:
         client = self._init_dask_client(dask_client)
         self.tolerance = tolerance
         logger.debug(client)
-        if x0 is not None and len(x0[0]) != self.dim: raise Exception("The given starting locations do not have the right dimensionality.")
         self.x0 = self._prepare_starting_positions(x0)
         logger.debug("HGDL starts with: {}", self.x0)
         self.meta_data = meta_data(self)
@@ -241,6 +241,7 @@ class HGDL:
     ############USER FUNCTIONS END#############################################
     ###########################################################################
     def _prepare_starting_positions(self,x0):
+        if x0 is not None and len(x0[0]) != self.dim: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         elif x0.ndim == 1: x0 = np.array([x0])
 
