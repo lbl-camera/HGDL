@@ -38,13 +38,16 @@ class HGDL:
     grad : Callable
         The gradient of the function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a vector
         (np.ndarray) of shape (D), where D is the dimensionality of the space in which the
-        optimization takes place.
+        optimization takes place. Remeber that D changes if constraints are used; account for the derivatives with respect to multipliers and
+        slack variables.
     bounds : np.ndarray
-        The bounds in which to optimize; an np.ndarray of shape (D x 2), where D is the dimensionality of the space in which the
-        optimization takes place.
+        The bounds of the domain; an np.ndarray of shape (D x 2), where D is the dimensionality of the space in which the
+        optimization takes place. Here D is the dimension of the original input space without slack variables or multipliers. Those bounds
+        can be specified when seeting upt he constraint.
     hess : Callable, optional
         The Hessian of the function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a
-        np.ndarray of shape (D x D). The default value is no-op.
+        np.ndarray of shape (D x D). The default value is no-op. If provided the Hessian should also include the derivatives with respect to
+        slack variables and multipliers, if constraints are used.
     num_epochs : int, optional
         The number of epochs the algorithm runs through before being terminated. One epoch is the convergence of all local walkers,
         the deflation of the identified optima, and the global replacement of the walkers. Note, the algorithm is running asynchronously, so a high number
@@ -58,19 +61,22 @@ class HGDL:
         individuals that should be returned. The callable should return the positions of the offspring
         individuals as an np.ndarray of shape (number_of_offspring x D).
     local_optimizer : Callable or str, optional
-        The local optimizer that is used for the local-walker optimization. The options are
-        `dNewton` (default), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG` and most other scipy.optimize.minimize
-        local optimizers. The above methods have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs for specifications
+        The local optimizer that is used. The options are
+        `dNewton` (default), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG`.
+        The above methods have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs for specifications
         and limitations of the local methods. The parameter also accepts a callable that accepts as input a function, gradient, Hessian,
-        bounds (all as specified above), and args, and returns an object similar to the scipy.optimize.minimize methods.
+        bounds (all as specified above), and args, and returns an object similar to the scipy.optimize.minimize methods. `DNewton` should be used
+        for constrained optimization.
     number_of_optima : int, optional
         The number of optima that will be stored in the optima list and deflated. The default is 1e6.
+        After that number is reached, worse-performing optima will not be stored or deflated.
     radius: float, optional
         The radius of the deflation operator. The default is estimated from the size of the domain.
         This will be changed in future releases to be estimated from the curvature of the function
         at the optima.
     local_max_iter : int, optional
-        The number of iterations before local optimizations are terminated. The default is 100.
+        The number of iterations before local optimizations are terminated. The default is 1000.
+        It can be lowered when second-order local optimizaers are used.
     args : tuple, optional
         A tuple of arguments that will be communicated to the function, the gradient, and the Hessian callables.
         Default = ().
@@ -228,10 +234,7 @@ class HGDL:
         res = self.get_latest()
         try:
             self.break_condition.set(True)
-            #self.client.gather(self.main_future)
             self.client.cancel(self.main_future)
-            #del self.main_future
-            #self.client.shutdown()
             self.client.close()
             logger.debug("HGDL kill client successful")
         except Exception as err:
