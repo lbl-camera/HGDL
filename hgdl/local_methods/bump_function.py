@@ -38,6 +38,7 @@ def deflation_function(x,x0,r):
     s = 0.0
     for i in range(len(x0)):
         s += b(x,x0[i],r)
+    if s == 1.0: print("Warning: Deflation operator = 0. Decrease the deflation radius.")
     return 1.0/(1.0-s)
 ###########################################################################
 def deflation_function_gradient(x,x0,r):

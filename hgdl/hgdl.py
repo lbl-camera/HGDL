@@ -128,7 +128,7 @@ class HGDL:
             bounds = np.row_stack([bounds,c.bounds])
 
         self.bounds = np.asarray(bounds)
-        if radius is None: self.radius = np.min(bounds[0:self.dim_x,1]-bounds[0:self.dim_x,0])/1000.0
+        if radius is None: self.radius = np.min(bounds[0:self.dim_x,1]-bounds[0:self.dim_x,0])/10000.0
         else: self.radius = radius
         self.dim = len(self.bounds)
         self.dim_k = self.dim - self.dim_x
