@@ -99,7 +99,7 @@ def local_method(data, method = "dNewton"):
         local_success = res["success"]
 
     elif callable(method):
-        res = method(d.func,grad,hess,bounds,x0,*args)
+        res = method(d.func,Lgrad,Lhess,bounds,x0,*args)
         x = res["x"]
         f = res["fun"]
         eig = np.ones(x.shape) * np.nan
