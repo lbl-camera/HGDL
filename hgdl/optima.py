@@ -29,11 +29,15 @@ class optima:
                      "Hessian eigvals": np.empty((0,self.dim_x)),
                      "df/dx": np.empty((0,self.dim_x)),
                      "|df/dx|":np.empty((0)),
+                     "local success": np.empty((0)),
+                     "notes": np.empty((0)),
                      "success": False}
     ####################################################
     def fill_in_optima_list(self,res):
-        x,f,fg,eig,local_success = res[0],res[1],res[2],res[3],res[4]
-        if not np.any(local_success) and len(self.list["x"]) == 0: local_success[:] = True
+        x,f,fg,eig,local_success,messages = res[0],res[1],res[2],res[3],res[4],res[5]
+        if not np.any(local_success) and len(self.list["x"]) == 0: 
+            local_success[:] = True
+            print("WARNING: No local walker converged.")
         clean_indices = np.where(np.asarray(local_success) == True)[0]
         if len(clean_indices) == 0:
             return {"x": self.list["x"],

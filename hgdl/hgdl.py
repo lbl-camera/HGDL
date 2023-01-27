@@ -76,7 +76,7 @@ class HGDL:
         at the optima.
     local_max_iter : int, optional
         The number of iterations before local optimizations are terminated. The default is 1000.
-        It can be lowered when second-order local optimizaers are used.
+        It can be lowered when second-order local optimizers are used.
     args : tuple, optional
         A tuple of arguments that will be communicated to the function, the gradient, and the Hessian callables.
         Default = ().
