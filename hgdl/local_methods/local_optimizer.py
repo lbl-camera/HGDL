@@ -50,10 +50,9 @@ def run_local_optimizer(d,x0,x_defl = []):
     Lg = np.empty((number_of_walkers, dim))
     eig = np.empty((number_of_walkers,dim))
     local_success = np.empty((number_of_walkers), dtype = bool)
-    messages = np.empty((number_of_walkers), dtype = str)
 
     for i in range(len(tasks)):
-        x[i],f[i],Lg[i],eig[i],local_success[i], messages[i] = results[i]
+        x[i],f[i],Lg[i],eig[i],local_success[i] = results[i]
         client.cancel(tasks[i])
         for j in range(i):
             if np.linalg.norm(np.subtract(x[i],x[j])) < 2.0 * d.radius and local_success[j] == True:
@@ -63,7 +62,7 @@ def run_local_optimizer(d,x0,x_defl = []):
             if np.linalg.norm(np.subtract(x[i],x_defl[j])) < 2.0 * d.radius and all(Lg[i] < 1e-5):
                 logger.warning("local method converged within 2 x radius of a deflated position in HGDL")
                 local_success[i] = False
-    return x, f, Lg, eig, local_success, messages
+    return x, f, Lg, eig, local_success
 
 def local_method(data, method = "dNewton"):
     from functools import partial
@@ -87,7 +86,7 @@ def local_method(data, method = "dNewton"):
 
     #call local methods
     if method == "dNewton":
-        x,L,Lg,eig,local_success,message = DNewton(d.L,Lgrad,Lhess,bounds,x0,max_iter,tol,*args)
+        x,L,Lg,eig,local_success = DNewton(d.L,Lgrad,Lhess,bounds,x0,max_iter,tol,*args)
         f = d.func(x,*args)
 
     elif type(method) == str:
@@ -111,5 +110,5 @@ def local_method(data, method = "dNewton"):
 
     else: raise Exception("no local method specified")
 
-    return x,f,Lg,np.real(eig),local_success,message
+    return x,f,Lg,np.real(eig),local_success
 ###########################################################################
