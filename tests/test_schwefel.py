@@ -27,7 +27,7 @@ def test_schwefel():
 
     #print(a.optima_list)
     print("main thread submitted HGDL and will now sleep for 2 seconds")
-    time.sleep(2)
+    time.sleep(10)
     print("main thread asks for 10 best solutions:")
     print(a.get_latest())
     print("main sleeps for another 2 seconds")

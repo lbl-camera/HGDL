@@ -37,6 +37,8 @@ def run_local_optimizer(d,x0,x_defl = []):
     tasks = []
     bf = client.scatter(d,workers = d.workers["walkers"])
     for i in range(min(len(x0),number_of_walkers)):
+        logger.debug("Worker ",i," submitted")
+        #print("Worker ",i," submitted", flush = True)
         worker = d.workers["walkers"][(int(i - ((i // number_of_walkers) * number_of_walkers)))]
         data = {"d":bf,"x0":x0[i],"x_defl":x_defl}
         tasks.append(client.submit(local_method,data,workers = worker))
@@ -48,6 +50,7 @@ def run_local_optimizer(d,x0,x_defl = []):
     Lg = np.empty((number_of_walkers, dim))
     eig = np.empty((number_of_walkers,dim))
     local_success = np.empty((number_of_walkers), dtype = bool)
+
     for i in range(len(tasks)):
         x[i],f[i],Lg[i],eig[i],local_success[i] = results[i]
         client.cancel(tasks[i])
@@ -97,7 +100,7 @@ def local_method(data, method = "dNewton"):
         local_success = res["success"]
 
     elif callable(method):
-        res = method(d.func,grad,hess,bounds,x0,*args)
+        res = method(d.func,Lgrad,Lhess,bounds,x0,*args)
         x = res["x"]
         f = res["fun"]
         eig = np.ones(x.shape) * np.nan

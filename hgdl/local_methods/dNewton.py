@@ -2,6 +2,7 @@ import numpy as np
 import hgdl.misc as misc
 import hgdl.local_methods.bump_function as defl
 import dask.distributed as distributed
+from loguru import logger
 
 
 def DNewton(func,grad,hess,bounds,x0,max_iter,tol,*args):
@@ -24,9 +25,11 @@ def DNewton(func,grad,hess,bounds,x0,max_iter,tol,*args):
         if any(gamma == np.nan) or any(gamma == np.inf): return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], False
         x += gamma
         e = np.max(abs(gamma))
-        if counter > max_iter: return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], False
+        logger.debug("dNewton step size: ", e, " max gradient: ",np.max(abs(gradient)))
+        #print("dNewton step size: ", e, " max gradient: ",np.max(abs(gradient)))
+        if counter > max_iter: return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], False, "max_iter reached"
         counter += 1
-    return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], True
+    return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], True, "converged"
 
 
 
