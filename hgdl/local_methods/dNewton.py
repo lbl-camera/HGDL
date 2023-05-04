@@ -27,9 +27,9 @@ def DNewton(func,grad,hess,bounds,x0,max_iter,tol,*args):
         e = np.max(abs(gamma))
         logger.debug("dNewton step size: ", e, " max gradient: ",np.max(abs(gradient)))
         #print("dNewton step size: ", e, " max gradient: ",np.max(abs(gradient)))
-        if counter > max_iter: return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], False, "max_iter reached"
+        if counter > max_iter: return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], False#, "max_iter reached"
         counter += 1
-    return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], True, "converged"
+    return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], True #, "converged"
 
 
 
