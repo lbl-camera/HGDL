@@ -70,6 +70,4 @@ html_theme_options = dict(
     titles_only=False
 )
 
-# Configure execution (and output generation) of myst-nb files
-jupyter_execute_notebooks = 'auto'
 autodoc_member_order = 'bysource'
