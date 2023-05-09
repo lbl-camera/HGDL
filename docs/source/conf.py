@@ -75,3 +75,5 @@ autodoc_member_order = 'bysource'
 html_js_files = ["https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"]
 
 suppress_warnings = ["mystnb.unknown_mime_type"]
+
+autoclass_content = 'both'
