@@ -1,22 +1,20 @@
 import numpy as np
-import time
-
+from distributed import get_client
 from loguru import logger
-
-import hgdl.misc as misc
-import dask.distributed
-from distributed import Client, get_client, secede, rejoin, protocol
-import dask.distributed as distributed
-from hgdl.local_methods.dNewton import DNewton
 from scipy.optimize import minimize
-import hgdl.local_methods.bump_function as defl
+
+from . import bump_function as defl
+from .. import misc
+from . import dNewton as DNewton
 
 
-def run_local(d,optima,x0):
-    x_defl,f_defl,radii = optima.get_deflation_points(len(optima.list))
-    return run_local_optimizer(d,x0,x_defl,radii)
+def run_local(d, optima, x0):
+    x_defl, f_defl, radii = optima.get_deflation_points(len(optima.list))
+    return run_local_optimizer(d, x0, x_defl, radii)
+
+
 ###########################################################################
-def run_local_optimizer(d,x0,x_defl = [], radii = []):
+def run_local_optimizer(d, x0, x_defl=[], radii=[]):
     """
     this function runs a deflated local methos for
     all the walkers.
@@ -31,41 +29,41 @@ def run_local_optimizer(d,x0,x_defl = [], radii = []):
     number_of_walkers = d.number_of_walkers
 
     if len(x0) < number_of_walkers:
-        x0 = np.row_stack([x0,misc.random_population(d.bounds,number_of_walkers - len(x0))])
+        x0 = np.row_stack([x0, misc.random_population(d.bounds, number_of_walkers - len(x0))])
 
     client = get_client()
     tasks = []
-    bf = client.scatter(d,workers = d.workers["walkers"])
-    for i in range(min(len(x0),number_of_walkers)):
-        logger.debug("Worker ",i," submitted")
+    bf = client.scatter(d, workers=d.workers["walkers"])
+    for i in range(min(len(x0), number_of_walkers)):
+        logger.debug("Worker ", i, " submitted")
         worker = d.workers["walkers"][(int(i - ((i // number_of_walkers) * number_of_walkers)))]
-        data = {"d":bf,"x0":x0[i],"x_defl":x_defl, "radius": radii}
-        tasks.append(client.submit(local_method,data,workers = worker))
+        data = {"d": bf, "x0": x0[i], "x_defl": x_defl, "radius": radii}
+        tasks.append(client.submit(local_method, data, workers=worker))
 
     results = client.gather(tasks)
     number_of_walkers = len(tasks)
     x = np.empty((number_of_walkers, dim))
     f = np.empty((number_of_walkers))
     g = np.empty((number_of_walkers, dim))
-    eig = np.empty((number_of_walkers,dim))
+    eig = np.empty((number_of_walkers, dim))
     r = np.empty((number_of_walkers))
-    local_success = np.empty((number_of_walkers), dtype = bool)
-
+    local_success = np.empty((number_of_walkers), dtype=bool)
 
     for i in range(len(tasks)):
-        x[i],f[i],g[i],eig[i],r[i],local_success[i] = results[i]
+        x[i], f[i], g[i], eig[i], r[i], local_success[i] = results[i]
         client.cancel(tasks[i])
         for j in range(i):
-            if np.linalg.norm(np.subtract(x[i],x[j])) < r[i] and local_success[j] == True:
+            if np.linalg.norm(np.subtract(x[i], x[j])) < r[i] and local_success[j] == True:
                 logger.warning("points converged too close to each other in HGDL; point removed")
                 local_success[j] = False
         for j in range(len(x_defl)):
-            if np.linalg.norm(np.subtract(x[i],x_defl[j])) < radii[j] and all(g[i] < 1e-5):
+            if np.linalg.norm(np.subtract(x[i], x_defl[j])) < radii[j] and all(g[i] < 1e-5):
                 logger.warning("local method converged within 2 x radius of a deflated position in HGDL")
                 local_success[i] = False
     return x, f, g, eig, r, local_success
 
-def local_method(data, method = "dNewton"):
+
+def local_method(data, method="dNewton"):
     from functools import partial
     d = data["d"]
     x0 = np.array(data["x0"])
@@ -79,18 +77,19 @@ def local_method(data, method = "dNewton"):
     args = d.args
     method = d.local_optimizer
     constr = d.constr
-    #augment grad, hess
-    grad = partial(defl.deflated_grad, grad_func = d.grad, x_defl = x_defl, radius = r_defl)
-    hess = partial(defl.deflated_hess, grad_func = d.grad, hess_func = d.hess, x_defl = x_defl, radius = r_defl)
+    # augment grad, hess
+    grad = partial(defl.deflated_grad, grad_func=d.grad, x_defl=x_defl, radius=r_defl)
+    hess = partial(defl.deflated_hess, grad_func=d.grad, hess_func=d.hess, x_defl=x_defl, radius=r_defl)
 
-    #call local methods
+    # call local methods
     if method == "dNewton":
-        x,f,g,eig,local_success = DNewton(d.func,grad,hess,bounds,x0,max_iter,tol,*args)
-        #f = d.func(x,*args)
-        r = 1./np.min(eig)
+        x, f, g, eig, local_success = DNewton(d.func, grad, hess, bounds, x0, max_iter, tol, *args)
+        # f = d.func(x,*args)
+        r = 1. / np.min(eig)
 
     elif type(method) == str:
-        res = minimize(d.func, x0, args = args, method = method, jac = grad, hess = hess, bounds = bounds, constraints = constr, options = {"disp":False})
+        res = minimize(d.func, x0, args=args, method=method, jac=grad, hess=hess, bounds=bounds, constraints=constr,
+                       options={"disp": False})
         x = res["x"]
         f = res["fun"]
         g = res["jac"]
@@ -99,14 +98,14 @@ def local_method(data, method = "dNewton"):
         if np.linalg.norm(g) < 1e-5:
             local_success = True
             eig = np.linalg.eig(hess(x, *args))[0]
-            r = 1./np.min(eig)
+            r = 1. / np.min(eig)
         else:
             eig = np.array([0.0])
             r = 0.0
 
 
     elif callable(method):
-        res = method(d.func,grad,hess,bounds,x0,*args)
+        res = method(d.func, grad, hess, bounds, x0, *args)
         x = res["x"]
         f = res["fun"]
         g = res["jac"]
@@ -114,12 +113,13 @@ def local_method(data, method = "dNewton"):
         if np.linalg.norm(g) < 1e-5:
             local_success = True
             eig = np.linalg.eig(hess(x, *args))[0]
-            r = 1./np.min(eig)
+            r = 1. / np.min(eig)
         else:
             eig = np.array([0.0])
             r = 0.0
 
-    else: raise Exception("no local method specified")
+    else:
+        raise Exception("no local method specified")
 
-    return x,f,g,np.real(eig),np.abs(r),local_success
+    return x, f, g, np.real(eig), np.abs(r), local_success
 ###########################################################################
