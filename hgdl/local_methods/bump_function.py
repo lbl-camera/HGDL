@@ -3,11 +3,29 @@ import numpy as np
 import hgdl.misc as misc
 import asyncio
 import time
+
+
+def deflated_grad(x, *args, grad_func = None, x_defl = [], radius = []):
+    d = deflation_function(x,x_defl,radius)
+    return d*grad_func(x, *args)
+
+
+def deflated_hess(x,*args, grad_func = None, hess_func = None, x_defl = [], radius = []):
+    d = deflation_function(x,x_defl,radius)
+    dg = deflation_function_gradient(x,x_defl,radius)
+    return (hess_func(x, *args)*d) + np.outer(grad_func(x, *args),dg)
+
+
+
+########################################################
+########################################################
+########################################################
 def b(x,x0,r):
     """
     evaluates the bump function
     x ... a point (1d numpy array)
-    x0 ... 1d numpy array of location of bump function
+    x0 ... 1d numpy array of location of bump function, a 2d numpy array
+
     returns the bump function b(x,x0) with radius r
     """
     d = np.sqrt((x - x0).T @ (x - x0))
@@ -37,10 +55,8 @@ def deflation_function(x,x0,r):
     if len(x0) == 0: return 1.0
     s = 0.0
     for i in range(len(x0)):
-        s += b(x,x0[i],r)
-    if s == 1.0:
-        print("Warning: Deflation operator = 0. Increase the deflation radius.", flush = True)
-        return 1.0/(1.-0.999999)
+        s += b(x,x0[i],r[i])
+    if s == 1.0: s = 0.99999
     return 1.0/(1.0-s)
 ###########################################################################
 def deflation_function_gradient(x,x0,r):
@@ -54,18 +70,7 @@ def deflation_function_gradient(x,x0,r):
     s1 = 0.0
     s2 = np.zeros((len(x)))
     for i in range(len(x0)):
-        s1 += b(x,x0[i],r)
-        s2 += b_grad(x,x0[i],r)
-    if s1 == 1.0: return s2/((1.0-0.9999)**2)
+        s1 += b(x,x0[i],r[i])
+        s2 += b_grad(x,x0[i],r[i])
+    if s1 == 1.0: s1 = 0.99999
     return s2/((1.0-s1)**2)
-
-def deflated_grad(x, *args, grad_func = None, x_defl = [], radius = 0.01):
-    d = deflation_function(x,x_defl,radius)
-    return d*grad_func(x, *args)
-
-
-def deflated_hess(x,*args, grad_func = None, hess_func = None, x_defl = [], radius = 0.01):
-    d = deflation_function(x,x_defl,radius)
-    dg = deflation_function_gradient(x,x_defl,radius)
-    return (hess_func(x, *args)*d) + np.outer(grad_func(x, *args),dg)
-

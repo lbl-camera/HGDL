@@ -6,36 +6,9 @@ import hgdl.misc as misc
 def run_global(x,y,bounds,method,number_of_offspring):
     #print("Global optimizer: ", method)
     if method == "genetic": return genetic_step(x,y,bounds,number_of_offspring)
-    elif method == "gauss": return gauss_step(x,y,bounds,number_of_offspring)
     elif method =="random": return random_step(x,y,bounds,number_of_offspring)
     elif method is callable: return method(x,y,bounds,number_of_offspring)
     else: raise Exception("no global method specified")
-
-def gauss_step(x, y, bounds,n):
-    ####x is x where in bounds
-    x_new = []
-    y_new = []
-    #bounds = np.array(bounds)
-    for i in range(len(x)):
-        if misc.in_bounds(x[i],bounds): 
-            x_new.append(x[i])
-            y_new.append(y[i])
-    x = np.asarray(x_new)
-    y = np.asarray(y_new)
-    sorted_indices = np.argsort(y)
-    y = y[sorted_indices]
-    x = x[sorted_indices]
-    x = np.array(x[:-int(len(x)/2)])
-    y = np.array(y[:-int(len(x)/2)])
-    if len(x) == 0: x = np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = (n, len(bounds)))
-    if len(x) < n: x = np.vstack([x,np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = (n-len(x), len(bounds)))])
-    cov = np.cov(x.T)
-    mean= np.mean(x , axis = 0)
-    offspring = np.random.multivariate_normal(mean, cov, size = n)
-    for i in range(len(offspring)):
-        if not misc.in_bounds(offspring[i],bounds): 
-            offspring[i] = np.random.uniform(low = bounds[:,0],high = bounds[:,1], size = len(offspring[0]))
-    return offspring
 
 def random_step(x, y, bounds,n):
     offspring = np.random.uniform(low = bounds[:,0], high = bounds[:,1], size = (n, len(bounds)))
@@ -50,8 +23,8 @@ def genetic_step(X, y, bounds, numChoose):
     Notes:
     the children can be outside of the bounds!
     """
-    unfairness = 2.5
-    wildness = 0.05
+    unfairness = 100.
+    wildness = 0.0005
     N, k = X.shape
     # normalize the performances to (0,1)
     y -= np.amin(y)
@@ -67,7 +40,7 @@ def genetic_step(X, y, bounds, numChoose):
         y += 1
         p = y/np.sum(y)
     #This chooses from the sample based on the power law,
-    #allowing replacement means that the the individuals
+    #allowing replacement means that the individuals
     #can have multiple kids
     p = unfairness*np.power(p,unfairness-1)
     p /= np.sum(p)

@@ -16,8 +16,8 @@ def DNewton(func,grad,hess,bounds,x0,max_iter,tol,*args):
         x[abs(x)<1e-16] = 0.
         gradient = grad(x,*args)
         gradient[abs(gradient)<1e-16] = 0.
-        if hess: hessian  = hess(x,*args)
-        else: hessian = approximate_hessian(x,grad,*args)
+        hessian  = hess(x,*args)
+        #hessian = 0.5 * hessian @ hessian.T
         hessian[abs(hessian) < 1e-16] = 0.
         grad_list.append(np.max(gradient))
         try: gamma = np.linalg.solve(hessian,-gradient)
@@ -26,28 +26,6 @@ def DNewton(func,grad,hess,bounds,x0,max_iter,tol,*args):
         x += gamma
         e = np.max(abs(gamma))
         logger.debug("dNewton step size: ", e, " max gradient: ",np.max(abs(gradient)))
-        #print("dNewton step size: ", e, " max gradient: ",np.max(abs(gradient)))
-        if counter > max_iter: return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], False#, "max_iter reached"
+        if counter > max_iter: return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], False
         counter += 1
-    return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], True #, "converged"
-
-
-
-def approximate_hessian(x, grad, *args):
-    ##implements a first-order approximation
-    len_x = len(x)
-    hess = np.zeros((len_x,len_x))
-    epsilon = 1e-6
-    grad_x = grad(x, *args)
-    for i in range(len_x):
-        x_temp = np.array(x)
-        x_temp[i] = x_temp[i] + epsilon
-        hess[i,i:] = ((grad(x_temp,*args) - grad_x)/epsilon)[i:]
-    return hess + hess.T - np.diag(np.diag(hess))
-
-
-
-
-
-
-
+    return x,func(x, *args),gradient,np.linalg.eig(hess(x, *args))[0], True

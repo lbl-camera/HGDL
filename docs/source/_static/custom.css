@@ -2,6 +2,7 @@
 
 .wy-nav-content {
     /*max-width: unset;*/
+    max-width: none;
 }
 
 .wy-side-nav-search {

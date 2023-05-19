@@ -8,9 +8,8 @@ import dask.distributed as distributed
 
 def test_non_diff():
     #dask_client = distributed.Client("10.0.0.184:8786")
-    a = HGDL(non_diff, non_diff_grad, 
-             hess = non_diff_hess,bounds = [[-5,5],[-5,5]],
-            radius = 0.1, num_epochs = 5)
+    a = HGDL(non_diff, non_diff_grad,
+             hess = non_diff_hess,bounds = [[-5,5],[-5,5]], num_epochs = 5)
     a.optimize(dask_client = None)
     res = a.optima.list
 

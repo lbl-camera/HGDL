@@ -10,7 +10,6 @@ maxdepth: 2
 caption: API
 ---
 api/HGDL.md
-api/Constraints.md
 api/logging.md
 ```
 
@@ -20,8 +19,7 @@ hidden: true
 maxdepth: 2
 caption: Examples
 ---
-examples/rosenbrock.ipynb
-examples/schwefel.ipynb
+examples/rosenbrock_constrained.ipynb
 examples/schwefel_constrained.ipynb
 ```
 
@@ -44,7 +42,7 @@ so that they cannot be reidentified by subsequent local searches. For more infor
 
 ## See Also
 
-* [Paper](https://ieeexplore.ieee.org/abstract/document/9652812)
+* [Recent Paper](https://ieeexplore.ieee.org/abstract/document/9652812)
 * [HGDN](https://www.sciencedirect.com/science/article/pii/S037704271730225X)
 * [gpCAM](https://gpcam.readthedocs.io)
 * [fvGP](https://fvgp.readthedocs.io)

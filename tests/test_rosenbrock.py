@@ -18,8 +18,17 @@ def test_rosebrock():
             'then get the final result.\n'
             'working on the epochs should happend even during sleeping\n'
             )
+    from scipy.optimize import NonlinearConstraint
+    def g1(x): return (np.linalg.norm(x)**2/10.0) - 2.0
+    nlc = NonlinearConstraint(g1, -np.inf, 0)
     bounds = np.array([[-2,2],[-2,2]])
-    a = HGDL(rosen, rosen_der,[[-2,2],[-2,2]], hess = rosen_hess, radius = 0.1, num_epochs = 10000)
+    a = hgdl(rosen, rosen_der, bounds, hess = rosen_hess,
+            global_optimizer = "random",
+            local_optimizer = "dNewton",
+            number_of_optima = 30000,
+            args = (), num_epochs = 1000,
+            constraints = (nlc,)
+            )
     x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
     a.optimize(x0 = x0)
 

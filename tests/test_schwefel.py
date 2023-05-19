@@ -12,11 +12,10 @@ def test_schwefel():
     brr  = 6
     bounds = np.array([[-500,500],[-500,500]])
     a = hgdl(schwefel, schwefel_gradient, bounds,
-            hess = schwefel_hessian,
             global_optimizer = "genetic",
             local_optimizer = "dNewton",
-            number_of_optima = 30000,
-            args = (arr,brr), radius = None, num_epochs = 100)
+            number_of_optima = 30000, 
+            num_epochs = 100)
 
     x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
     print("starting positions: ")

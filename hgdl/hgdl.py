@@ -11,9 +11,9 @@ import dask.distributed as distributed
 import dask.multiprocessing
 from dask.distributed import as_completed
 from hgdl.optima  import optima
-from hgdl.optima  import optima_constr
 from hgdl.meta_data  import meta_data
 import pickle
+import warnings
 
 
 class HGDL:
@@ -38,42 +38,35 @@ class HGDL:
     grad : Callable
         The gradient of the function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a vector
         (np.ndarray) of shape (D), where D is the dimensionality of the space in which the
-        optimization takes place. Remeber that D changes if constraints are used; account for the derivatives with respect to multipliers and
-        slack variables.
+        optimization takes place.
     bounds : np.ndarray
         The bounds of the domain; an np.ndarray of shape (D x 2), where D is the dimensionality of the space in which the
-        optimization takes place. Here D is the dimension of the original input space without slack variables or multipliers. Those bounds
-        can be specified when seeting upt he constraint.
+        optimization takes place. Here D is the dimension of the input domain.
     hess : Callable, optional
         The Hessian of the function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a
-        np.ndarray of shape (D x D). The default value is no-op. If provided the Hessian should also include the derivatives with respect to
-        slack variables and multipliers, if constraints are used.
+        np.ndarray of shape (D x D). The default value is no-op.
     num_epochs : int, optional
         The number of epochs the algorithm runs through before being terminated. One epoch is the convergence of all local walkers,
         the deflation of the identified optima, and the global replacement of the walkers. Note, the algorithm is running asynchronously, so a high number
-        of epochs can be chosen without concern, it will not affect the run time to obtain the optima. Therefore, the default is
+        of epochs can be chosen without concerns, it will not affect the run time to obtain the optima. Therefore, the default is
         100000.
     global_optimizer : Callable or str, optional
         The function (identified by a string or a Callable) that replaces the fittest walkers after their local convergence.
-        The possible options are `genetic` (default), `gauss`, `random` or a callable that accepts an
+        The possible options are `genetic` (default), `random` or a callable that accepts an
         np.ndarray of shape (U x D) of positions, an np.ndarray of shape (U) of function values,
         and np.ndarray of shape (D x 2) of bounds, and an integer specifying the number of offspring
         individuals that should be returned. The callable should return the positions of the offspring
         individuals as an np.ndarray of shape (number_of_offspring x D).
     local_optimizer : Callable or str, optional
         The local optimizer that is used. The options are
-        `dNewton` (default), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG`.
-        The above methods have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs for specifications
-        and limitations of the local methods. The parameter also accepts a callable that accepts as input a function, gradient, Hessian,
-        bounds (all as specified above), and args, and returns an object similar to the scipy.optimize.minimize methods. `DNewton` should be used
-        for constrained optimization.
+        `dNewton` (default), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG`, `SLSQP`.
+        The above methods have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs 
+        (https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html)
+        for specifications and limitations of the local methods. The parameter also accepts a callable of the form func(f,grad,hess,bounds,x0,*args), 
+        and returns an object equal to the scipy.optimize.minimize methods.
     number_of_optima : int, optional
         The number of optima that will be stored in the optima list and deflated. The default is 1e6.
         After that number is reached, worse-performing optima will not be stored or deflated.
-    radius: float, optional
-        The radius of the deflation operator. The default is estimated from the size of the domain.
-        This will be changed in future releases to be estimated from the curvature of the function
-        at the optima.
     local_max_iter : int, optional
         The number of iterations before local optimizations are terminated. The default is 1000.
         It can be lowered when second-order local optimizers are used.
@@ -81,17 +74,13 @@ class HGDL:
         A tuple of arguments that will be communicated to the function, the gradient, and the Hessian callables.
         Default = ().
     constr : object, optional
-        An optional n-tuple of constraint objects. See hgdl.constraints.NonLinearConstraints.
-        The default is no constraints (). Make sure you use a `local_optimizer = "dNewton"` if constraints are used.
-        Also, try to provide a Hessian callable. If not, the Hessian will be approximated from the gradient which is fine as long as
-        your gradient function is fast and exact. Don't bother with a constraint Hessian if you don't have the objective function Hessian; it won't be used.
-        When constraints are used, the space is extended by a linear space with elements 'k' which
-        are the Lagrangian multipliers and slack variables and will be part of the result object.
+        An optional n-tuple of constraint objects.
+        The default is no constraints (). Constraints are defined following scipy.optimize.NonlinearConstraint.
 
     Attributes
     ----------
     optima : object
-        Contains the attribute optima.list in which the optima are stored. 
+        Contains the attribute optima.list in which the optima are stored.
         However, the method 'get_latest()' should be used to access the optima.
 
 
@@ -100,47 +89,32 @@ class HGDL:
     def __init__(self, func, grad, bounds,
             hess = None, num_epochs=100000,
             global_optimizer = "genetic",
-            local_optimizer = "dNewton",
+            local_optimizer = "L-BFGS-B",
             number_of_optima = 1000000,
-            radius = None,
             local_max_iter = 1000,
-            args = (), constraints = ()):
-
-        self.constr = constraints
-        self.dim_x = len(bounds)
+            constraints = (),
+            args = ()):
+        bounds = np.asarray(bounds)
+        self.dim = bounds.shape[1]
+        self.bounds = bounds
         self.func = func
         self.grad = grad
-        self.hess = hess
-        self.L = self.lagrangian
-        self.Lgrad = self.lagrangian_grad
-        self.Lhess = self.lagrangian_hess
-        index = self.dim_x
-        if self.constr and local_optimizer != "dNewton": raise Exception("Please use ``local_optimizer = 'dNewton' '' if constraints are used.")
-        if local_optimizer == "dNewton": print("Warning: dNewton will not adhere to bounds. It is recommended to formulate your objective function such that it is defined on R^N by simple non-linear transformations.")
-        for c in self.constr:
-            if c.ctype == "=":
-                c.set_multiplier_index(index)
-                index += 1
-            else:
-                c.set_multiplier_index(index)
-                c.set_slack_index(index+1)
-                index += 2
-            bounds = np.row_stack([bounds,c.bounds])
+        if hess: self.hess = hess
+        else: self.hess = self.hess_approx
+        if bounds is not None and local_optimizer == "dNewton":
+            print("Warning: dNewton will not adhere to bounds. It is recommended to formulate your objective function such that it is defined on R^N by simple non-linear transformations.")
+        if constraints:
+            local_optimizer = "SLSQP"
+            warnings.warn("Constraints provided, local optimizer changed to 'SLSQP'")
 
-        self.bounds = np.asarray(bounds)
-        if radius is None: self.radius = np.min(bounds[0:self.dim_x,1]-bounds[0:self.dim_x,0])/10000.0
-        else: self.radius = radius
-        self.dim = len(self.bounds)
-        self.dim_k = self.dim - self.dim_x
+        self.constraints = constraints
         self.local_max_iter = local_max_iter
         self.num_epochs = num_epochs
         self.global_optimizer = global_optimizer
         self.local_optimizer = local_optimizer
         self.args = args
-        if self.dim_k == 0: self.optima = optima(self.dim_x,number_of_optima)
-        if self.dim_k >  0: self.optima = optima_constr(self.dim_x, self.dim_k,number_of_optima)
+        self.optima = optima(self.dim, number_of_optima)
         logger.debug("HGDL successfully initiated {}")
-        logger.debug("deflation radius set to {}", self.radius)
         if callable(self.hess): logger.debug("Hessian was provided by the user: {}", self.hess)
         logger.debug("========================")
     ###########################################################################
@@ -167,7 +141,6 @@ class HGDL:
         tolerance : float, optional
             The tolerance used by the local optimizers. The default is 1e-6
         """
-
         client = self._init_dask_client(dask_client)
         self.tolerance = tolerance
         logger.debug(client)
@@ -244,8 +217,8 @@ class HGDL:
     ############USER FUNCTIONS END#############################################
     ###########################################################################
     def _prepare_starting_positions(self,x0):
-        if x0 is not None and len(x0[0]) != self.dim: x0 = misc.random_population(self.bounds,self.number_of_walkers)
-        if x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
+        if x0 is not None and len(x0[0]) != self.dim: raise Exception("Wrong dimesnionality of starting positions")
+        elif x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
         elif x0.ndim == 1: x0 = np.array([x0])
 
         if len(x0) < self.number_of_walkers:
@@ -286,85 +259,20 @@ class HGDL:
         self.main_future = client.submit(hgdl, bf, workers = self.workers["host"])
         self.client = client
     ###########################################################################
-    def lagrangian(self,x, *args):
-        L = self.func(x[0:self.dim_x], *args)
-        for c in self.constr:
-            if   c.ctype == '=': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value)
-            elif c.ctype == '<': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value + x[c.slack_index]**2)
-            elif c.ctype == '>': L += x[c.multiplier_index] * (c.nlc(x[0:self.dim_x],*args) - c.value - x[c.slack_index]**2)
-            else: raise Exception("Wrong ctype in constraint")
-        return L
-
-    def lagrangian_grad(self,x, *args):
-        Lgrad = np.zeros((len(x)))
-        Lgrad[0:self.dim_x] = self.grad(x[0:self.dim_x], *args)
-        for c in self.constr:
-            Lgrad[0:self.dim_x] += x[c.multiplier_index] * c.nlc_grad(x[0:self.dim_x], *args)
-            if c.ctype == '=':
-                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value
-            elif c.ctype == '<':
-                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value + x[c.slack_index]**2
-                Lgrad[c.slack_index] = 2.0 * x[c.multiplier_index] * x[c.slack_index]
-            elif c.ctype == '>':
-                Lgrad[c.multiplier_index] = c.nlc(x[0:self.dim_x],*args) - c.value - x[c.slack_index]**2
-                Lgrad[c.slack_index] = -2.0 * x[c.multiplier_index] * x[c.slack_index]
-            else: raise Exception("Wrong ctype in constraint")
-        return Lgrad
-
-    def lagrangian_hess(self,x, *args):
-        Lhess = np.zeros((len(x),len(x)))
-        if not self.hess: return self.lagrangian_hess_approx(x,*args)
-        Lhess[0:self.dim_x,0:self.dim_x] = self.hess(x[0:self.dim_x], *args)
-        for c in self.constr:
-            Lhess[0:self.dim_x,0:self.dim_x] += x[c.multiplier_index] * c.nlc_hess(x[0:self.dim_x], *args)
-            if c.ctype == '=':
-                #mixed: x, multiplier
-                cc = c.nlc_grad(x[0:self.dim_x],*args)
-                Lhess[c.multiplier_index,0:self.dim_x] = cc
-                Lhess[0:self.dim_x,c.multiplier_index] = cc
-                #same
-                ##Lhess[c.multiplier_index,c.multiplier_index] = 0 ##already zero
-            elif c.ctype == '<':
-                #mixed: x,multiplier
-                cc = c.nlc_grad(x[0:self.dim_x],*args)
-                Lhess[c.multiplier_index,0:self.dim_x] = cc
-                Lhess[0:self.dim_x,c.multiplier_index] = cc
-                #mixed: multiplier, slack
-                cc = 2.0 * x[c.slack_index]
-                Lhess[c.slack_index,c.multiplier_index] = cc
-                Lhess[c.multiplier_index,c.slack_index] = cc
-                #same: slack, slack
-                cc = 2.0 * x[c.multiplier_index]
-                Lhess[c.slack_index,c.slack_index] = cc
-
-            elif c.ctype == '>':
-                #mixed: x,multiplier
-                cc = c.nlc_grad(x[0:self.dim_x],*args)
-                Lhess[c.multiplier_index,0:self.dim_x] = cc
-                Lhess[0:self.dim_x,c.multiplier_index] = cc
-                #mixed: multiplier, slack
-                cc = -2.0 * x[c.slack_index]
-                Lhess[c.slack_index,c.multiplier_index] = cc
-                Lhess[c.multiplier_index,c.slack_index] = cc
-                #same: slack, slack
-                cc = -2.0 * x[c.multiplier_index]
-                Lhess[c.slack_index,c.slack_index] = cc
-
-            else: raise Exception("Wrong ctype in constraint")
-        return Lhess
-
-    def lagrangian_hess_approx(self,x, *args):
+    def hess_approx(self,x, *args):
         ##implements a first-order approximation
-        #grad = self.lagrangian_grad
         len_x = len(x)
         hess = np.zeros((len_x,len_x))
         epsilon = 1e-6
-        grad_x = self.lagrangian_grad(x, *args)
+        grad_x = self.grad(x, *args)
         for i in range(len_x):
             x_temp = np.array(x)
             x_temp[i] = x_temp[i] + epsilon
-            hess[i,i:] = ((self.lagrangian_grad(x_temp,*args) - grad_x)/epsilon)[i:]
+            hess[i,i:] = ((self.grad(x_temp,*args) - grad_x)/epsilon)[i:]
         return hess + hess.T - np.diag(np.diag(hess))
+
+
+
 ###########################################################################
 ###########################################################################
 ##################hgdl functions###########################################
@@ -376,10 +284,15 @@ def hgdl(data):
     break_condition = data["break condition"]
     optima = data["optima"]
     logger.debug("HGDL computing epoch 1 of {}", metadata.num_epochs)
+    #print("running first local...", flush = True)
     res = run_local(metadata,optima,metadata.x0)
+    #print("filling in optima...", flush = True)
     optima.fill_in_optima_list(res)
+    #print("optima list filled", flush = True)
     a = distributed.protocol.serialize(optima)
     transfer_data.set(a)
+
+    #print("HGDL first local done", flush = True)
 
     for i in range(1,metadata.num_epochs):
         bc = break_condition.get()
@@ -395,14 +308,24 @@ def hgdl(data):
 ###########################################################################
 def run_hgdl_epoch(metadata,optima):
     optima_list = optima.list
-    n = min(len(optima_list["x"]),metadata.number_of_walkers)
+    n = min(len(optima_list),metadata.number_of_walkers)
+    #print("optima list: ", optima_list, flush = True)
+
+    ind_pos = [entry["x"] for entry in optima_list]
+    ind_fit = [entry["f(x)"] for entry in optima_list]
+
     global_res = run_global(\
-            np.array(optima_list["x"][0:n]),
-            np.array(optima_list["f(x)"][0:n]),
-            metadata.bounds[0:metadata.dim_x], metadata.global_optimizer,n)
+            np.array(ind_pos[:n]),
+            np.array(ind_fit[0:n]),
+            metadata.bounds[0:metadata.dim], metadata.global_optimizer,n)
+    #print(global_res, flush = True)
+    #print("global done", flush = True)
     x0 = np.zeros((n,metadata.dim))
-    x0[:,0:metadata.dim_x] = np.array(global_res)
-    if metadata.dim != metadata.dim_x: x0[:,metadata.dim_x:] = np.array(optima_list["k"][0:n])
+    x0[:,0:metadata.dim] = np.array(global_res)
+    #print("local submitted...", flush = True)
+    #if metadata.dim != metadata.dim_x: x0[:,metadata.dim:] = np.array(optima_list["k"][0:n])
     res = run_local(metadata,optima,x0)
+    #print("local done",flush = True)
     op = optima.fill_in_optima_list(res)
+    #print("fill in in done \n",flush = True) 
     return optima
