@@ -19,59 +19,90 @@ class HGDL:
     G ... Global \n
     D ... Deflated \n
     L ... Local \n
-    The algorithm places a number of walkers inside the domain (the number is determined by the dask client), all of which perform
-    a local optimization in a distributed way in parallel. When the walkers have identified local optima, their positions are communicated back to the host
-    who removes the found optima by deflation, and replaces the fittest walkers by a global optimization step. From here the next epoch
-    begins with distributed local optimizations of the new walkers. The algorithm results in a sorted list of unique optima (only if optima
+    The algorithm places a number of walkers inside the domain 
+    (the number is determined by the dask client), all of which perform
+    a local optimization in a distributed way in parallel. 
+    When the walkers have identified local optima, their 
+    positions are communicated back to the host
+    who removes the found optima by deflation, 
+    and replaces the fittest walkers by a global 
+    optimization step. From here the next epoch
+    begins with distributed local optimizations of 
+    the new walkers. The algorithm results in a 
+    sorted list of unique optima (only if optima
     are of the form f'(x) = 0)
-    The method `hgdl.optimize` instantly returns a result object that can be queried for a growing, sorted list of
-    optima. If a Hessian is provided, those optima are classified as minima, maxima or saddle points.
+    The method `hgdl.optimize` instantly 
+    returns a result object that can be 
+    queried for a growing, sorted list of
+    optima. If a Hessian is provided, 
+    those optima are classified as minima, 
+    maxima or saddle points.
 
     Parameters
     ----------
     func : Callable
-        The function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a scalar.
+        The function to be MINIMIZED. A callable that accepts an np.ndarray and 
+        optional arguments, and returns a scalar.
     grad : Callable
-        The gradient of the function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a vector
-        (np.ndarray) of shape (D), where D is the dimensionality of the space in which the
+        The gradient of the function to be MINIMIZED. A callable that accepts an
+        np.ndarray and optional arguments, and returns a vector
+        (np.ndarray) of shape (D), where D is the dimensionality of the space in
+        which the
         optimization takes place.
     bounds : np.ndarray
-        The bounds of the domain; an np.ndarray of shape (D x 2), where D is the dimensionality of the space in which the
+        The bounds of the domain; an np.ndarray of shape (D x 2), where D is the
+        dimensionality of the space in which the
         optimization takes place. Here D is the dimension of the input domain.
     hess : Callable, optional
-        The Hessian of the function to be MINIMIZED. A callable that accepts an np.ndarray and optional arguments, and returns a
+        The Hessian of the function to be MINIMIZED. A callable that accepts an 
+    np.ndarray and optional arguments, and returns a
         np.ndarray of shape (D x D). The default value is no-op.
     num_epochs : int, optional
-        The number of epochs the algorithm runs through before being terminated. One epoch is the convergence of all local walkers,
-        the deflation of the identified optima, and the global replacement of the walkers. Note, the algorithm is running asynchronously, so a high number
-        of epochs can be chosen without concerns, it will not affect the run time to obtain the optima. Therefore, the default is
+        The number of epochs the algorithm runs through before being terminated.
+        One epoch is the convergence of all local walkers,
+        the deflation of the identified optima, and the global replacement of the 
+        walkers. Note, the algorithm is running asynchronously, so a high number
+        of epochs can be chosen without concerns, it will not affect the run time 
+        to obtain the optima. Therefore, the default is
         100000.
     global_optimizer : Callable or str, optional
-        The function (identified by a string or a Callable) that replaces the fittest walkers after their local convergence.
-        The possible options are `genetic` (default), `random` or a callable that accepts an
-        np.ndarray of shape (U x D) of positions, an np.ndarray of shape (U) of function values,
-        and np.ndarray of shape (D x 2) of bounds, and an integer specifying the number of offspring
-        individuals that should be returned. The callable should return the positions of the offspring
+        The function (identified by a string or a Callable) that replaces the 
+        fittest walkers after their local convergence.
+        The possible options are `genetic` (default), `random` or a callable that 
+        accepts an
+        np.ndarray of shape (U x D) of positions, an np.ndarray of shape (U) of 
+        function values,
+        and np.ndarray of shape (D x 2) of bounds, and an integer specifying the
+        number of offspring
+        individuals that should be returned. The callable should return the 
+        positions of the offspring
         individuals as an np.ndarray of shape (number_of_offspring x D).
     local_optimizer : Callable or str, optional
         The local optimizer that is used. The options are
         `dNewton` (default), `L-BFGS-B`, `BFGS`, `CG`, `Newton-CG`, `SLSQP`.
-        The above methods have been tested, but most others should work. Visit the `scipy.optimize.minimize` docs 
+        The above methods have been tested, but most others should work. Visit 
+        the `scipy.optimize.minimize` docs 
         (https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html)
-        for specifications and limitations of the local methods. The parameter also accepts a callable of the form func(f,grad,hess,bounds,x0,*args), 
+        for specifications and limitations of the local methods. The parameter 
+        also accepts a callable of the form func(f,grad,hess,bounds,x0,*args), 
         and returns an object equal to the scipy.optimize.minimize methods.
     number_of_optima : int, optional
-        The number of optima that will be stored in the optima list and deflated. The default is 1e6.
-        After that number is reached, worse-performing optima will not be stored or deflated.
+        The number of optima that will be stored in the optima list and deflated.
+        The default is 1e6.
+        After that number is reached, worse-performing optima will not be stored 
+        or deflated.
     local_max_iter : int, optional
-        The number of iterations before local optimizations are terminated. The default is 1000.
+        The number of iterations before local optimizations are terminated. 
+        The default is 1000.
         It can be lowered when second-order local optimizers are used.
     args : tuple, optional
-        A tuple of arguments that will be communicated to the function, the gradient, and the Hessian callables.
+        A tuple of arguments that will be communicated to the function, 
+        the gradient, and the Hessian callables.
         Default = ().
     constr : object, optional
         An optional n-tuple of constraint objects.
-        The default is no constraints (). Constraints are defined following scipy.optimize.NonlinearConstraint.
+        The default is no constraints (). Constraints are defined following 
+        scipy.optimize.NonlinearConstraint.
 
     Attributes
     ----------
@@ -124,17 +155,20 @@ class HGDL:
     ###########################################################################
     def optimize(self, dask_client=None, x0=None, tolerance=1e-6):
         """
-        Function to start the optimization. Note, this function will not return anything.
-        Use the method hgdl.HGDL.get_latest() (non-blocking) or hgdl.HGDL.get_final() (blocking)
+        Function to start the optimization. Note, this function will not 
+        return anything. Use the method hgdl.HGDL.get_latest() 
+        (non-blocking) or hgdl.HGDL.get_final() (blocking)
         to query results.
 
         Parameters
         ----------
         dask_client : distributed.client.Client, optional
-            The client that will be used for the distibuted local optimizations. The default is a local client.
+            The client that will be used for the distibuted local 
+            optimizations. The default is a local client.
         x0 : np.ndarray, optional
-            An np.ndarray of shape (V x D) of points used as starting positions.
-            If V > number of walkers (specified by the dask client) the array will be truncated.
+            An np.ndarray of shape (V x D) of points used as 
+            starting positions. If V > number of walkers 
+            (specified by the dask client) the array will be truncated.
             If V < number of walkers, random points will be appended.
             The default is None, meaning only random points will be used.
         tolerance : float, optional
@@ -203,7 +237,8 @@ class HGDL:
     ###########################################################################
     def kill_client(self):
         """
-        Function to cancel all tasks and kill the dask client, and therefore the execution.
+        Function to cancel all tasks and kill the dask client, 
+        and therefore the execution.
         If cancel_tasks() is called before, this will throw an error.
         """
         logger.debug("HGDL kill client initialized ...")
