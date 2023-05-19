@@ -1,19 +1,15 @@
-import numpy as np
-import time
+import warnings
 
-from loguru import logger
-from functools import *
-import hgdl.misc as misc
-from hgdl.local_methods.local_optimizer import run_local_optimizer
-from hgdl.global_methods.global_optimizer import run_global
-from hgdl.local_methods.local_optimizer import run_local
 import dask.distributed as distributed
 import dask.multiprocessing
-from dask.distributed import as_completed
-from hgdl.optima  import optima
-from hgdl.meta_data  import meta_data
-import pickle
-import warnings
+import numpy as np
+from loguru import logger
+
+from . import misc
+from .global_methods.global_optimizer import run_global
+from .local_methods.local_optimizer import run_local
+from .meta_data import meta_data
+from .optima import optima
 
 
 class HGDL:
@@ -87,20 +83,22 @@ class HGDL:
     """
 
     def __init__(self, func, grad, bounds,
-            hess = None, num_epochs=100000,
-            global_optimizer = "genetic",
-            local_optimizer = "L-BFGS-B",
-            number_of_optima = 1000000,
-            local_max_iter = 1000,
-            constraints = (),
-            args = ()):
+                 hess=None, num_epochs=100000,
+                 global_optimizer="genetic",
+                 local_optimizer="L-BFGS-B",
+                 number_of_optima=1000000,
+                 local_max_iter=1000,
+                 constraints=(),
+                 args=()):
         bounds = np.asarray(bounds)
         self.dim = bounds.shape[1]
         self.bounds = bounds
         self.func = func
         self.grad = grad
-        if hess: self.hess = hess
-        else: self.hess = self.hess_approx
+        if hess:
+            self.hess = hess
+        else:
+            self.hess = self.hess_approx
         if bounds is not None and local_optimizer == "dNewton":
             warnings.warn("Warning: dNewton will not adhere to bounds. It is recommended to formulate your objective function such that it is defined on R^N by simple non-linear transformations.")
         if constraints:
@@ -117,13 +115,14 @@ class HGDL:
         logger.debug("HGDL successfully initiated {}")
         if callable(self.hess): logger.debug("Hessian was provided by the user: {}", self.hess)
         logger.debug("========================")
+
     ###########################################################################
     ###########################################################################
     ############USER FUNCTIONS#################################################
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    def optimize(self, dask_client = None, x0 = None, tolerance = 1e-6):
+    def optimize(self, dask_client=None, x0=None, tolerance=1e-6):
         """
         Function to start the optimization. Note, this function will not return anything.
         Use the method hgdl.HGDL.get_latest() (non-blocking) or hgdl.HGDL.get_final() (blocking)
@@ -155,6 +154,7 @@ class HGDL:
         Function to receive info about the workers.
         """
         return self.workers
+
     ###########################################################################
     def get_latest(self):
         """
@@ -163,13 +163,14 @@ class HGDL:
         """
         try:
             data, frames = self.transfer_data.get()
-            self.optima = distributed.protocol.deserialize(data,frames)
+            self.optima = distributed.protocol.deserialize(data, frames)
             logger.debug("HGDL called get_latest() successfully")
         except Exception as err:
             self.optima = self.optima
             logger.error("HGDL get_latest failed due to {} \n optima list unchanged", str(err))
         optima_list = self.optima.list
         return optima_list
+
     ###########################################################################
     def get_final(self):
         """
@@ -184,6 +185,7 @@ class HGDL:
             logger.error("HGDL get_final failed due to {}", str(err))
         optima_list = self.optima.list
         return optima_list
+
     ###########################################################################
     def cancel_tasks(self):
         """
@@ -197,6 +199,7 @@ class HGDL:
         logger.debug("Status of HGDL task: ", self.main_future.status)
         logger.debug("This leaves the client alive.")
         return res
+
     ###########################################################################
     def kill_client(self):
         """
@@ -213,26 +216,32 @@ class HGDL:
         except Exception as err:
             raise RuntimeError("HGDL kill failed") from err
         return res
+
     ###########################################################################
     ############USER FUNCTIONS END#############################################
     ###########################################################################
-    def _prepare_starting_positions(self,x0):
-        if x0 is not None and len(x0[0]) != self.dim: raise Exception("Wrong dimesnionality of starting positions")
-        elif x0 is None: x0 = misc.random_population(self.bounds,self.number_of_walkers)
-        elif x0.ndim == 1: x0 = np.array([x0])
+    def _prepare_starting_positions(self, x0):
+        if x0 is not None and len(x0[0]) != self.dim:
+            raise Exception("Wrong dimesnionality of starting positions")
+        elif x0 is None:
+            x0 = misc.random_population(self.bounds, self.number_of_walkers)
+        elif x0.ndim == 1:
+            x0 = np.array([x0])
 
         if len(x0) < self.number_of_walkers:
-            x0_aux = np.zeros((self.number_of_walkers,len(x0[0])))
+            x0_aux = np.zeros((self.number_of_walkers, len(x0[0])))
             x0_aux[0:len(x0)] = x0
-            x0_aux[len(x0):] = misc.random_population(self.bounds,self.number_of_walkers - len(x0))
+            x0_aux[len(x0):] = misc.random_population(self.bounds, self.number_of_walkers - len(x0))
             x0 = x0_aux
         elif len(x0) > self.number_of_walkers:
             x0 = x0[0:self.number_of_walkers]
-        else: x0 = x0
+        else:
+            x0 = x0
         return x0
+
     ###########################################################################
-    def _init_dask_client(self,dask_client):
-        if dask_client is None: 
+    def _init_dask_client(self, dask_client):
+        if dask_client is None:
             dask_client = dask.distributed.Client()
             logger.debug("No dask client provided to HGDL. Using the local client")
         else:
@@ -241,36 +250,37 @@ class HGDL:
         worker_info = list(client.scheduler_info()["workers"].keys())
         if not worker_info: raise Exception("No workers available")
         self.workers = {"host": worker_info[0],
-                "walkers": worker_info[1:]}
+                        "walkers": worker_info[1:]}
         logger.debug(f"Host {self.workers['host']} has {len(self.workers['walkers'])} workers.")
         self.number_of_walkers = len(self.workers["walkers"])
         return client
+
     ###########################################################################
-    def _run_epochs(self,client):
-        self.break_condition = distributed.Variable("break_condition",client)
-        self.transfer_data = distributed.Variable("transfer_data",client)
+    def _run_epochs(self, client):
+        self.break_condition = distributed.Variable("break_condition", client)
+        self.transfer_data = distributed.Variable("transfer_data", client)
         a = distributed.protocol.serialize(self.optima)
         self.transfer_data.set(a)
         self.break_condition.set(False)
-        data = {"transfer data":self.transfer_data,
-                "break condition":self.break_condition,
-                "optima":self.optima, "metadata":self.meta_data}
-        bf = client.scatter(data, workers = self.workers["host"])
-        self.main_future = client.submit(hgdl, bf, workers = self.workers["host"])
+        data = {"transfer data": self.transfer_data,
+                "break condition": self.break_condition,
+                "optima": self.optima, "metadata": self.meta_data}
+        bf = client.scatter(data, workers=self.workers["host"])
+        self.main_future = client.submit(hgdl, bf, workers=self.workers["host"])
         self.client = client
+
     ###########################################################################
-    def hess_approx(self,x, *args):
+    def hess_approx(self, x, *args):
         ##implements a first-order approximation
         len_x = len(x)
-        hess = np.zeros((len_x,len_x))
+        hess = np.zeros((len_x, len_x))
         epsilon = 1e-6
         grad_x = self.grad(x, *args)
         for i in range(len_x):
             x_temp = np.array(x)
             x_temp[i] = x_temp[i] + epsilon
-            hess[i,i:] = ((self.grad(x_temp,*args) - grad_x)/epsilon)[i:]
+            hess[i, i:] = ((self.grad(x_temp, *args) - grad_x) / epsilon)[i:]
         return hess + hess.T - np.diag(np.diag(hess))
-
 
 
 ###########################################################################
@@ -292,20 +302,21 @@ def hgdl(data):
     transfer_data.set(a)
 
     logger.debug("HGDL first local optimization round done.", flush = True)
-
-    for i in range(1,metadata.num_epochs):
+    for i in range(1, metadata.num_epochs):
         bc = break_condition.get()
         if bc is True:
             logger.debug(f"HGDL Epoch {i} was cancelled")
             break
-        logger.debug(f"HGDL computing epoch {i+1} of ", metadata.num_epochs)
-        optima = run_hgdl_epoch(metadata,optima)
+        logger.debug(f"HGDL computing epoch {i + 1} of ", metadata.num_epochs)
+        optima = run_hgdl_epoch(metadata, optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
     logger.debug("HGDL finished all epochs!")
     return optima
+
+
 ###########################################################################
-def run_hgdl_epoch(metadata,optima):
+def run_hgdl_epoch(metadata, optima):
     optima_list = optima.list
     n = min(len(optima_list),metadata.number_of_walkers)
     ind_pos = [entry["x"] for entry in optima_list]

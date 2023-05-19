@@ -1,12 +1,10 @@
-import numpy as np
-
-
 class meta_data:
     """
     this class contains all the data necessary to run the workers
     """
-    def __init__(self,obj):
-        self.workers = obj.workers    ###dictionary of host and walker workers
+
+    def __init__(self, obj):
+        self.workers = obj.workers  ###dictionary of host and walker workers
         self.x0 = obj.x0
         self.func = obj.func
         self.grad = obj.grad
@@ -22,6 +20,3 @@ class meta_data:
         self.args = obj.args
         self.tolerance = obj.tolerance
         self.constr = obj.constraints
-
-
-
