@@ -102,7 +102,7 @@ class HGDL:
         if hess: self.hess = hess
         else: self.hess = self.hess_approx
         if bounds is not None and local_optimizer == "dNewton":
-            print("Warning: dNewton will not adhere to bounds. It is recommended to formulate your objective function such that it is defined on R^N by simple non-linear transformations.")
+            warnings.warn("Warning: dNewton will not adhere to bounds. It is recommended to formulate your objective function such that it is defined on R^N by simple non-linear transformations.")
         if constraints:
             local_optimizer = "SLSQP"
             warnings.warn("Constraints provided, local optimizer changed to 'SLSQP'")
@@ -284,15 +284,14 @@ def hgdl(data):
     break_condition = data["break condition"]
     optima = data["optima"]
     logger.debug("HGDL computing epoch 1 of {}", metadata.num_epochs)
-    #print("running first local...", flush = True)
     res = run_local(metadata,optima,metadata.x0)
-    #print("filling in optima...", flush = True)
+    logger.debug("filling in optima list for the first time.", flush = True)
     optima.fill_in_optima_list(res)
-    #print("optima list filled", flush = True)
+    logger.debug("optima list filled", flush = True)
     a = distributed.protocol.serialize(optima)
     transfer_data.set(a)
 
-    #print("HGDL first local done", flush = True)
+    logger.debug("HGDL first local optimization round done.", flush = True)
 
     for i in range(1,metadata.num_epochs):
         bc = break_condition.get()
@@ -309,8 +308,6 @@ def hgdl(data):
 def run_hgdl_epoch(metadata,optima):
     optima_list = optima.list
     n = min(len(optima_list),metadata.number_of_walkers)
-    #print("optima list: ", optima_list, flush = True)
-
     ind_pos = [entry["x"] for entry in optima_list]
     ind_fit = [entry["f(x)"] for entry in optima_list]
 
@@ -318,14 +315,8 @@ def run_hgdl_epoch(metadata,optima):
             np.array(ind_pos[:n]),
             np.array(ind_fit[0:n]),
             metadata.bounds[0:metadata.dim], metadata.global_optimizer,n)
-    #print(global_res, flush = True)
-    #print("global done", flush = True)
     x0 = np.zeros((n,metadata.dim))
     x0[:,0:metadata.dim] = np.array(global_res)
-    #print("local submitted...", flush = True)
-    #if metadata.dim != metadata.dim_x: x0[:,metadata.dim:] = np.array(optima_list["k"][0:n])
     res = run_local(metadata,optima,x0)
-    #print("local done",flush = True)
     op = optima.fill_in_optima_list(res)
-    #print("fill in in done \n",flush = True) 
     return optima

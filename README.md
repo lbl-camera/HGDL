@@ -27,11 +27,10 @@ import dask.distributed as distributed
 bounds = np.array([[-500,500],[-500,500]])
 #dask_client = distributed.Client("10.0.0.184:8786")
 a = hgdl(schwefel, schwefel_gradient, bounds,
-        hess = schwefel_hessian,
         global_optimizer = "genetic",
-        local_optimizer = "dNewton",
+        local_optimizer = "dNewton", #put in local optimzers from scipy.optimize.minimize
         number_of_optima = 30000,
-        args = (1,1), radius = None, num_epochs = 100)
+        num_epochs = 100)
 
 x0 = np.random.uniform(low = bounds[:, 0], high = bounds[:,1],size = (20,2))
 a.optimize(x0 = x0)

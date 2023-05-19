@@ -97,7 +97,6 @@ class optima:
             return defl_x, defl_f, defl_r
         except Exception as e:
             logger.debug("no deflation points available in the optima_list")
-            print("Exception: ",e, flush = True)
             return [], [], []
 
 
