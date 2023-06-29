@@ -55,7 +55,7 @@ class HGDL:
         optimization takes place. Here D is the dimension of the input domain.
     hess : Callable, optional
         The Hessian of the function to be MINIMIZED. A callable that accepts an 
-    np.ndarray and optional arguments, and returns a
+        np.ndarray and optional arguments, and returns a
         np.ndarray of shape (D x D). The default value is no-op.
     num_epochs : int, optional
         The number of epochs the algorithm runs through before being terminated.
@@ -99,7 +99,7 @@ class HGDL:
         A tuple of arguments that will be communicated to the function, 
         the gradient, and the Hessian callables.
         Default = ().
-    constr : object, optional
+    constraints : object, optional
         An optional n-tuple of constraint objects.
         The default is no constraints (). Constraints are defined following 
         scipy.optimize.NonlinearConstraint.
