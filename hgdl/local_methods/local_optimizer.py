@@ -5,7 +5,7 @@ from scipy.optimize import minimize
 
 from . import bump_function as defl
 from .. import misc
-from . import dNewton as DNewton
+from .dNewton import DNewton as DNewton
 
 
 def run_local(d, optima, x0):
@@ -84,18 +84,21 @@ def local_method(data, method="dNewton"):
     # call local methods
     if method == "dNewton":
         x, f, g, eig, local_success = DNewton(d.func, grad, hess, bounds, x0, max_iter, tol, *args)
-        # f = d.func(x,*args)
-        r = 1. / np.min(eig)
+        if np.linalg.norm(g) < 1e-3:
+            local_success = True
+            r = 1. / np.min(eig)
+        else:
+            eig = np.array([0.0])
+            r = 0.0
 
     elif type(method) == str:
-        res = minimize(d.func, x0, args=args, method=method, jac=grad, hess=hess, bounds=bounds, constraints=constr,
-                       options={"disp": False})
+        res = minimize(d.func, x0, args=args, method=method, jac=grad, hess=hess,
+              bounds=bounds, constraints=constr, tol = tol, options={"disp": False})
         x = res["x"]
         f = res["fun"]
         g = res["jac"]
 
-        local_success = False
-        if np.linalg.norm(g) < 1e-5:
+        if np.linalg.norm(g) < 1e-3:
             local_success = True
             eig = np.linalg.eig(hess(x, *args))[0]
             r = 1. / np.min(eig)
@@ -109,8 +112,7 @@ def local_method(data, method="dNewton"):
         x = res["x"]
         f = res["fun"]
         g = res["jac"]
-        local_success = False
-        if np.linalg.norm(g) < 1e-5:
+        if np.linalg.norm(g) < 1e-3:
             local_success = True
             eig = np.linalg.eig(hess(x, *args))[0]
             r = 1. / np.min(eig)

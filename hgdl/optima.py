@@ -47,7 +47,7 @@ class optima:
         classifier = []
         ##making the classifier
         for i in range(len(clean_x)):
-            if any(clean_g[i] > 1e-5):
+            if any(clean_g[i] > 1e-3):
                 classifier.append("degenerate")
             elif any(abs(clean_eig[i]) < 10e-6):
                 classifier.append("zero curvature")
