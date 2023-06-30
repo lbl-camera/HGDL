@@ -67,8 +67,7 @@ class optima:
                                             np.linalg.norm(clean_g[i]), clean_radii[i]))
         optima_list = self.list + new_optima_list
 
-        def find_f(d):
-            return d["f(x)"]
+        def find_f(d): return d["f(x)"]
 
         optima_list.sort(key=find_f)
         self.list = optima_list[0:self.max_optima]
