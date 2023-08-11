@@ -122,7 +122,7 @@ class HGDL:
                  constraints=(),
                  args=()):
         bounds = np.asarray(bounds)
-        self.dim = bounds.shape[1]
+        self.dim = len(bounds)
         self.bounds = bounds
         self.func = func
         self.grad = grad
