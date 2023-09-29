@@ -257,7 +257,7 @@ class HGDL:
     ###########################################################################
     def _prepare_starting_positions(self, x0):
         if x0 is not None and len(x0[0]) != self.dim:
-            raise Exception("Wrong dimesnionality of starting positions")
+            raise Exception("Wrong dimensionality of starting positions")
         elif x0 is None:
             x0 = misc.random_population(self.bounds, self.number_of_walkers)
         elif x0.ndim == 1:
