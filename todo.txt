@@ -1,7 +1,0 @@
-################
-####TODO########
-################
-
-
-* the radius is still ad hoc, should be related to curvature and unique to a deflation point
-
