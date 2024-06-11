@@ -1,7 +1,10 @@
 from loguru import logger
 
-from . import _version
+try:
+    from ._version import __version__
+except (ImportError, ModuleNotFoundError) as ex:
+    raise RuntimeError('Running hgdl from source code requires installation. If you would like an editable source '
+                       'install, use "pip install -e ." to perform and editable installation.') from ex
 
-__version__ = _version.get_versions()['version']
 
 logger.disable('hgdl')
