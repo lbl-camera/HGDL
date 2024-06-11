@@ -1,7 +1,6 @@
 ignore:
   - "hgdl/_version.py"
   - "setup.py"
-  - "versioneer.py"
 
 coverage:
   status:
