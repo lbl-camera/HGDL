@@ -92,3 +92,6 @@ target/
 
 # Text notes
 */*.txt
+
+# versioning
+hgdl/_version.py
