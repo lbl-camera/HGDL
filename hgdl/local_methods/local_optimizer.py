@@ -51,7 +51,6 @@ def run_local_optimizer(d, x0, x_defl=[], radii=[]):
 
     for i in range(len(tasks)):
         x[i], f[i], g[i], eig[i], r[i], local_success[i] = results[i]
-        client.cancel(tasks[i])
         for j in range(i):
             if np.linalg.norm(np.subtract(x[i], x[j])) < r[i] and local_success[j] == True:
                 logger.warning("points converged too close to each other in HGDL; point removed")
