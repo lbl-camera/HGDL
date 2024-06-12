@@ -64,7 +64,7 @@ def genetic_step(X, y, bounds, numChoose):
     # the children are the median of their parents plus a perturbation
     norm = p[moms] + p[dads]
     weights = (p[moms] / norm, p[dads] / norm)
-    weighted_linear_sum = weights[0].reshape(-1, 1) * X[moms] + weights[0].reshape(-1, 1) * X[dads]
+    weighted_linear_sum = weights[0].reshape(-1, 1) * X[moms] + weights[1].reshape(-1, 1) * X[dads]
     children = weighted_linear_sum + perturbation
     oob = np.logical_not([misc.in_bounds(x, bounds) for x in children])
     children[oob] = misc.random_sample(np.sum(oob), k, bounds)

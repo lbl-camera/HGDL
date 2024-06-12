@@ -55,7 +55,7 @@ def run_local_optimizer(d, x0, x_defl=[], radii=[]):
         for j in range(i):
             if np.linalg.norm(np.subtract(x[i], x[j])) < r[i] and local_success[j] == True:
                 logger.warning("points converged too close to each other in HGDL; point removed")
-                local_success[j] = False
+                local_success[i] = False
         for j in range(len(x_defl)):
             if np.linalg.norm(np.subtract(x[i], x_defl[j])) < radii[j] and all(g[i] < 1e-5):
                 logger.warning("local method converged within 2 x radius of a deflated position in HGDL")
