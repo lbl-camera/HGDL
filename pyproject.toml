@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hgdl"
+dependencies = [
+    "wheel",
+    "scipy ~= 1.13.0",
+    "numpy ~= 1.26.4",
+    "dask == 2024.5.0",
+    "distributed == 2024.5.0",
+    "loguru",
+]
+# imate
+# pytorch
+requires-python = ">=3.9"
+authors = [
+    { name = "Marcus Michael Noack", email = "MarcusNoack@lbl.gov" },
+    { name = "Ronald J. Pandolfi", email = "ronpandolfi@lbl.gov" },
+]
+maintainers = [
+    { name = "Marcus Michael Noack", email = "MarcusNoack@lbl.gov" },
+    { name = "Ronald J. Pandolfi", email = "ronpandolfi@lbl.gov" },
+]
+description = "HGDL Optimization"
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["autonomous", "self driving", "adaptive", "gui", "qt"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    'Intended Audience :: Developers',
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    "Natural Language :: English",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+docs = ['sphinx', 'sphinx-rtd-theme', 'myst-parser', 'myst-nb', 'sphinx-panels', 'autodocs', 'jupytext']
+tests = ['pytest', 'codecov', 'pytest-cov']
+plotting = ['matplotlib', 'plotly', 'bokeh']
+
+[project.urls]
+Homepage = "https://github.com/lbl-camera/hgdl"
+Documentation = "https://hgdl.readthedocs.io/"
+Repository = "https://github.com/lbl-camera/hgdl.git"
+"Bug Tracker" = "https://github.com/lbl-camera/hgdl/issues"
+Changelog = "https://github.com/lbl-camera/hgdl/commits/master/"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "hgdl/_version.py"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "/.github",
+    "/docs",
+    "/examples",
+    "/tests",
+    "/obsolete",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["hgdl"]
+
+[tool.black]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+
+  # The following are specific to Black, you probably don't want those.
+  | blib2to3
+  | tests/data
+)/
+'''

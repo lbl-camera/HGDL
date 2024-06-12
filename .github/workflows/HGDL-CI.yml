@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.8', '3.9' ]
+        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
 
     steps:
       - uses: actions/checkout@v2
@@ -28,13 +28,16 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install -e .[tests]
+        run: |
+          python -m ensurepip --upgrade
+          python -m pip install --upgrade setuptools
+          pip install -e .[tests]
 
       - name: Run tests
         run: pytest tests --cov=./ --cov-report=xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           directory: ./coverage/reports/
@@ -42,7 +45,6 @@ jobs:
           fail_ci_if_error: true
           files: ./coverage.xml
           name: codecov-umbrella
-          path_to_write_report: ./coverage/codecov_report.txt
           verbose: true
 
   deploy:
@@ -52,15 +54,17 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       
-      - name: Setup Python 3.8
+      - name: Setup Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8'
+          python-version: '3.9'
 
       - name: Setup deploy
         run: |
-          pip install --upgrade setuptools wheel twine
-          python setup.py sdist bdist_wheel
+          python -m ensurepip --upgrade
+          python -m pip install --upgrade setuptools
+          pip install --upgrade wheel twine
+          hatch build
 
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
