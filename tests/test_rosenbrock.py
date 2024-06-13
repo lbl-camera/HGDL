@@ -33,7 +33,7 @@ def test_rosebrock():
     sleep(3)
     print("main thread kills optimization")
     res = a.kill_client()
-    # res = a.cancel_tasks()
+    #res = a.cancel_tasks()
     print("hgdl was killed but I am waiting 2s")
     sleep(2)
     print("")
