@@ -1,4 +1,4 @@
-from hgdl import _version
+from hgdl import __version__
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -23,7 +23,7 @@ copyright = '2021, Marcus Noack, David Perryman'
 author = 'Marcus Noack, David Perryman, Harinarayan Krishnan, Petrus Zwart'
 
 # The full version, including alpha/beta/rc tags
-release = _version.get_versions()['version']
+release = __version__
 
 
 # -- General configuration ---------------------------------------------------
