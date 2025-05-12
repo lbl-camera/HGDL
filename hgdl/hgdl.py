@@ -153,7 +153,7 @@ class HGDL:
     ###########################################################################
     ###########################################################################
     ###########################################################################
-    def optimize(self, dask_client=None, x0=None, tolerance=1e-8):
+    def optimize(self, dask_client=None, x0=None, tolerance=1e-10):
         """
         Function to start the optimization. Note, this function will not 
         return anything. Use the method hgdl.HGDL.get_latest() 

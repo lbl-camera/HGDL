@@ -84,7 +84,7 @@ def local_method(data, method="dNewton"):
     # call local methods
     if method == "dNewton":
         x, f, g, eig, local_success = DNewton(d.func, grad, hess, bounds, x0, max_iter, tol, *args)
-        if np.linalg.norm(g) < 1e-3 and np.min(eig) > 1e-6:
+        if np.linalg.norm(g) < 1e-6 and np.min(eig) > 1e-6:
             local_success = True
             r = 1. / np.min(eig)
         else:
@@ -101,7 +101,7 @@ def local_method(data, method="dNewton"):
         g = res["jac"]
         eig = np.linalg.eig(hess(x, *args))[0]
 
-        if np.linalg.norm(g) < 1e-3 and np.min(eig) > 1e-6:
+        if np.linalg.norm(g) < 1e-6 and np.min(eig) > 1e-6:
             local_success = True
             r = 1. / np.min(eig)
         else:
@@ -114,7 +114,7 @@ def local_method(data, method="dNewton"):
         x = res["x"]
         f = res["fun"]
         g = res["jac"]
-        if np.linalg.norm(g) < 1e-3 and np.min(eig) > 1e-6:
+        if np.linalg.norm(g) < 1e-6 and np.min(eig) > 1e-6:
             local_success = True
             eig = np.linalg.eig(hess(x, *args))[0]
             r = 1. / np.min(eig)
