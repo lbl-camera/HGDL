@@ -34,11 +34,10 @@ def run_local_optimizer(d, x0, x_defl=[], radii=[]):
 
     client = get_client()
     tasks = []
-    bf = client.scatter(d, workers=d.workers["walkers"])
     for i in range(min(len(x0), number_of_walkers)):
         logger.debug(f"Worker {i} submitted")
         worker = d.workers["walkers"][(int(i - ((i // number_of_walkers) * number_of_walkers)))]
-        data = {"d": bf, "x0": x0[i], "x_defl": x_defl, "radius": radii}
+        data = {"d": d, "x0": x0[i], "x_defl": x_defl, "radius": radii}
         tasks.append(client.submit(local_method, data, workers=worker))
 
     results = client.gather(tasks)
