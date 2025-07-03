@@ -342,7 +342,7 @@ def hgdl(data):
         if bc is True:
             logger.debug(f"HGDL Epoch {i} was cancelled")
             break
-        logger.debug(f"HGDL computing epoch {i + 1} of ", metadata.num_epochs)
+        logger.debug(f"HGDL computing epoch {i + 1} of {{}}", metadata.num_epochs)
         optima = run_hgdl_epoch(metadata, optima)
         a = distributed.protocol.serialize(optima)
         transfer_data.set(a)
