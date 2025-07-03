@@ -216,6 +216,7 @@ class HGDL:
         try:
             self.optima = self.main_future.result()
         except Exception as err:
+            logger.exception(err)
             logger.error("HGDL get_final failed due to {}", str(err))
         optima_list = self.optima.list
         return optima_list
