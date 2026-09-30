@@ -95,3 +95,5 @@ target/
 
 # versioning
 hgdl/_version.py
+# Mirrored from examples/ at docs build time (see docs/source/conf.py)
+docs/source/examples/*.ipynb

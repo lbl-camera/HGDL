@@ -7,6 +7,7 @@ def schwefel(x, *args):
 
 ###########################################################################
 def schwefel_gradient(x, *args):
+    x = np.array(x, dtype=float)
     indices = np.where(x == 0)
     x[indices] = 0.0001
     return -(np.sin(np.sqrt(np.abs(x))) + (x * np.cos(np.sqrt(np.abs(x))) * (0.5 / np.sqrt(np.abs(x))) * (np.sign(x))))

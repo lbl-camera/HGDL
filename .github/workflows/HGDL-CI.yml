@@ -16,22 +16,33 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        python-version: ['3.11', '3.12', '3.13' ]
+        # Same Python range as fvgp and gpCAM, which depend on hgdl.
+        python-version: [ '3.10', '3.11', '3.12', '3.13', '3.14' ]
+        deps: [ 'latest' ]
+        include:
+          # The lower bounds in pyproject.toml, installed exactly, so they stay true.
+          - python-version: '3.10'
+            deps: 'minimum'
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python 3
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
           python -m ensurepip --upgrade
-          python -m pip install --upgrade setuptools
+          python -m pip install --upgrade pip setuptools
           pip install -e .[tests]
+
+      - name: Downgrade to minimum supported versions
+        if: matrix.deps == 'minimum'
+        run: pip install "scipy==1.13.*" "numpy==2.1.*" "dask==2024.1.*" "distributed==2024.1.*"
 
       - name: Run tests
         run: pytest tests --cov=./ --cov-report=xml

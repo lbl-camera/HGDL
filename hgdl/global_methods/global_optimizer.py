@@ -10,7 +10,7 @@ def run_global(x, y, bounds, method, number_of_offspring):
         return genetic_step(x, y, bounds, number_of_offspring)
     elif method == "random":
         return random_step(x, y, bounds, number_of_offspring)
-    elif method is callable:
+    elif callable(method):
         return method(x, y, bounds, number_of_offspring)
     else:
         raise Exception("no global method specified")
