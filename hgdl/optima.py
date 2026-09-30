@@ -13,7 +13,7 @@ class optima:
         input:
         -----
             dim ... the dimensionality of the space
-            max_optima ... maximum number of stored optima
+            max_optima ... maximum number of optima HGDL returns to the user (all are kept)
         """
 
         self.dim_x = dim_x
@@ -47,7 +47,7 @@ class optima:
         classifier = []
         ##making the classifier
         for i in range(len(clean_x)):
-            if any(clean_g[i] > 1e-3):
+            if any(np.abs(clean_g[i]) > 1e-3):
                 classifier.append("degenerate")
             elif any(abs(clean_eig[i]) < 10e-6):
                 classifier.append("zero curvature")
@@ -70,7 +70,9 @@ class optima:
         def find_f(d): return d["f(x)"]
 
         optima_list.sort(key=find_f)
-        self.list = optima_list[0:self.max_optima]
+        # every point found stays in the list, because the list is also the set of
+        # deflation points; max_optima only limits what HGDL.get_latest() returns
+        self.list = optima_list
         return self.list
 
     def get_minima(self, n):

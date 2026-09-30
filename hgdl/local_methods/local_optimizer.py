@@ -1,47 +1,28 @@
+import warnings
+from functools import partial
+
 import numpy as np
-from distributed import get_client
 from loguru import logger
 from scipy.optimize import minimize
 
 from . import bump_function as defl
-from .. import misc
 from .dNewton import DNewton as DNewton
-import warnings
-
-
-def run_local(d, optima, x0):
-    x_defl, f_defl, radii = optima.get_deflation_points(len(optima.list))
-    return run_local_optimizer(d, x0, x_defl, radii)
 
 
 ###########################################################################
-def run_local_optimizer(d, x0, x_defl=[], radii=[]):
+def collect_results(results, dim, x_defl=(), radii=()):
     """
-    this function runs a deflated local methos for
-    all the walkers.
-    The loop below goes over every walker
+    Stack the walker results of one epoch and reject walkers that converged
+    too close to each other or into an already deflated region.
+
     input:
-        2d numpy array of initial positions
-        2d numpy array of positions of deflations (optional, default = [])
+        results: list of local_method return tuples, one per walker
+        dim: dimensionality of the domain
+        x_defl, radii: deflation points and radii the walkers ran with
     return:
-        optima_locations, func values, gradient norms, eigenvalues, local_success(bool)
+        optima_locations, func values, gradients, eigenvalues, radii, local_success(bool)
     """
-    dim = d.dim
-    number_of_walkers = d.number_of_walkers
-
-    if len(x0) < number_of_walkers:
-        x0 = np.row_stack([x0, misc.random_population(d.bounds, number_of_walkers - len(x0))])
-
-    client = get_client()
-    tasks = []
-    for i in range(min(len(x0), number_of_walkers)):
-        logger.debug(f"Worker {i} submitted")
-        worker = d.workers["walkers"][(int(i - ((i // number_of_walkers) * number_of_walkers)))]
-        data = {"d": d, "x0": x0[i], "x_defl": x_defl, "radius": radii}
-        tasks.append(client.submit(local_method, data, workers=worker))
-
-    results = client.gather(tasks)
-    number_of_walkers = len(tasks)
+    number_of_walkers = len(results)
     x = np.empty((number_of_walkers, dim))
     f = np.empty((number_of_walkers))
     g = np.empty((number_of_walkers, dim))
@@ -49,80 +30,83 @@ def run_local_optimizer(d, x0, x_defl=[], radii=[]):
     r = np.empty((number_of_walkers))
     local_success = np.empty((number_of_walkers), dtype=bool)
 
-    for i in range(len(tasks)):
+    for i in range(number_of_walkers):
         x[i], f[i], g[i], eig[i], r[i], local_success[i] = results[i]
         for j in range(i):
             if np.linalg.norm(np.subtract(x[i], x[j])) < r[i] and local_success[j] == True:
                 logger.warning("points converged too close to each other in HGDL; point removed")
                 local_success[i] = False
         for j in range(len(x_defl)):
-            if np.linalg.norm(np.subtract(x[i], x_defl[j])) < radii[j] and all(g[i] < 1e-5):
+            if np.linalg.norm(np.subtract(x[i], x_defl[j])) < radii[j] and all(np.abs(g[i]) < 1e-5):
                 logger.warning("local method converged within 2 x radius of a deflated position in HGDL")
                 local_success[i] = False
     return x, f, g, eig, r, local_success
 
 
-def local_method(data, method="dNewton"):
-    from functools import partial
-    d = data["d"]
-    x0 = np.array(data["x0"])
-    e = np.inf
-    local_success = False
+# A deflation radius is at most this fraction of the domain diagonal, so a single
+# badly conditioned optimum (tiny Hessian eigenvalue) cannot deflate the whole domain.
+MAX_RADIUS_FRACTION = 0.1
+
+# iteration limit of dNewton when the user leaves local_max_iter=None; scipy methods
+# then keep their own default maxiter
+DNEWTON_DEFAULT_MAX_ITER = 1000
+
+
+def local_method(x0, problem, x_defl=(), radius=()):
+    """
+    One walker: a deflated local optimization from x0. Runs as a dask task.
+    `problem` is the hgdl.problem.Problem scattered to the workers.
+
+    The walker optimizes the deflated problem, but whether it found an acceptable
+    point, and its deflation radius, are judged on the true (undeflated,
+    symmetrized) Hessian at the result: in mode "minimization" only strict minima
+    are accepted, in mode "stationary_points" any non-degenerate stationary point.
+    """
+    d = problem
+    x0 = np.array(x0)
     tol = d.tolerance
-    x_defl = data["x_defl"]
-    r_defl = data["radius"]
     bounds = d.bounds
+    # stacked once per walker: the deflation set is fixed during a local optimization
+    x_defl = np.asarray(x_defl, dtype=float).reshape(-1, len(bounds))
+    r_defl = np.asarray(radius, dtype=float)
     max_iter = d.local_max_iter
     args = d.args
     method = d.local_optimizer
-    constr = d.constr
+    constr = d.constraints
     # augment grad, hess
     grad = partial(defl.deflated_grad, grad_func=d.grad, x_defl=x_defl, radius=r_defl)
     hess = partial(defl.deflated_hess, grad_func=d.grad, hess_func=d.hess, x_defl=x_defl, radius=r_defl)
 
     # call local methods
     if method == "dNewton":
-        x, f, g, eig, local_success = DNewton(d.func, grad, hess, bounds, x0, max_iter, tol, *args)
-        if np.linalg.norm(g) < 1e-6 and np.min(eig) > 1e-6:
-            local_success = True
-            r = 1. / np.min(eig)
-        else:
-            eig = np.array([0.0])
-            r = 0.0
-
+        dnewton_max_iter = DNEWTON_DEFAULT_MAX_ITER if max_iter is None else max_iter
+        x, f, g, _, _ = DNewton(d.func, grad, hess, bounds, x0, dnewton_max_iter, tol, *args,
+                                saddle_free=(d.mode == "minimization"))
     elif type(method) == str:
+        options = {"disp": False}
+        if max_iter is not None:
+            options["maxiter"] = max_iter
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             res = minimize(d.func, x0, args=args, method=method, jac=grad, hess=hess,
-            bounds=bounds, constraints=constr, tol = tol, options={"disp": False})
-        x = res["x"]
-        f = res["fun"]
-        g = res["jac"]
-        eig = np.linalg.eig(hess(x, *args))[0]
-
-        if np.linalg.norm(g) < 1e-6 and np.min(eig) > 1e-6:
-            local_success = True
-            r = 1. / np.min(eig)
-        else:
-            eig = np.array([0.0])
-            r = 0.0
-
-
+                           bounds=bounds, constraints=constr, tol=tol,
+                           options=options)
+        x, f, g = res["x"], res["fun"], res["jac"]
     elif callable(method):
         res = method(d.func, grad, hess, bounds, x0, *args)
-        x = res["x"]
-        f = res["fun"]
-        g = res["jac"]
-        if np.linalg.norm(g) < 1e-6 and np.min(eig) > 1e-6:
-            local_success = True
-            eig = np.linalg.eig(hess(x, *args))[0]
-            r = 1. / np.min(eig)
-        else:
-            eig = np.array([0.0])
-            r = 0.0
-
+        x, f, g = res["x"], res["fun"], res["jac"]
     else:
         raise Exception("no local method specified")
 
-    return x, f, g, np.real(eig), np.abs(r), local_success
+    h = np.asarray(d.hess(x, *args), dtype=float)
+    eig = np.linalg.eigvalsh(0.5 * (h + h.T))
+    curvature = np.min(eig) if d.mode == "minimization" else np.min(np.abs(eig))
+    local_success = bool(np.all(np.isfinite(g)) and np.linalg.norm(g) < 1e-6 and curvature > 1e-6)
+    if local_success:
+        max_radius = MAX_RADIUS_FRACTION * np.linalg.norm(bounds[:, 1] - bounds[:, 0])
+        r = min(1. / curvature, max_radius)
+    else:
+        eig = np.array([0.0])
+        r = 0.0
+    return x, f, g, eig, r, local_success
 ###########################################################################
