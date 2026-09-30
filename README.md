@@ -1,8 +1,8 @@
 # HGDL
 
 [![PyPI](https://img.shields.io/pypi/v/HGDL)](https://pypi.org/project/hgdl/)
-[![Documentation Status](https://readthedocs.org/projects/hgdl/badge/?version=latest)](https://hgdl.readthedocs.io/en/latest/?badge=latest)
-[![HGDL CI](https://github.com/lbl-camera/HGDL/actions/workflows/HGDL-CI.yml/badge.svg)](https://github.com/lbl-camera/fvGP/actions/workflows/HGDL-CI.yml)
+[![Documentation Status](https://img.shields.io/readthedocs/hgdl/latest)](https://hgdl.readthedocs.io/en/latest/)
+[![HGDL CI](https://github.com/lbl-camera/HGDL/actions/workflows/HGDL-CI.yml/badge.svg)](https://github.com/lbl-camera/HGDL/actions/workflows/HGDL-CI.yml)
 [![Codecov](https://img.shields.io/codecov/c/github/lbl-camera/HGDL)](https://app.codecov.io/gh/lbl-camera/HGDL)
 [![PyPI - License](https://img.shields.io/pypi/l/HGDL)](https://pypi.org/project/hgdl/)
 [<img src="https://img.shields.io/badge/slack-@gpCAM-purple.svg?logo=slack">](https://gpCAM.slack.com/)
