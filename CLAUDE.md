@@ -14,16 +14,33 @@ replacement step. Published to PyPI as `hgdl`; docs at hgdl.readthedocs.io.
 
 ```bash
 pip install -e .[tests]          # editable install (REQUIRED — see "Versioning" below)
-pytest tests                     # full suite
-pytest tests/test_schwefel.py    # single test file
-pytest tests/test_schwefel.py::test_schwefel -s   # single test; -s to see the prints
-pytest tests --cov=./ --cov-report=xml            # what CI runs
+pytest tests                     # full suite (~30 s; all tests are in tests/test_hgdl.py)
+pytest tests -k stationary       # tests matching a name
+pytest tests/test_hgdl.py::test_finds_all_four_minima   # single test
+pytest tests --cov=hgdl --cov-report=term-missing       # coverage (CI uses --cov=./ --cov-report=xml)
 hatch build                      # build sdist + wheel
 pip install -e .[docs] && cd docs && make html    # build Sphinx docs
 ```
 
-CI (`.github/workflows/HGDL-CI.yml`) runs pytest on Python 3.10–3.14 plus a minimum-versions job, and publishes to
-PyPI on pushes of `X.Y.Z` tags.
+Docs use the same Sphinx setup as fvGP/gpCAM (pydata theme, myst-nb with execution off). The
+notebooks in `examples/` are the only tracked copies; `docs/source/conf.py` (and a pre-build step
+in `.readthedocs.yml`) copies them into the gitignored `docs/source/examples/` at build time.
+
+### CI and release
+
+`.github/workflows/HGDL-CI.yml` runs the suite on Python 3.10–3.14 plus a `minimum` job that
+installs the lower dependency bounds exactly, and uploads coverage to Codecov.
+
+- Releases are made by pushing an `X.Y.Z` tag on `master`: the `deploy` job builds with
+  `hatch build`, publishes to PyPI via **trusted publishing** (OIDC, no stored token) and creates
+  the GitHub Release with `gh release create`. Any tag push releases, so never tag a branch.
+  The same tag triggers `context7-refresh.yml`.
+- Every action is pinned to a full commit SHA with the version in a comment; Dependabot
+  (`.github/dependabot.yml`) opens monthly PRs to bump them. Review those one by one: major
+  bumps can change inputs — codecov-action ≥ v5 passes `env_vars` to its CLI verbatim, so it
+  must be `OS,PYTHON` without spaces.
+- Workflows default to `contents: read`; only `deploy` gets `id-token: write` and
+  `contents: write`.
 
 ### Versioning
 
@@ -81,7 +98,10 @@ their starting points from `_starting_positions`. Each epoch:
 This is the mechanism that makes optima *unique*. Once an optimum is found, its location and
 a radius are registered; subsequent local optimizations see a *deflated* gradient and Hessian
 (`functools.partial` wrappers from [local_methods/bump_function.py](hgdl/local_methods/bump_function.py))
-that blow up near known optima, so walkers cannot reconverge there. The operator is a
+that blow up near known optima, so walkers cannot reconverge there. This follows Noack & Funke,
+"Hybrid genetic deflated Newton method for global optimisation", JCAM 325 (2017) (HGDN, the
+former name): the bump `b()` is the paper's Eq. (7) with `α = r²` (radial instead of
+per-coordinate support), the deflated gradient is Eq. (8). The operator is a
 *product* `∏ 1/(1 − bump_i)` — every factor is ≥ 1, so overlapping bumps can't flip its sign
 (a sum could). The radius is `1/min|eigenvalue of the Hessian|` — at a stationary point that is exactly the
 largest principal radius of curvature of the graph of `f` (osculating circle in the flattest
@@ -89,8 +109,16 @@ direction). It scales with `f` by design (the graph lives in (x, f) space); scal
 shift-invariant alternatives were evaluated and deliberately not adopted. It is capped at
 `MAX_RADIUS_FRACTION` (0.1) of the domain diagonal so one poorly conditioned optimum can't
 deflate the whole domain.
+`deflation_and_gradient` evaluates all bumps at once with numpy (the scalar `b()`/`b_grad()` are
+kept as the reference the tests compare against); `local_method` stacks the deflation points
+into arrays once per walker.
 Only points classified `minimum`, `maximum`, or `saddle point` become deflation points
 (`optima.get_deflation_points`).
+
+Known, deliberate differences from the paper (not bugs): `genetic_step` averages two parents
+with fitness weights plus a tiny perturbation instead of the paper's gene crossover and
+mutation, and the paper's Algorithm 4 inner loop (reset walkers and repeat the deflated search
+until nothing new is found) is not implemented — each walker does one local search per epoch.
 
 ### Optima bookkeeping
 
@@ -106,15 +134,16 @@ round's results if nothing converged and the list is still empty.
 ### Local optimizers
 
 `local_method` dispatches three ways: the built-in `dNewton`
-([local_methods/dNewton.py](hgdl/local_methods/dNewton.py), a damped Newton with
-`lstsq` fallback for singular Hessians), any `scipy.optimize.minimize` method name, or a
-user callable `f(func, grad, hess, bounds, x0, *args)` returning a scipy-like result dict.
+([local_methods/dNewton.py](hgdl/local_methods/dNewton.py), a Newton method projected onto the
+bounds), any `scipy.optimize.minimize` method name, or a user callable
+`f(func, grad, hess, bounds, x0, *args)` returning a scipy-like result with `x`, `fun`, `jac`.
 `mode` (constructor argument) decides what is searched for. `"minimization"` (default): any
 local optimizer; `dNewton` takes saddle-free Newton steps (`saddle_free_step`: symmetric part of
 the deflated Hessian with |eigenvalues|, floored), so it only converges to minima. Do not replace
 this with `0.5 * H @ H.T`: that is a descent direction too, but not scale invariant and it
-diverges for curvature < 1. `"stationary_points"`: forces plain-Newton `dNewton` (with a warning)
-and rejects constraints with a `ValueError`, since those force the SLSQP minimizer.
+diverges for curvature < 1. `"stationary_points"`: forces plain-Newton `dNewton` (with a warning;
+singular Hessians fall back to `lstsq`) and rejects constraints with a `ValueError`, since those
+force the SLSQP minimizer.
 
 All branches share one acceptance test after the optimizer returns: a result counts as
 `local_success` when the deflated gradient is finite with `|grad| < 1e-6` **and** the *true*
@@ -126,7 +155,7 @@ is passed to both.
 
 Behavioral coupling to be aware of when editing `HGDL.__init__`: `dNewton` ignores `bounds`
 (it only projects onto them inside the iteration) and warns; passing `constraints` silently
-overrides `local_optimizer` to `"SLSQP"`. If `hess` is omitted, `problem.approximate_hessian`
+overrides `local_optimizer` to `"SLSQP"` (with a warning). If `hess` is omitted, `problem.approximate_hessian`
 (a forward-difference Hessian built from `grad`) is used via `functools.partial`, so it pickles
 without the `HGDL` object.
 
@@ -141,7 +170,7 @@ concurrent walkers then oversubscribe the CPU; that is deliberately left to the 
 
 [hgdl/problem.py](hgdl/problem.py) holds `Problem`, the snapshot of everything a walker
 needs (`func`, `grad`, `hess`, `bounds`, `args`, `local_optimizer`, `local_max_iter`,
-`tolerance`, `constraints`), built in `optimize()` because `tolerance` is only known there.
+`tolerance`, `constraints`, `mode`), built in `optimize()` because `tolerance` is only known there.
 Anything a walker must see has to be added here. It is serialized with dask's cloudpickle,
 so lambdas and closures work, but nothing in it may reference a dask client, future, lock or
 thread — in particular never a bound method of `HGDL`, which now holds all of those.
@@ -153,6 +182,13 @@ thread — in particular never a bound method of `HGDL`, which now holds all of 
   pins, because a pin here dictates the whole stack for every fvgp/gpCAM install. The
   `minimum` CI job installs the lower bounds exactly; raise a bound only together with
   fvgp and gpCAM.
+- What fvgp and gpCAM rely on (keep it stable, or change them in step): `from hgdl.hgdl import
+  HGDL`; the constructor keywords `hess`, `local_optimizer`, `global_optimizer`, `num_epochs`,
+  `constraints`; `optimize(dask_client=, x0=<(1, D) array>, tolerance=)`; `get_final()[0]["x"]`
+  as the answer (list sorted by `f(x)`); `get_latest()`, `cancel_tasks()`, and `kill_client()`
+  closing the client. gpCAM calls HGDL without a Hessian. Before a release, run gpCAM's suite
+  and fvGP's `-k "hgdl or test_train_basic"` tests against the working tree (the fvGP ones take
+  ~10 min on many-core machines because of the no-nanny BLAS issue under "Known bugs").
 - The API uses plain `np.ndarray`s throughout, no dataclasses or type hints.
 - Public `HGDL` methods carry full numpydoc docstrings that Sphinx `autoclass` renders
   directly into the published API docs — update them when changing signatures.
@@ -160,6 +196,8 @@ thread — in particular never a bound method of `HGDL`, which now holds all of 
   known-answer end-to-end runs on a four-well function, using an in-process cluster
   (`processes=False`) and a seeded global RNG so runs are reproducible and coverage sees
   worker code. Known bugs are pinned with `xfail(strict=True)` and a reason code; when a fix
-  makes one XPASS, remove its marker.
+  makes one XPASS, remove its marker. The known-answer tests' epoch counts were chosen from
+  multi-seed scans (e.g. stationary mode: 15 epochs suffice in 20/20 seeds, the test uses 20);
+  don't lower them without re-running such a scan.
 - Standalone scripts outside the repo may import a stale non-editable `hgdl` from
   site-packages; pytest uses the repo copy because `tests/` is a package.
