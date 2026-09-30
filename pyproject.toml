@@ -6,10 +6,15 @@ build-backend = "hatchling.build"
 name = "hgdl"
 dependencies = [
     "wheel",
-    "scipy ~= 1.16.0",
-    "numpy ~= 2.2.6",
-    "dask ~= 2025.5.1",
-    "distributed ~= 2025.5.1",
+    # Ranges, not `~=` pins, and kept identical to fvgp and gpCAM, which depend on hgdl.
+    # hgdl sits at the bottom of that stack, so a `~=` pin here decides the scipy/numpy/
+    # dask versions for every fvgp and gpCAM install -- and, because no single release
+    # covers Python 3.10 through 3.14, makes pip backtrack to older hgdl releases at both
+    # ends of the range. The lower bounds are exercised by the `minimum` CI job.
+    "scipy >= 1.13",
+    "numpy >= 2.1",
+    "dask >= 2024.1",
+    "distributed >= 2024.1",
     "loguru",
 ]
 # imate
@@ -35,12 +40,14 @@ classifiers = [
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
     "Natural Language :: English",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
-docs = ['sphinx', 'sphinx-rtd-theme', 'myst-parser', 'myst-nb', 'sphinx-panels', 'autodocs', 'jupytext']
+docs = ['sphinx', 'pydata-sphinx-theme>=0.15', 'myst-parser', 'myst-nb', 'sphinx-design', 'sphinx-copybutton', 'jupytext']
 tests = ['pytest', 'codecov', 'pytest-cov']
 plotting = ['matplotlib', 'plotly', 'bokeh']
 
