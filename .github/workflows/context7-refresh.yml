@@ -6,11 +6,17 @@ on:
       - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: rennf93/upsert-context7@v1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
+      # pinned by SHA; the action has no `v1` tag (only 1.0 and 1.1), so `@v1` could not resolve
+      - uses: rennf93/upsert-context7@c29ca04a37ecbab62635c0e94c3d8908049b9ed5  # 1.1
         with:
           operation: refresh

@@ -1,6 +1,5 @@
-# TODO: add in coverage (via codecov)
-# TODO: pytest fixes (test file uses interactive stdins during test run)
-# TODO: pypi deployment with successful tests on tag pushes
+# Third-party actions are pinned to full commit SHAs (the version is in the comment), so a
+# moved or compromised tag cannot change what runs here with access to the release credentials.
 
 name: HGDL CI
 
@@ -11,6 +10,10 @@ on:
       - '[0-9]+.[0-9]+.[0-9]+'
   pull_request:
     branches: [ master ]
+
+# least privilege by default; the deploy job asks for what it needs
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -27,10 +30,12 @@ jobs:
             deps: 'minimum'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -48,7 +53,7 @@ jobs:
         run: pytest tests --cov=./ --cov-report=xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           directory: ./coverage/reports/
@@ -62,31 +67,31 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # PyPI trusted publishing (OIDC); no API token is stored
+      contents: write   # create the GitHub Release
     steps:
-      - uses: actions/checkout@v2
-      
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
-          python-version: '3.10'
+          fetch-depth: 0   # hatch-vcs derives the version from the tag
+          persist-credentials: false
 
-      - name: Setup deploy
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Build sdist and wheel
         run: |
-          python -m ensurepip --upgrade
-          python -m pip install --upgrade setuptools
-          pip install --upgrade wheel twine hatch
+          python -m pip install --upgrade pip hatch
           hatch build
 
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33  # v1.14.2
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
           verbose: true
 
-      - name: Github Release
-        uses: fnkr/github-action-ghr@v1
+      - name: GitHub Release
         env:
-          GHR_COMPRESS: xz
-          GHR_PATH: dist/
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
