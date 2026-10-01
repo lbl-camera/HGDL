@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import threading
+import uuid
 import warnings
 
 import dask.distributed as distributed
@@ -9,7 +10,7 @@ from loguru import logger
 
 from . import misc
 from .global_methods.global_optimizer import run_global
-from .local_methods.local_optimizer import collect_results, local_method
+from .local_methods.local_optimizer import collect_results, local_method, stop_run
 from .optima import optima
 from .problem import Problem, hessian_or_approximation
 
@@ -21,17 +22,16 @@ class HGDL:
     G ... Global \n
     D ... Deflated \n
     L ... Local \n
-    The algorithm places a number of walkers inside the domain
-    (one per dask worker thread), all of which perform
-    a local optimization in a distributed way in parallel.
-    When all walkers have converged, the identified points
-    are removed by deflation, and the walkers are replaced
-    by a global optimization step. From here the next epoch
-    begins with distributed local optimizations of
-    the new walkers. The result is a growing list of unique
-    points, sorted by function value (only points with
-    f'(x) = 0 can be found).
-    The epochs are coordinated by a background thread in the
+    The algorithm keeps one walker per dask worker thread
+    running a local optimization, all in parallel. Whenever a
+    walker finishes, the point it found is added to the list
+    and removed by deflation, and a new walker is started
+    from a global optimization step, so a slow walker never
+    holds up the others. The result is a growing list of
+    unique points, sorted by function value (only points with
+    f'(x) = 0, or with a vanishing gradient of the Lagrangian
+    under constraints, can be found).
+    The walkers are coordinated by a background thread in the
     calling process, so `optimize()` returns instantly and
     the main thread stays free; the list can be queried at
     any time while it grows.
@@ -67,16 +67,19 @@ class HGDL:
         deflation radius, and by `dNewton` for its steps. The default is a
         finite-difference approximation computed from `grad`.
     num_epochs : int, optional
-        The number of epochs the algorithm runs through before being terminated.
-        One epoch is the convergence of all local walkers,
-        the deflation of the identified points, and the global replacement of
-        the walkers. The algorithm runs asynchronously: `get_latest()` returns
-        the points found so far at any time, and `cancel_tasks()` stops the run,
-        so a high number of epochs can be chosen without concerns; only
-        `get_final()` waits for all of them. The default is 100000.
+        The length of the run: it ends after `num_epochs` times the number of
+        walkers (worker threads when `optimize()` is called) local
+        optimizations have finished; walkers still running then are
+        stopped. There is no barrier between epochs: every walker is replaced
+        as soon as it finishes. The algorithm runs asynchronously:
+        `get_latest()` returns the points found so far at any time, and
+        `cancel_tasks()` stops the run, so a high number of epochs can be
+        chosen without concerns; only `get_final()` waits for all of them.
+        The default is 100000.
     global_optimizer : Callable or str, optional
-        The method that replaces the walkers after each epoch, seeded with the
-        best points found so far.
+        The method that generates the starting points of new walkers, one
+        batch (one per walker) at a time, seeded with the best points found so
+        far.
         The possible options are `genetic` (default), `random` or a callable that
         accepts an np.ndarray of shape (U x D) of positions, an np.ndarray of
         shape (U) of function values, an np.ndarray of shape (D x 2) of bounds,
@@ -111,13 +114,25 @@ class HGDL:
     constraints : object, optional
         An optional n-tuple of constraint objects.
         The default is no constraints (). Constraints are defined following
-        scipy.optimize.NonlinearConstraint. Providing constraints changes the
-        local optimizer to `SLSQP` (with a warning).
+        scipy.optimize.minimize (`NonlinearConstraint`, `LinearConstraint` or
+        dicts). Providing constraints changes the local optimizer to `SLSQP`
+        (with a warning). A result is then accepted as a minimum if it satisfies
+        the KKT conditions: it is feasible, the gradient of the Lagrangian is
+        below 1e-6, and the Lagrangian is strictly convex along the active
+        constraints. Optima on an active constraint are found and deflated
+        like interior ones. The bounds are not treated as constraints.
         Constraints cannot be combined with `mode="stationary_points"`.
     args : tuple, optional
         A tuple of arguments that will be communicated to the function,
         the gradient, and the Hessian callables.
         Default = ().
+    local_time_limit : float, optional
+        Seconds after which a walker stops its local optimization; its result
+        is then judged like any other and usually rejected, and a new walker
+        takes its place. It is checked between iterations, so a single
+        evaluation of `func`, `grad` or `hess` is never interrupted, and it
+        does not apply to a callable `local_optimizer`. The default (None) is
+        no limit.
     mode : str, optional
         What the walkers search for. `minimization` (default) accepts only
         strict minima (smallest Hessian eigenvalue > 1e-6); any local optimizer
@@ -156,7 +171,8 @@ class HGDL:
                  local_max_iter=None,
                  constraints=(),
                  args=(),
-                 mode="minimization"):
+                 mode="minimization",
+                 local_time_limit=None):
         bounds = np.asarray(bounds)
         self.dim = len(bounds)
         self.bounds = bounds
@@ -181,6 +197,7 @@ class HGDL:
 
         self.constraints = constraints
         self.local_max_iter = local_max_iter
+        self.local_time_limit = local_time_limit
         self.num_epochs = num_epochs
         self.global_optimizer = global_optimizer
         self.local_optimizer = local_optimizer
@@ -192,7 +209,8 @@ class HGDL:
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread = None
-        self._futures = []
+        self._futures = set()
+        self._run_id = None
         self._error = None
         logger.debug("HGDL successfully initiated")
         if hess: logger.debug("Hessian was provided by the user: {}", hess)
@@ -207,8 +225,8 @@ class HGDL:
     def optimize(self, dask_client=None, x0=None, tolerance=1e-10):
         """
         Function to start the optimization. This function returns
-        immediately; the epochs run in a background thread of the
-        calling process, and the walkers run on the dask workers.
+        immediately; the walkers are coordinated by a background thread of
+        the calling process and run on the dask workers.
         Use the method hgdl.HGDL.get_latest() (non-blocking) or
         hgdl.HGDL.get_final() (blocking) to query results.
 
@@ -216,7 +234,7 @@ class HGDL:
         ----------
         dask_client : distributed.client.Client, optional
             The client that will be used for the distributed local
-            optimizations. Every worker thread runs one walker per epoch.
+            optimizations. Every worker thread runs one walker at a time.
             The default is a local client.
         x0 : np.ndarray, optional
             An np.ndarray of shape (V x D) of points used as
@@ -236,15 +254,17 @@ class HGDL:
         self.x0 = self._prepare_starting_positions(x0)
         logger.debug("HGDL starts with: {}", self.x0)
 
+        # unique, so that stopping this run does not stop other runs sharing the cluster
+        self._run_id = uuid.uuid4().hex
         problem = Problem(self.func, self.grad, self.hess, self.bounds, self.args,
                           self.local_optimizer, self.local_max_iter, self.tolerance,
-                          self.constraints, self.mode)
+                          self.constraints, self.mode, self.local_time_limit, self._run_id)
         # sent to every worker once; walker tasks only carry a reference to it
         self._problem = self.client.scatter(problem, broadcast=True, hash=False)
 
         self._stop.clear()
         self._error = None
-        self._thread = threading.Thread(target=self._run_epochs, name="hgdl-coordinator", daemon=True)
+        self._thread = threading.Thread(target=self._run_walkers, name="hgdl-coordinator", daemon=True)
         self._thread.start()
 
     ###########################################################################
@@ -267,6 +287,10 @@ class HGDL:
         `classifier` (`minimum`, `maximum`, `saddle point`, `zero curvature`
         or `degenerate`), `Hessian eigvals`, `df/dx`, `|df/dx|` and `radius`
         (of its deflation).
+        With constraints, `df/dx` is the gradient of the Lagrangian and
+        `Hessian eigvals` are the eigenvalues of the Lagrangian's Hessian along
+        the active constraints (fewer than the dimension when constraints are
+        active, none when they fix the point).
         """
         with self._lock:
             return copy.deepcopy(self.optima.list[:self.optima.max_optima])
@@ -276,7 +300,7 @@ class HGDL:
         """
         Function to request the final result.
         CAUTION: This function will block the main thread until
-        the end of all epochs is reached.
+        the run has finished (see `num_epochs`).
         If the optimization failed (for instance because the objective
         function raised), that exception is raised here.
         No inputs.
@@ -295,9 +319,10 @@ class HGDL:
     def cancel_tasks(self):
         """
         Function to cancel all tasks and therefore the execution.
-        No new epoch is started and walkers that have not started yet
-        are cancelled; walkers already running finish their local
-        optimization in the background. The client stays alive.
+        No new walker is started, walkers that have not started yet are
+        cancelled, and running walkers stop at their next iteration; a
+        running evaluation of the objective is not interrupted. The client
+        stays alive.
 
         Returns
         -------
@@ -306,8 +331,7 @@ class HGDL:
         logger.debug("HGDL is cancelling all tasks...")
         res = self.get_latest()
         self._stop.set()
-        if self.client is not None and self._futures:
-            self.client.cancel(self._futures)
+        self._stop_walkers()
         logger.debug("This leaves the client alive.")
         return res
 
@@ -365,32 +389,47 @@ class HGDL:
 
     ###########################################################################
     def _count_walkers(self, client):
-        # one walker per worker thread; re-read every epoch so adaptive clusters can grow or shrink
+        # one walker per worker thread; re-read during the run so adaptive clusters can grow or shrink
         workers = client.scheduler_info()["workers"]
         self.workers = {"walkers": list(workers)}
         self.number_of_walkers = sum(w.get("nthreads", 1) for w in workers.values())
         return self.number_of_walkers
 
     ###########################################################################
-    def _run_epochs(self):
+    def _run_walkers(self):
+        """
+        The coordinator, running in the background thread. It keeps one walker per
+        worker thread running; whenever one finishes, its result is judged against
+        the optima found so far and a new walker takes its place. There is no barrier,
+        so a slow or diverging walker only occupies its own worker thread. The run
+        ends after num_epochs x (number of initial walkers) walkers have finished.
+        """
+        n_first = len(self.x0)
+        budget = self.num_epochs * n_first
+        starts = list(self.x0)
+        first_failures = []
+        completed = 0
+        target = n_first
+        pool = distributed.as_completed(loop=self.client.loop)
         try:
-            for epoch in range(self.num_epochs):
+            while not self._stop.is_set() and len(self._futures) < target and budget > 0:
+                self._submit_walker(pool, starts)
+            for future in pool:
                 if self._stop.is_set():
-                    logger.debug("HGDL epoch {} was cancelled", epoch + 1)
                     break
-                logger.debug("HGDL computing epoch {} of {}", epoch + 1, self.num_epochs)
-                if epoch == 0:
-                    x0 = self.x0
-                else:
-                    x0 = self._starting_positions(max(self._count_walkers(self.client), 1))
-                x_defl, f_defl, radii = self.optima.get_deflation_points(len(self.optima.list))
-                self._futures = self.client.map(local_method, list(x0), problem=self._problem,
-                                                x_defl=x_defl, radius=radii, pure=False)
-                results = self.client.gather(self._futures)
-                res = collect_results(results, self.dim, x_defl, radii)
+                result = future.result()
                 with self._lock:
-                    self.optima.fill_in_optima_list(res)
-            logger.debug("HGDL finished all epochs!")
+                    self._futures.discard(future)
+                completed += 1
+                self._accept(result, completed, n_first, first_failures)
+                if completed >= budget:
+                    break
+                if completed % n_first == 0:
+                    # about once per former epoch: adaptive clusters can grow or shrink
+                    target = max(self._count_walkers(self.client), 1)
+                while not self._stop.is_set() and len(self._futures) < target:
+                    self._submit_walker(pool, starts)
+            logger.debug("HGDL finished after {} walkers", completed)
         except (Exception, asyncio.CancelledError) as err:
             if self._stop.is_set():
                 logger.debug("HGDL stopped: {}", repr(err))
@@ -398,7 +437,44 @@ class HGDL:
                 logger.exception(err)
                 self._error = err
         finally:
-            self._futures = []
+            self._stop_walkers()
+
+    def _submit_walker(self, pool, starts):
+        if not starts:
+            starts.extend(self._starting_positions(max(self.number_of_walkers, 1)))
+        x_defl, _, radii = self.optima.get_deflation_points(len(self.optima.list))
+        future = self.client.submit(local_method, starts.pop(0), problem=self._problem,
+                                    x_defl=x_defl, radius=radii, pure=False)
+        with self._lock:
+            self._futures.add(future)
+        pool.add(future)
+
+    def _accept(self, result, completed, n_first, first_failures):
+        # judged against the current optima, which may have grown while the walker ran
+        x_defl, _, radii = self.optima.get_deflation_points(len(self.optima.list))
+        res = collect_results([result], self.dim, x_defl, radii)
+        with self._lock:
+            if res[-1][0]:
+                self.optima.fill_in_optima_list(res)
+            elif completed <= n_first:
+                first_failures.append(result)
+            if completed == n_first and not self.optima.list and first_failures:
+                # none of the first walkers converged: keep their results anyway (as the
+                # first epoch did), so that get_final() has an answer
+                self.optima.fill_in_optima_list(collect_results(first_failures, self.dim))
+
+    def _stop_walkers(self):
+        # cancels walkers that have not started and tells running ones to stop: one message
+        # per worker, after which walkers check a local flag (no requests to the scheduler)
+        with self._lock:
+            futures, self._futures = list(self._futures), set()
+        try:
+            if futures:
+                self.client.cancel(futures)
+            if self._run_id is not None:
+                self.client.run(stop_run, self._run_id, on_error="ignore")
+        except Exception as err:  # e.g. the client was closed
+            logger.debug("HGDL could not stop the walkers: {}", repr(err))
 
     ###########################################################################
     def _starting_positions(self, number_of_walkers):

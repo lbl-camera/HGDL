@@ -2,6 +2,8 @@ from functools import partial
 
 import numpy as np
 
+from .local_methods.kkt import normalize_constraints
+
 
 class Problem:
     """
@@ -15,8 +17,12 @@ class Problem:
     """
 
     def __init__(self, func, grad, hess, bounds, args, local_optimizer, local_max_iter,
-                 tolerance, constraints, mode="minimization"):
+                 tolerance, constraints, mode="minimization", local_time_limit=None, run_id=None):
         self.mode = mode
+        # seconds after which a walker gives up, and the id under which the run is marked
+        # as stopped on the workers (both checked between iterations)
+        self.local_time_limit = local_time_limit
+        self.run_id = run_id
         self.func = func
         self.grad = grad
         self.hess = hess
@@ -27,6 +33,8 @@ class Problem:
         self.local_max_iter = local_max_iter
         self.tolerance = tolerance
         self.constraints = constraints
+        # the same constraints as blocks lb <= c(x) <= ub, for the KKT test of the results
+        self.constraint_blocks = normalize_constraints(constraints)
 
 
 def approximate_hessian(x, *args, grad_func=None):

@@ -23,11 +23,12 @@ def _eigenvalues(hess, x, *args):
         return np.full(len(x), np.nan)
 
 
-def DNewton(func, grad, hess, bounds, x0, max_iter, tol, *args, saddle_free=False):
+def DNewton(func, grad, hess, bounds, x0, max_iter, tol, *args, saddle_free=False, should_stop=None):
     """
     Damped Newton on the (deflated) gradient. With saddle_free=False this is plain
     Newton and converges to any stationary point; with saddle_free=True it only
-    converges to minima.
+    converges to minima. should_stop is called after every iteration; if it returns
+    True the iteration ends unconverged.
     """
     e = np.inf
     gradient = np.ones((len(x0))) * np.inf
@@ -59,4 +60,6 @@ def DNewton(func, grad, hess, bounds, x0, max_iter, tol, *args, saddle_free=Fals
         logger.debug("dNewton step size: ", e, " max gradient: ", np.max(abs(gradient)))
         if counter > max_iter: return x, func(x, *args), gradient, _eigenvalues(hess, x, *args), False
         counter += 1
+        if should_stop is not None and should_stop():
+            return x, func(x, *args), gradient, _eigenvalues(hess, x, *args), False
     return x, func(x, *args), gradient, _eigenvalues(hess, x, *args), True

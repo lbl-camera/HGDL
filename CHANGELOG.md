@@ -1,6 +1,46 @@
 # Changelog
 
-## 2.4.0 (unreleased)
+## Unreleased
+
+### Changed architecture
+- No more epoch barrier: one walker per worker thread is kept running, and each is replaced by
+  a new one (from the global method) as soon as it finishes, so a slow or diverging walker no
+  longer holds up all others. A run ends after `num_epochs` times the number of walkers local
+  optimizations have finished; walkers still running then are stopped, so `get_final()` does
+  not wait for a straggler. With several workers, runs are no longer exactly reproducible with
+  a seeded RNG, because walkers finish in varying order.
+
+### New
+- `local_time_limit` (seconds, default None): a walker stops its local optimization after this
+  time; its result is judged as usual (and usually rejected).
+- `cancel_tasks()` and `kill_client()` now stop running walkers at their next iteration, instead
+  of letting them finish in the background (one message to every worker; walkers check a local
+  flag). A single evaluation of the objective is still not interrupted.
+
+### Fixed
+- With constraints, optima on an active constraint were never accepted or deflated: the
+  acceptance test required the gradient of `f` to vanish, which it does not there. Constrained
+  results are now judged by the KKT conditions: feasibility, a vanishing gradient of the
+  Lagrangian (multipliers computed from the active constraints, with the correct signs for
+  inequalities), and positive curvature of the Lagrangian along the active constraints, which
+  also sets the deflation radius (10% of the domain diagonal when the active constraints fix
+  the point). The bounds are not treated as constraints.
+- `local_optimizer="trust-constr"` raised in every walker (its result keeps the gradient under
+  `grad`, not `jac`).
+- SLSQP stops when `f` stops changing, which left the gradient around 1e-5 and failed the 1e-6
+  acceptance test, so even interior minima of constrained runs were often rejected. Constrained
+  results are now refined by a few Newton steps on the KKT system before the test.
+
+### Behavior changes
+- With constraints, `df/dx` in the results is the gradient of the Lagrangian and `Hessian eigvals`
+  are the eigenvalues of its Hessian along the active constraints (fewer than the dimension when
+  constraints are active).
+
+### Docs
+- The example notebooks install hgdl 2.4.0; the Schwefel example passed only one of its two
+  constraints.
+
+## 2.4.0
 
 ### Changed architecture
 - HGDL no longer runs its epoch loop as a task on a dask worker. `optimize()` starts a background

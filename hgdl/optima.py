@@ -42,7 +42,7 @@ class optima:
         clean_x = x[clean_indices]
         clean_f = f[clean_indices]
         clean_g = g[clean_indices]
-        clean_eig = eig[clean_indices]
+        clean_eig = [eig[i] for i in clean_indices]
         clean_radii = r[clean_indices]
         classifier = []
         ##making the classifier

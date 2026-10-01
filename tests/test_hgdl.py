@@ -15,15 +15,18 @@ import warnings
 
 import numpy as np
 import pytest
-from distributed import Client, get_task_stream
-from scipy.optimize import NonlinearConstraint, minimize
+from distributed import Client, get_task_stream, protocol
+from scipy import sparse
+from scipy.optimize import LinearConstraint, NonlinearConstraint, minimize
+from scipy.sparse.linalg import aslinearoperator
 
 from hgdl import misc
 from hgdl.global_methods.global_optimizer import genetic_step, random_step, run_global
 from hgdl.hgdl import HGDL
 from hgdl.local_methods import bump_function as bf
 from hgdl.local_methods.dNewton import DNewton, saddle_free_step
-from hgdl.local_methods.local_optimizer import MAX_RADIUS_FRACTION, collect_results, local_method
+from hgdl.local_methods.kkt import kkt_conditions, newton_polish, normalize_constraints
+from hgdl.local_methods.local_optimizer import MAX_RADIUS_FRACTION, collect_results, local_method, stop_run
 from hgdl.optima import optima
 from hgdl.problem import Problem, approximate_hessian
 from hgdl.support_functions import (non_diff, non_diff_grad, non_diff_hess,
@@ -88,6 +91,18 @@ def x0_at_least_half(x):
     return x[0]
 
 
+def first_coordinate(x):
+    return x[0]
+
+
+def squared_norm(x):
+    return x @ x
+
+
+def squared_norm_jac(x):
+    return 2 * x
+
+
 def bfgs_local_optimizer(func, grad, hess, bounds, x0, *args):
     return minimize(func, x0, jac=grad, method="BFGS", args=args)
 
@@ -103,6 +118,43 @@ def exploding(x, *args):
 def slow_quad(x, *args):
     time.sleep(0.05)
     return quad(x)
+
+
+def slow_fourwell_grad(x, *args):
+    time.sleep(0.02)
+    return fourwell_grad(x)
+
+
+# one walker started here takes STRAGGLE seconds for its first evaluation
+STRAGGLER_X0 = np.array([0.77, -0.33])
+STRAGGLE = 10.
+
+
+def straggling_quad(x, *args):
+    if np.allclose(x, STRAGGLER_X0):
+        time.sleep(STRAGGLE)
+    return quad(x)
+
+
+def slope(x, *args):
+    return x[0] + x[1]
+
+
+def slope_grad(x, *args):
+    return np.ones(2)
+
+
+def slope_hess(x, *args):
+    return np.zeros((2, 2))
+
+
+SLOPE_GRAD_CALLS = {"n": 0}
+
+
+def slow_slope_grad(x, *args):
+    SLOPE_GRAD_CALLS["n"] += 1
+    time.sleep(0.02)
+    return slope_grad(x)
 
 
 BOUNDS = np.array([[-2., 2.], [-2., 2.]])
@@ -122,7 +174,7 @@ def make_problem(tolerance=1e-10, **kwargs):
     """The Problem a walker receives, built the way HGDL.optimize() builds it."""
     h = make_hgdl(**kwargs)
     return Problem(h.func, h.grad, h.hess, h.bounds, h.args, h.local_optimizer,
-                   h.local_max_iter, tolerance, h.constraints, h.mode)
+                   h.local_max_iter, tolerance, h.constraints, h.mode, h.local_time_limit)
 
 
 def walk(problem, x0, x_defl=(), radius=()):
@@ -404,7 +456,7 @@ def test_saddle_free_dnewton_nan_hessian_aborts():
 ###########################################################################
 # local_method (called directly, no dask involved)
 ###########################################################################
-@pytest.mark.parametrize("method", ["dNewton", "L-BFGS-B", "BFGS"])
+@pytest.mark.parametrize("method", ["dNewton", "L-BFGS-B", "BFGS", "trust-constr"])
 def test_local_method_success(method):
     # on BOUNDS the radius cap (0.1 * diagonal = 0.57) is above 1/lambda = 0.5
     x, f, g, eig, r, success = walk(make_problem(local_optimizer=method, bounds=BOUNDS), [0.9, 0.9])
@@ -471,7 +523,7 @@ def test_default_local_max_iter_for_dnewton(monkeypatch):
     import hgdl.local_methods.local_optimizer as lo
     seen = {}
 
-    def fake_dnewton(func, grad, hess, bounds, x0, max_iter, tol, *args, saddle_free=False):
+    def fake_dnewton(func, grad, hess, bounds, x0, max_iter, tol, *args, saddle_free=False, should_stop=None):
         seen["max_iter"] = max_iter
         return QUAD_C, 0., np.zeros(2), None, True
 
@@ -488,6 +540,37 @@ def test_local_max_iter_limits_scipy_optimizers():
     CALLS["n"] = 0
     walk(problem, [1.9, -1.7])
     assert CALLS["n"] <= 5  # one iteration plus its line search, and the final eigen check
+
+
+@pytest.mark.parametrize("method", ["dNewton", "L-BFGS-B", "SLSQP", "TNC", "trust-constr"])
+def test_local_time_limit_stops_the_walker(method):
+    # each gradient takes 20 ms; converging from here takes several of them
+    problem = make_problem(func=fourwell, grad=slow_fourwell_grad, hess=fourwell_hess, bounds=BOUNDS,
+                           local_optimizer=method, local_time_limit=0.03)
+    t0 = time.time()
+    x, f, g, eig, r, success = walk(problem, [1.9, -1.7])
+    assert time.time() - t0 < 1.
+    assert not success
+    assert np.all(np.isfinite(x)) and f == pytest.approx(fourwell(x))
+
+
+@pytest.mark.parametrize("method", ["dNewton", "L-BFGS-B", "SLSQP"])
+def test_walker_of_a_stopped_run_gives_up(method):
+    problem = make_problem(func=fourwell, grad=fourwell_grad, hess=fourwell_hess, bounds=BOUNDS,
+                           local_optimizer=method)
+    problem.run_id = "stopped-run"
+    stop_run("stopped-run")
+    x, f, g, eig, r, success = walk(problem, [1.9, -1.7])
+    assert not success
+    assert not np.allclose(x, [1., -1.], atol=1e-6)
+
+
+def test_walker_of_another_run_keeps_going():
+    problem = make_problem(local_optimizer="L-BFGS-B")
+    problem.run_id = "running-run"
+    stop_run("some-other-run")
+    x, f, g, eig, r, success = walk(problem, [0.9, 0.9])
+    assert success
 
 
 def test_local_method_radius_is_bounded_by_domain():
@@ -519,6 +602,140 @@ def test_local_method_stationary_mode_accepts_saddles_and_maxima(start, point, e
 
 
 ###########################################################################
+# KKT conditions of constrained results
+###########################################################################
+# quad restricted to |x|^2 >= 1: the minimum is P = c / |c| on the circle, where
+# grad f = 2 (1 - |c|) P balances grad |x|^2 = 2 P with the multiplier 1 - |c|, and the
+# Lagrangian Hessian 2 I - (1 - |c|) 2 I = 2 |c| I is the curvature along the circle
+P = QUAD_C / np.linalg.norm(QUAD_C)
+
+
+@pytest.mark.parametrize("constraint", [
+    NonlinearConstraint(squared_norm, 1., np.inf),                    # finite differences
+    NonlinearConstraint(squared_norm, 1., np.inf, jac=squared_norm_jac),
+    {"type": "ineq", "fun": lambda x: x @ x - 1.},
+])
+def test_kkt_conditions_on_a_curved_constraint(constraint):
+    g, eig, feasible = kkt_conditions(P, quad_grad(P), quad_hess(P), normalize_constraints(constraint))
+    assert feasible
+    np.testing.assert_allclose(g, 0., atol=1e-8)
+    np.testing.assert_allclose(eig, [2 * np.linalg.norm(QUAD_C)], rtol=1e-6)
+
+
+@pytest.mark.parametrize("constraint", [
+    LinearConstraint([[1., 0.]], 0.5, np.inf),
+    {"type": "eq", "fun": lambda x: x[0] - 0.5},
+    NonlinearConstraint(first_coordinate, 0.5, np.inf, jac=lambda x: sparse.csr_matrix([[1., 0.]]),
+                        hess=lambda x, v: sparse.csr_matrix((2, 2))),
+    NonlinearConstraint(first_coordinate, 0.5, np.inf, jac=lambda x: np.array([1., 0.]),
+                        hess=lambda x, v: aslinearoperator(np.zeros((2, 2)))),
+    NonlinearConstraint(first_coordinate, 0.5, np.inf),
+])
+def test_kkt_conditions_accept_every_constraint_form(constraint):
+    # quad restricted to x0 >= 0.5 (or x0 = 0.5): grad f = (0.4, 0) at (0.5, -0.2)
+    x = np.array([0.5, -0.2])
+    g, eig, feasible = kkt_conditions(x, quad_grad(x), quad_hess(x), normalize_constraints(constraint))
+    assert feasible
+    np.testing.assert_allclose(g, 0., atol=1e-8)
+    np.testing.assert_allclose(eig, [2.], rtol=1e-6)
+
+
+def test_kkt_conditions_reject_the_wrong_multiplier_sign():
+    # the same point for |x|^2 <= 1: grad f points out of the feasible set, so f
+    # decreases into it and P is no minimum; the multiplier would need the wrong sign
+    blocks = normalize_constraints([NonlinearConstraint(squared_norm, -np.inf, 1.)])
+    g, eig, feasible = kkt_conditions(P, quad_grad(P), quad_hess(P), blocks)
+    assert feasible
+    np.testing.assert_allclose(g, quad_grad(P))
+
+
+def test_kkt_conditions_inactive_constraint_is_plain_gradient_and_hessian():
+    blocks = normalize_constraints([NonlinearConstraint(squared_norm, -np.inf, 1.)])
+    g, eig, feasible = kkt_conditions(QUAD_C, quad_grad(QUAD_C), quad_hess(QUAD_C), blocks)
+    assert feasible
+    np.testing.assert_allclose(g, 0.)
+    np.testing.assert_allclose(eig, [2., 2.])
+
+
+def test_kkt_conditions_equality_multiplier_is_free():
+    # |x|^2 = 1 at -P: grad f points into the circle, allowed for an equality
+    blocks = normalize_constraints([NonlinearConstraint(squared_norm, 1., 1.)])
+    g, eig, feasible = kkt_conditions(-P, quad_grad(-P), quad_hess(-P), blocks)
+    np.testing.assert_allclose(g, 0., atol=1e-8)
+    # a maximum along the circle
+    assert eig[0] < 0
+
+
+def test_kkt_conditions_detect_infeasible_points():
+    blocks = normalize_constraints([NonlinearConstraint(squared_norm, 1., np.inf)])
+    assert not kkt_conditions(QUAD_C, quad_grad(QUAD_C), quad_hess(QUAD_C), blocks)[2]
+
+
+def test_kkt_conditions_constraints_fixing_the_point_leave_no_curvature():
+    # x0 >= 0.5 and x1 >= 0 are both active at (0.5, 0) with positive multipliers
+    x = np.array([0.5, 0.])
+    blocks = normalize_constraints(LinearConstraint(np.eye(2), [0.5, 0.], np.inf))
+    g, eig, feasible = kkt_conditions(x, quad_grad(x), quad_hess(x), blocks)
+    np.testing.assert_allclose(g, 0., atol=1e-12)
+    assert eig.shape == (0,)
+
+
+def test_normalize_constraints_rejects_unknown_input():
+    with pytest.raises(ValueError, match="type"):
+        normalize_constraints([{"type": "neq", "fun": squared_norm}])
+    with pytest.raises(TypeError):
+        normalize_constraints([squared_norm])
+
+
+def test_newton_polish_converges_onto_the_constraint():
+    blocks = normalize_constraints([NonlinearConstraint(squared_norm, 1., np.inf)])
+    # where SLSQP stops: on the constraint, a little off the optimum along it
+    t = 1e-4
+    x0 = np.array([[np.cos(t), -np.sin(t)], [np.sin(t), np.cos(t)]]) @ P
+    x = newton_polish(x0, quad_grad, quad_hess, blocks)
+    np.testing.assert_allclose(x, P, atol=1e-12)
+
+
+def test_newton_polish_leaves_points_far_from_a_kkt_point():
+    blocks = normalize_constraints([NonlinearConstraint(squared_norm, 1., np.inf)])
+    x0 = np.array([0.9, 0.9])
+    np.testing.assert_array_equal(newton_polish(x0, quad_grad, quad_hess, blocks), x0)
+
+
+def test_local_method_accepts_minimum_on_active_constraint():
+    nlc = NonlinearConstraint(first_coordinate, -np.inf, 0.5)
+    problem = make_problem(func=fourwell, grad=fourwell_grad, hess=fourwell_hess, bounds=BOUNDS,
+                           constraints=(nlc,))
+    x, f, g, eig, r, success = walk(problem, [0.2, 0.3])
+    assert success
+    np.testing.assert_allclose(x, [0.5, 1.], atol=1e-10)
+    # g is the gradient of the Lagrangian, eig the curvature along the constraint
+    np.testing.assert_allclose(g, 0., atol=1e-10)
+    np.testing.assert_allclose(eig, [8.])
+    assert r == pytest.approx(1. / 8.)
+
+
+def test_local_method_constraints_fixing_the_point_get_the_largest_radius():
+    lc = LinearConstraint(np.eye(2), [0.5, 0.], np.inf)
+    x, f, g, eig, r, success = walk(make_problem(constraints=(lc,)), [0.9, 0.9])
+    assert success
+    np.testing.assert_allclose(x, [0.5, 0.], atol=1e-10)
+    assert r == pytest.approx(MAX_RADIUS_FRACTION * np.linalg.norm(UNIT[:, 1] - UNIT[:, 0]))
+    o = optima(2, 10)
+    o.fill_in_optima_list(collect_results([(x, f, g, eig, r, success)], 2))
+    assert o.list[0]["classifier"] == "minimum"
+
+
+def test_problem_with_constraints_pickles():
+    problem = make_problem(constraints=(NonlinearConstraint(squared_norm, 1., np.inf),
+                                        {"type": "ineq", "fun": lambda x: x[0] + 1.}))
+    copy = protocol.pickle.loads(protocol.pickle.dumps(problem))
+    x, f, g, eig, r, success = walk(copy, [0.6, -0.6])
+    assert success
+    np.testing.assert_allclose(x, P, atol=1e-10)
+
+
+###########################################################################
 # collect_results (post-processing of one epoch, runs in the coordinator)
 ###########################################################################
 def walker_result(x, r=0.5, success=True, g=(0., 0.)):
@@ -528,7 +745,9 @@ def walker_result(x, r=0.5, success=True, g=(0., 0.)):
 def test_collect_results_stacks_walkers():
     x, f, g, eig, r, success = collect_results(
         [walker_result([0.1, 0.1]), walker_result([0.9, 0.9], r=0.0, success=False)], 2)
-    assert x.shape == g.shape == eig.shape == (2, 2)
+    assert x.shape == g.shape == (2, 2)
+    # one eigenvalue array per walker; with constraints they are shorter than dim
+    assert len(eig) == 2
     assert list(success) == [True, False]
 
 
@@ -819,6 +1038,7 @@ def test_problem_snapshot():
     assert problem.local_optimizer == "BFGS"
     assert problem.dim == 2 and problem.local_max_iter is None
     assert problem.constraints == () and problem.tolerance == 1e-10
+    assert problem.local_time_limit is None and problem.run_id is None
 
 
 ###########################################################################
@@ -892,7 +1112,8 @@ def test_walkers_run_on_every_worker(client):
         h.optimize(dask_client=client)
         h.get_final()
     walker_tasks = [t for t in ts.data if "local_method" in t["key"]]
-    assert len(walker_tasks) == 3 * 5
+    # 3 x 5 walkers finish; a few more may have started before the run ended
+    assert 3 * 5 <= len(walker_tasks) < 4 * 5
     assert {t["worker"] for t in walker_tasks} == set(client.scheduler_info()["workers"])
 
 
@@ -921,15 +1142,53 @@ def test_two_runs_on_one_client_do_not_interfere(client):
     assert minima_b and all(contains_point(FOUR_MINIMA, m) for m in minima_b)
 
 
-def test_coordinator_stops_before_an_epoch_when_cancelled(client):
+def test_coordinator_starts_no_walker_when_cancelled(client):
     h = make_hgdl(num_epochs=10)
     h.client = h._init_dask_client(client)
     h.tolerance = 1e-10
     h.x0 = h._prepare_starting_positions(None)
     h._problem = client.scatter(make_problem(), broadcast=True, hash=False)
     h._stop.set()
-    h._run_epochs()
+    with get_task_stream(client) as ts:
+        h._run_walkers()
+    assert not [t for t in ts.data if "local_method" in t["key"]]
     assert h.get_latest() == [] and h._error is None
+
+
+def test_a_straggling_walker_does_not_hold_up_the_run(client):
+    # one walker needs STRAGGLE seconds; the other four finish all 4 x 5 local searches
+    h = make_hgdl(straggling_quad, quad_grad, quad_hess, num_epochs=4)
+    t0 = time.time()
+    h.optimize(dask_client=client, x0=STRAGGLER_X0.reshape(1, -1))
+    final = h.get_final()
+    assert time.time() - t0 < STRAGGLE / 2
+    assert np.allclose(final[0]["x"], QUAD_C, atol=1e-5)
+
+
+def test_first_walkers_are_kept_when_nothing_converges(client):
+    # every walker ends in the corner (-1, -1), where the gradient is not zero; as with the
+    # first epoch before, the first walkers are returned so get_final()[0] has an answer
+    h = make_hgdl(slope, slope_grad, slope_hess, num_epochs=3)
+    h.optimize(dask_client=client)
+    final = h.get_final()
+    assert len(final) == 5
+    assert all(np.allclose(e["x"], [-1., -1.]) for e in final)
+
+
+def test_cancel_tasks_stops_running_walkers(client):
+    import hgdl.local_methods.local_optimizer as lo
+    # dNewton never converges on a slope, so each walker runs 500 x 20 ms = 10 s
+    h = make_hgdl(slope, slow_slope_grad, slope_hess, local_optimizer="dNewton",
+                  local_max_iter=500, num_epochs=10 ** 6)
+    h.optimize(dask_client=client)
+    time.sleep(0.5)
+    h.cancel_tasks()
+    assert h._run_id in lo._STOPPED_RUNS  # the workers share this process
+    # the scheduler forgets cancelled tasks at once, so count what the walkers still evaluate
+    time.sleep(0.5)
+    calls = SLOPE_GRAD_CALLS["n"]
+    time.sleep(0.5)
+    assert calls > 0 and SLOPE_GRAD_CALLS["n"] == calls
 
 
 ###########################################################################
@@ -1000,6 +1259,26 @@ def test_constrained_run_respects_constraint(client):
     minima = [e["x"] for e in h.get_final() if e["classifier"] == "minimum"]
     assert contains_point(minima, [1., 1.]) and contains_point(minima, [1., -1.])
     assert all(m[0] >= 0.5 - 1e-6 for m in minima)
+
+
+def test_finds_minima_on_active_constraint(client):
+    # four-well restricted to x0 <= 0.5: the minima (-1, +-1) are interior, (0.5, +-1) lie on
+    # the constraint, where grad f = (-1.5, 0) is balanced by the multiplier 1.5 and the
+    # curvature along the constraint is 12 y^2 - 4 = 8
+    # 5 epochs sufficed in 20/20 seeds (3 epochs: 17/20); 10 leaves a margin
+    nlc = NonlinearConstraint(first_coordinate, -np.inf, 0.5)
+    h = make_hgdl(fourwell, fourwell_grad, fourwell_hess, BOUNDS,
+                  num_epochs=10, constraints=(nlc,))
+    h.optimize(dask_client=client)
+    minima = [e for e in h.get_final() if e["classifier"] == "minimum"]
+    points = [e["x"] for e in minima]
+    for target in [[-1., 1.], [-1., -1.], [0.5, 1.], [0.5, -1.]]:
+        assert contains_point(points, target), f"missing minimum {target}"
+    # deflation keeps them unique
+    assert len(minima) == 4
+    on_constraint = [e for e in minima if abs(e["x"][0] - 0.5) < 1e-6]
+    assert [e["f(x)"] for e in on_constraint] == pytest.approx([0.5625] * 2, abs=1e-8)
+    assert [e["radius"] for e in on_constraint] == pytest.approx([1. / 8.] * 2, rel=1e-3)
 
 
 def test_cancel_tasks_returns_latest_and_stops(client):
