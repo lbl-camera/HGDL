@@ -69,6 +69,7 @@ exclude = [
     "/.github",
     "/docs",
     "/examples",
+    "/Manuscript",
     "/tests",
     "/obsolete",
 ]
