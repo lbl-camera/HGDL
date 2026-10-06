@@ -16,6 +16,8 @@
 - `cancel_tasks()` and `kill_client()` now stop running walkers at their next iteration, instead
   of letting them finish in the background (one message to every worker; walkers check a local
   flag). A single evaluation of the objective is still not interrupted.
+- `info` (default False): if True, a line with the progress, the number of points found and the
+  current best point is printed whenever a new point is accepted, and when the run ends.
 
 ### Fixed
 - With constraints, optima on an active constraint were never accepted or deflated: the

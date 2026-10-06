@@ -1215,6 +1215,24 @@ def test_finds_all_four_minima(client, method):
     assert [e["f(x)"] for e in h.get_latest()] == fs
 
 
+@pytest.mark.parametrize("info", [False, True])
+def test_info_prints_each_new_point_and_the_end(client, capsys, info):
+    h = make_hgdl(fourwell, fourwell_grad, fourwell_hess, BOUNDS, num_epochs=5, info=info)
+    h.optimize(dask_client=client)
+    final = h.get_final()
+    lines = capsys.readouterr().out.splitlines()
+    if not info:
+        assert lines == []
+        return
+    # a line per accepted walker (the forced first acceptance may add several points at
+    # once), then the summary with the final best point
+    assert 1 <= len(lines) - 1 <= len(final)
+    assert all(line.startswith("HGDL walker ") for line in lines[:-1])
+    assert lines[-1].startswith("HGDL finished after")
+    assert f"{len(final)} points found" in lines[-1]
+    assert f"best f(x) = {final[0]['f(x)']:.8g}" in lines[-1]
+
+
 def test_stationary_mode_finds_and_classifies_all_nine_stationary_points(client):
     # 15 epochs sufficed in 20/20 seeds (10 epochs: 18/20); 20 leaves a margin
     h = make_hgdl(fourwell, fourwell_grad, fourwell_hess, BOUNDS,

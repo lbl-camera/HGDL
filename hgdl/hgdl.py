@@ -144,6 +144,12 @@ class HGDL:
         saddle points, deflates all of them and classifies them. It requires
         `dNewton` as plain Newton method; any other `local_optimizer` is
         replaced by `dNewton` with a warning.
+    info : bool, optional
+        If True, a line is printed whenever a walker's result is accepted as
+        a new point, with the progress of the run (finished walkers out of
+        the total), the number of points found and the current best point,
+        and once more when the run ends. Rejected walkers print nothing.
+        The default is False.
 
     Attributes
     ----------
@@ -172,7 +178,8 @@ class HGDL:
                  constraints=(),
                  args=(),
                  mode="minimization",
-                 local_time_limit=None):
+                 local_time_limit=None,
+                 info=False):
         bounds = np.asarray(bounds)
         self.dim = len(bounds)
         self.bounds = bounds
@@ -203,6 +210,7 @@ class HGDL:
         self.local_optimizer = local_optimizer
         self.args = args
         self.mode = mode
+        self.info = info
         self.optima = optima(self.dim, number_of_optima)
 
         self.client = None
@@ -421,7 +429,8 @@ class HGDL:
                 with self._lock:
                     self._futures.discard(future)
                 completed += 1
-                self._accept(result, completed, n_first, first_failures)
+                if self._accept(result, completed, n_first, first_failures) and self.info:
+                    self._print_info(f"walker {completed}/{budget}")
                 if completed >= budget:
                     break
                 if completed % n_first == 0:
@@ -430,6 +439,8 @@ class HGDL:
                 while not self._stop.is_set() and len(self._futures) < target:
                     self._submit_walker(pool, starts)
             logger.debug("HGDL finished after {} walkers", completed)
+            if self.info:
+                self._print_info(f"finished after {completed} walkers")
         except (Exception, asyncio.CancelledError) as err:
             if self._stop.is_set():
                 logger.debug("HGDL stopped: {}", repr(err))
@@ -452,8 +463,10 @@ class HGDL:
     def _accept(self, result, completed, n_first, first_failures):
         # judged against the current optima, which may have grown while the walker ran
         x_defl, _, radii = self.optima.get_deflation_points(len(self.optima.list))
+        # returns whether the list of optima grew
         res = collect_results([result], self.dim, x_defl, radii)
         with self._lock:
+            n_before = len(self.optima.list)
             if res[-1][0]:
                 self.optima.fill_in_optima_list(res)
             elif completed <= n_first:
@@ -462,6 +475,18 @@ class HGDL:
                 # none of the first walkers converged: keep their results anyway (as the
                 # first epoch did), so that get_final() has an answer
                 self.optima.fill_in_optima_list(collect_results(first_failures, self.dim))
+            return len(self.optima.list) > n_before
+
+    def _print_info(self, progress):
+        with self._lock:
+            n = len(self.optima.list)
+            best = self.optima.list[0] if n else None
+        if best is None:
+            print(f"HGDL {progress}: no points found yet", flush=True)
+            return
+        x = np.array2string(np.asarray(best["x"]), precision=6, threshold=10)
+        print(f"HGDL {progress}: {n} points found, best f(x) = {best['f(x)']:.8g} "
+              f"({best['classifier']}) at x = {x}", flush=True)
 
     def _stop_walkers(self):
         # cancels walkers that have not started and tells running ones to stop: one message
